@@ -1,0 +1,17 @@
+spring:
+profiles: operate
+
+datasource:
+url: jdbc:mysql://prod-db:3306/petclinic
+username: operate_user
+password: strong_secret
+
+# 운영에서는 DB 초기화 끔 (실수 방지)
+spring:
+sql:
+init:
+mode: never
+
+logging:
+level:
+root: WARN

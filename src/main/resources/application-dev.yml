@@ -1,0 +1,17 @@
+spring:
+profiles: dev
+
+datasource:
+url: jdbc:mysql://localhost:3306/petclinic
+username: dev_user
+password: dev_pass
+
+# 개발에서는 DB 항상 초기화 (idempotent SQL)
+spring:
+sql:
+init:
+mode: always
+
+logging:
+level:
+root: DEBUG

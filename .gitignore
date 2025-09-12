@@ -49,3 +49,10 @@ out/
 _site/
 *.css
 !petclinic.css
+
+### Logs ###
+*.log
+
+### Docker / DB data ###
+data/
+*.sock

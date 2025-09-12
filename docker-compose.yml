@@ -1,21 +1,14 @@
 services:
   mysql:
-    image: mysql:9.2
+    build: .
+    container_name: petclinic-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ezflow_010
+      MYSQL_DATABASE: petclinic
+      MYSQL_USER: dev33
+      MYSQL_PASSWORD: ezflow_010
+      TZ: Asia/Seoul
     ports:
       - "3306:3306"
-    environment:
-      - MYSQL_ROOT_PASSWORD=
-      - MYSQL_ALLOW_EMPTY_PASSWORD=true
-      - MYSQL_USER=petclinic
-      - MYSQL_PASSWORD=petclinic
-      - MYSQL_DATABASE=petclinic
     volumes:
-      - "./conf.d:/etc/mysql/conf.d:ro"
-  postgres:
-    image: postgres:17.5
-    ports:
-      - "5432:5432"
-    environment:
-      - POSTGRES_PASSWORD=petclinic
-      - POSTGRES_USER=petclinic
-      - POSTGRES_DB=petclinic
+      - "C:/eGovFrameDev-3.9.0-64bit/petclinic/spring-petclinic/data:/var/lib/mysql"
