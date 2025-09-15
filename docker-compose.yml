@@ -11,4 +11,4 @@ services:
     ports:
       - "3306:3306"
     volumes:
-      - "C:/eGovFrameDev-3.9.0-64bit/petclinic/spring-petclinic/data:/var/lib/mysql"
+      - "C:/docker-volumes/mysql:/var/lib/mysql"

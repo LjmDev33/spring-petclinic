@@ -1,17 +1,60 @@
 spring:
-profiles: operate
 
-datasource:
-url: jdbc:mysql://prod-db:3306/petclinic
-username: operate_user
-password: strong_secret
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/petclinic
+    username: dev33
+    password: ezflow_010
 
-# 운영에서는 DB 초기화 끔 (실수 방지)
-spring:
-sql:
-init:
-mode: never
+  jpa:
+    database-platform: org.hibernate.dialect.MySQLDialect
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+
+  sql:
+    init:
+      mode: never
+      schema-locations: classpath*:db/mysql/schema.sql
+      data-locations: classpath*:db/mysql/data.sql
+
+  thymeleaf:
+    mode: HTML
+
+  main:
+    allow-bean-definition-overriding: true
+
+  messages:
+    basename: messages/messages,messages/ErrorMessages
+    encoding: UTF-8
+    cache-duration: 5m
+  jackson:
+    serialization:
+      INDENT_OUTPUT: true
+
+  web:
+    resources:
+      cache:
+        cachecontrol:
+          max-age: 12h
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
 
 logging:
-level:
-root: WARN
+  level:
+    root: DEBUG
+    com.zaxxer.hikari.HikariConfig: DEBUG
+    org.springframework.context.support.ReloadableResourceBundleMessageSource: DEBUG
+
+decorator:
+  datasource:
+    p6spy:
+      enable-logging: true
+      multiline: true

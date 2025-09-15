@@ -2,6 +2,7 @@ package org.springframework.samples.petclinic.system;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.web.servlet.LocaleResolver;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
@@ -29,12 +30,25 @@ public class WebConfiguration implements WebMvcConfigurer {
 	 * Defaults to English if nothing is specified.
 	 * @return session-based {@link LocaleResolver}
 	 */
-	@Bean
-	public LocaleResolver localeResolver() {
-		SessionLocaleResolver resolver = new SessionLocaleResolver();
-		resolver.setDefaultLocale(Locale.ENGLISH);
-		return resolver;
-	}
+
+
+	 @Bean
+	 @Profile("dev")
+	 public LocaleResolver koreanLocaleResolver() {
+	 	SessionLocaleResolver resolver = new SessionLocaleResolver();
+	 	resolver.setDefaultLocale(Locale.KOREAN);
+	 	return resolver;
+	 }
+
+	 @Bean
+	 @Profile("!dev")
+	 public LocaleResolver englishLocaleResolver() {
+	 	SessionLocaleResolver resolver = new SessionLocaleResolver();
+	 	resolver.setDefaultLocale(Locale.ENGLISH);
+	 	return resolver;
+	 }
+
+
 
 	/**
 	 * Allows the app to switch languages using a URL parameter like
