@@ -31,24 +31,21 @@ public class WebConfiguration implements WebMvcConfigurer {
 	 * @return session-based {@link LocaleResolver}
 	 */
 
+	@Bean
+	@Profile("dev")
+	public LocaleResolver koreanLocaleResolver() {
+		SessionLocaleResolver resolver = new SessionLocaleResolver();
+		resolver.setDefaultLocale(Locale.KOREAN);
+		return resolver;
+	}
 
-	 @Bean
-	 @Profile("dev")
-	 public LocaleResolver koreanLocaleResolver() {
-	 	SessionLocaleResolver resolver = new SessionLocaleResolver();
-	 	resolver.setDefaultLocale(Locale.KOREAN);
-	 	return resolver;
-	 }
-
-	 @Bean
-	 @Profile("!dev")
-	 public LocaleResolver englishLocaleResolver() {
-	 	SessionLocaleResolver resolver = new SessionLocaleResolver();
-	 	resolver.setDefaultLocale(Locale.ENGLISH);
-	 	return resolver;
-	 }
-
-
+	@Bean
+	@Profile("!dev")
+	public LocaleResolver englishLocaleResolver() {
+		SessionLocaleResolver resolver = new SessionLocaleResolver();
+		resolver.setDefaultLocale(Locale.ENGLISH);
+		return resolver;
+	}
 
 	/**
 	 * Allows the app to switch languages using a URL parameter like
