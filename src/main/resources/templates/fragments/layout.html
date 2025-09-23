@@ -13,15 +13,26 @@
 </head>
 
 <body>
-
+<!--header-->
+<div id="header" class="w-100">
+  <div class="w-100">
+    <div class="d-flex flex-row mb-1 mt-2 me-5 justify-content-end">
+      <a href="#" class="p-1 --bs-tertiary-color text-decoration-none link-secondary">HOME</a>
+      <span class="p-1">|</span>
+      <a href="#" class="p-1 --bs-tertiary-color text-decoration-none link-secondary">로그인</a>
+      <span class="p-1">|</span>
+      <a href="#" class="p-1 --bs-tertiary-color text-decoration-none link-secondary">회원가입</a>
+    </div>
+  </div>
+</div>
 <!-- Navbar -->
 <nav class="navbar navbar-expand-lg navbar-light bg-light border-bottom">
-  <div class="container-fluid">
+  <div class="container-fluid  me-5 ms-5">
 
     <div class="row w-100 align-items-center">
 
       <!-- 왼쪽 로고 영역 (넓게) -->
-      <div class="col-3 d-flex align-items-center">
+      <div class="col-3 d-flex align-items-center ms-5">
         <a class="navbar-brand d-flex align-items-center" th:href="@{/}">
           <img th:src="@{/images/home_logo01.png}" alt="로고1" height="80" class="me-2">
         </a>
@@ -54,16 +65,33 @@
 <!-- /Navbar -->
 
 <div class="container-fluid">
-  <div class="container xd-container">
+  <div class="container">
     <th:block th:insert="${template}" />
 
     <br /><br />
-    <div class="container">
+    <div class="pt-4 pb-5" style="background: #DDDDDD; text-align: center;" >
       <div class="row">
-        <div class="col-12 text-center">
-          <img src="../static/images/spring-logo.svg"
-               th:src="@{/images/spring-logo.svg}"
-               alt="VMware Tanzu Logo" class="logo">
+        <div class="col-12 text-center mb-3">
+          <img src="../static/images/copyright.png"
+               th:src="@{/images/copyright.png}"
+               alt="VMware Tanzu Logo">
+        </div>
+        <div class="" style="">
+          <span>
+            <img src="../static/images/sitemap.png"
+                 th:src="@{/images/sitemap.png}"
+                 alt="사이트맵">
+          </span>
+          <span>
+            <img src="../static/images/ft_privacy.png"
+                 th:src="@{/images/ft_privacy.png}"
+                 alt="개인정보취급방침">
+          </span>
+          <span>
+            <img src="../static/images/ft_service.png"
+                 th:src="@{/images/ft_service.png}"
+                 alt="서비스이용약관">
+          </span>
         </div>
       </div>
     </div>
