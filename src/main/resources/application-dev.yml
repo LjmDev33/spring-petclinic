@@ -23,6 +23,7 @@ spring:
 
   thymeleaf:
     mode: HTML
+    cache: false
 
   main:
     allow-bean-definition-overriding: true
