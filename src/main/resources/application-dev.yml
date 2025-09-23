@@ -1,11 +1,5 @@
 spring:
 
-  # 서버자동 재시작 비활성화
-  devtools:
-    restart:
-      exclude: templates/** , static/**
-      enabled: false
-
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/petclinic
@@ -43,9 +37,6 @@ spring:
 
   web:
     resources:
-      cache:
-        cachecontrol:
-          max-age: 12h
 
 management:
   endpoints:
