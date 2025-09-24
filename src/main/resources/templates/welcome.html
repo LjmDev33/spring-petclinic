@@ -1,18 +1,91 @@
 <!DOCTYPE html>
 
 <html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'nav01')}">
-
 <body>
 <!--<h2 th:text="#{welcome}">Welcome</h2>-->
-  <div class="row" style="height: 1294px; background: url(/images/bg2.jpg) center top no-repeat; box-sizing: border-box;">
-    <div class="col-md-12">
-<!--      <img class="img-responsive" src="../static/images/pets.png" th:src="@{/images/pets.png}" />-->
-<!--      <img class="img-responsive" src="../static/images/pets.png" th:src="@{/images/pets.png}" />-->
-<!--      <img class="img-responsive" src="../static/images/pets.png" th:src="@{/images/pets.png}" />-->
-<!--      <img class="img-responsive" src="../static/images/pets.png" th:src="@{/images/pets.png}" />-->
-<!--      <button class="btn btn-primary">CSS 적용 확인</button>-->
+<div class="row g-0" style="background: url(/images/bg2.jpg) center top / cover no-repeat;">
+  <!--      <img class="img-responsive" src="../static/images/pets.png" th:src="@{/images/pets.png}" />-->
+  <!--    패딩 div -->
+  <div class="container-fluid">
+    <div class="row py-2"></div>
+    <div class="row ">
+      <!--    메인 컨텐츠 div-->
+      <div class="container-fluid">
+        <!--      메인컨텐츠 3열 분할-->
+        <div class="row g-0">
+          <div class="col-12 col-md-2"></div>
+          <div class="col-12 col-md-8">
+
+            <div class="row g-0 align-items-stretch">
+              <div class="col-12 col-md-3 d-flex">
+                <img class="w-100 h-100" style="object-fit: cover" th:src="@{/images/cs1.png}">
+              </div>
+              <div class="col-12 col-md-9 d-flex flex-column">
+                <div class="row g-0 flex-fill">
+                  <div class="col-12 col-md-6 d-flex">
+                    <img class="w-100 h-100" style="object-fit: cover" th:src="@{/images/cs2.png}">
+                  </div>
+                  <div class="col-12 col-md-6 d-flex">
+                    <img class="w-100 h-100" style="object-fit: cover" th:src="@{/images/seulgaegoal.png}">
+                  </div>
+                </div>
+                <div class="row g-0 flex-fill">
+                  <div class="col-12 col-md-6 d-flex">
+                    <img class="w-100 h-100" style="object-fit: cover" th:src="@{/images/heart.png}">
+                  </div>
+                  <div class="col-12 col-md-6 d-flex">
+                    <img class="w-100 h-100" style="object-fit: cover" th:src="@{/images/cat.png}">
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="row g-0 align-items-stretch">
+              <div class="col-12 col-md-3 d-flex">
+                <img class="w-100 h-100" style="object-fit: cover" th:src="@{/images/dental.png}">
+              </div>
+              <div class="col-12 col-md-9 d-flex">
+                <div class="row g-0 flex-fill">
+                  <div class="col-12 col-md-6 d-flex">
+                    <img class="w-100 h-100" style="object-fit: cover" th:src="@{/images/operate.png}">
+                  </div>
+                  <div class="col-12 col-md-6 d-flex">
+                    <img class="w-100 h-100" style="object-fit: cover" th:src="@{/images/dandoo.png}">
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!--      x-ray,초음파 행-->
+            <div class="row g-0">
+              <img class="img-fluid w-100" th:src="@{/images/xray.png}">
+            </div>
+            <div class="row g-0">
+              <div class="col-12 col-md-2">
+                <div class="row g-0">
+                  <img class="img-fluid w-100" th:src="@{/images/mainblog.png}">
+                </div>
+                <div class="row g-0">
+                  <img class="img-fluid w-100" th:src="@{/images/operatecase.png}">
+                </div>
+              </div>
+              <div class="col-12 col-md-10">
+                <div class="row g-0">
+                  <img class="img-fluid w-100" th:src="@{/images/guide.png}">
+                </div>
+              </div>
+            </div>
+            <!--      메인컨텐츠 3열 분할 마침-->
+          </div>
+          <div class="col-12 col-md-2"></div>
+        </div>
+        <!--      메인컨텐츠 마침-->
+      </div>
+      <!--      padding마침-->
     </div>
+
   </div>
+  <!--    background 마침-->
+</div>
 
 </body>
 
