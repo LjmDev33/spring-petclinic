@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<body>
+<div class="container mt-4">
+  <div class="container-fluid">
+      <div class="col-12 col-md-2">
+        <h2 class="">공지사항(<span th:text="${posts.size()}"></span>)</h2>
+      </div>
+      <div class="col-12 col-md-8">
+
+      </div>
+      <div class="col-12 col-md-2">
+
+      </div>
+  </div>
+
+  <table class="table table-striped table-bordered text-center align-middle">
+    <thead class="table-light">
+    <tr>
+      <th scope="col">No</th>
+      <th scope="col">제목</th>
+      <th scope="col">글쓴이</th>
+      <th scope="col">작성시간</th>
+      <th scope="col">조회수</th>
+      <th scope="col">좋아요</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="post : ${posts}">
+      <td th:text="${post.id}"></td>
+      <td class="text-start" th:text="${post.title}"></td>
+      <td th:text="${post.author}"></td>
+      <td th:text="${#temporals.format(post.createdAt, 'yyyy-MM-dd')}"></td>
+      <td th:text="${post.viewCount}"></td>
+      <td th:text="${post.likeCount}"></td>
+    </tr>
+    </tbody>
+  </table>
+</div>
+</body>
+</html>

@@ -12,7 +12,7 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.MySQL8Dialect
     hibernate:
-      ddl-auto: none
+      ddl-auto: create
     open-in-view: false
 
   sql:
@@ -50,6 +50,8 @@ logging:
     root: DEBUG
     com.zaxxer.hikari.HikariConfig: DEBUG
     org.springframework.context.support.ReloadableResourceBundleMessageSource: DEBUG
+    javax.management.remote.rmi : INFO
+    sun.rmi : INFO
 
 decorator:
   datasource:
