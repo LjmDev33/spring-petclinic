@@ -1,6 +1,9 @@
 package org.springframework.samples.petclinic.community.service;
 
 import jakarta.transaction.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.samples.petclinic.common.dto.PageResponse;
 import org.springframework.samples.petclinic.community.CommunityPost;
 import org.springframework.samples.petclinic.community.dto.CommunityPostDto;
 import org.springframework.samples.petclinic.community.mapper.CommunityPostMapper;
@@ -18,7 +21,7 @@ import java.util.stream.Collectors;
  * Author  : Jeongmin Lee
  *
  * Description :
- *   TODO: Add class description here.
+ *   TODO: RDBMS만 사용하기때문에 구현체는 만들지않고 service에서만 모든 비즈니스로직 처리(mysql , oracle , postgre 등)
  *
  * License :
  *   Copyright (c) 2025 AOF(AllForOne) / All rights reserved.
@@ -28,9 +31,15 @@ import java.util.stream.Collectors;
 public class CommunityService {
 
 	private final CommunityPostRepository repository;
+	private final CommunityPostRepository communityPostRepository;
 
-	public CommunityService(CommunityPostRepository repository) {
+	public CommunityService(CommunityPostRepository repository, CommunityPostRepository communityPostRepository) {
 		this.repository = repository;
+		this.communityPostRepository = communityPostRepository;
+	}
+
+	public PageResponse<CommunityPost> getPagedPosts(Pageable pageable) {
+		return new PageResponse<>(repository.findAll(pageable));
 	}
 
 	/* 전체 게시글 리스트 가져오기 */
@@ -51,5 +60,9 @@ public class CommunityService {
 		entity.setCreatedAt(LocalDateTime.now());
 		CommunityPost saved = repository.save(entity);
 		return CommunityPostMapper.toDto(saved);
+	}
+
+	public PageResponse<CommunityPost> search(String type, String keyword, Pageable pageable) {
+		return communityPostRepository.search(type,keyword,pageable);
 	}
 }

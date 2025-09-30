@@ -42,16 +42,8 @@ public class CommunityPostDto {
 	public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
 	public int getViewCount() {return viewCount;}
+	public void setViewCount(int viewCount) {this.viewCount = viewCount;}
 
-	public void setViewCount(int viewCount) {
-		this.viewCount = viewCount;
-	}
-
-	public int getLikeCount() {
-		return likeCount;
-	}
-
-	public void setLikeCount(int likeCount) {
-		this.likeCount = likeCount;
-	}
+	public int getLikeCount() {return likeCount;}
+	public void setLikeCount(int likeCount) {this.likeCount = likeCount;}
 }

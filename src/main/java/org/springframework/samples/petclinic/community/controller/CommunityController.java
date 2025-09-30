@@ -3,6 +3,11 @@ package org.springframework.samples.petclinic.community.controller;
 import org.slf4j.ILoggerFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.samples.petclinic.common.dto.PageResponse;
+import org.springframework.samples.petclinic.community.CommunityPost;
 import org.springframework.samples.petclinic.community.dto.CommunityPostDto;
 import org.springframework.samples.petclinic.community.service.CommunityService;
 import org.springframework.stereotype.Controller;
@@ -34,11 +39,27 @@ public class CommunityController {
 	}
 
 	@GetMapping
-	public String list(Model model) {
-		model.addAttribute("posts", communityService.getAllPosts());
+	public String list(@PageableDefault(size = 10, sort = "id", direction = Sort.Direction.ASC) Pageable pageable,
+					   @RequestParam(value = "type", required = false) String type,
+					   @RequestParam(value = "keyword", required = false) String keyword,
+					   Model model) {
+
+		PageResponse<CommunityPost> pageResponse;
+
+		type = (type == null || type.isBlank()) ? "" : type;
+
+		if(keyword != null && !keyword.isBlank()) {
+			pageResponse = communityService.search(type,keyword,pageable);
+		}else{
+			pageResponse = communityService.getPagedPosts(pageable);
+		}
+
+		model.addAttribute("page", pageResponse);
+		model.addAttribute("posts", pageResponse.getContent());
+		model.addAttribute("keyword", keyword);
 		model.addAttribute("template", "community/noticeList");
-		log.info("### list called");
-		return "/fragments/layout";
+
+		return "fragments/layout";
 	}
 
 	@GetMapping("/{id}")

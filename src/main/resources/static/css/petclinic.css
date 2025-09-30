@@ -391,7 +391,7 @@ td,
 th {
   border-color: inherit;
   border-style: solid;
-  border-width: 0; }
+  border-width: 0;}
 
 label {
   display: inline-block; }
@@ -3862,8 +3862,8 @@ textarea.form-control-lg {
   .page-link.active, .active > .page-link {
     z-index: 3;
     color: var(--bs-pagination-active-color);
-    background-color: var(--bs-pagination-active-bg);
-    border-color: var(--bs-pagination-active-border-color); }
+    background-color: var(--bs-gray-300); /*페이징 버튼 활성화 시 색상 변경*/
+    border-color: var(--bs-gray-300); } /*페이징 버튼 활성화 시 색상 변경*/
   .page-link.disabled, .disabled > .page-link {
     color: var(--bs-pagination-disabled-color);
     pointer-events: none;
@@ -9299,9 +9299,9 @@ textarea.form-control-lg {
   .d-print-none {
     display: none !important; } }
 
-.table > thead > tr > th {
-  background-color: #3c3834;
-  color: #f1f1f1; }
+/*.table > thead > tr > th {*/
+/*  background-color: #3c3834;*/
+/*  color: #f1f1f1; }*/
 
 .table-filter {
   background-color: #34302D;

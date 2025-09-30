@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="pagination(pageUrl, page)">
+  <nav aria-label="Page navigation">
+    <ul class="pagination justify-content-center">
+
+      <!-- 처음 -->
+      <li class="page-item" th:classappend="${page.currentPage == 0} ? 'disabled'">
+        <a class="page-link link-secondary" th:href="@{${pageUrl}(page=0, size=${page.size})}">처음</a>
+      </li>
+
+      <!-- 이전 -->
+      <li class="page-item" th:classappend="${page.currentPage == 0} ? 'disabled'">
+        <a class="page-link link-secondary" th:href="@{${pageUrl}(page=${page.currentPage-1}, size=${page.size})}">&laquo;</a>
+      </li>
+
+      <!-- 페이지 번호 (10개 블록 단위) -->
+      <li class="page-item"
+          th:each="i : ${#numbers.sequence((page.currentPage/10)*10, T(java.lang.Math).min(((page.currentPage/10)*10+9), page.totalPages-1))}"
+          th:classappend="${i == page.currentPage} ? 'active'">
+        <a class="page-link link-secondary" th:text="${i+1}"
+           th:href="@{${pageUrl}(page=${i}, size=${page.size})}"></a>
+      </li>
+
+      <!-- 다음 -->
+      <li class="page-item" th:classappend="${page.currentPage == page.totalPages-1} ? 'disabled'">
+        <a class="page-link link-secondary" th:href="@{${pageUrl}(page=${page.currentPage+1}, size=${page.size})}">&raquo;</a>
+      </li>
+
+      <!-- 마지막 -->
+      <li class="page-item" th:classappend="${page.currentPage == page.totalPages-1} ? 'disabled'">
+        <a class="page-link link-secondary" th:href="@{${pageUrl}(page=${page.totalPages-1}, size=${page.size})}">마지막</a>
+      </li>
+
+    </ul>
+  </nav>
+</div>
+</body>
+</html>

@@ -7,6 +7,8 @@ import org.springframework.samples.petclinic.community.CommunityPost;
 import org.springframework.samples.petclinic.community.repository.CommunityPostRepository;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 /*
  * Project : spring-petclinic
@@ -51,9 +53,28 @@ public class CommunityDataInit {
 				post3.setViewCount(278);
 				post3.setLikeCount(1);
 
+				/*페이징 작업 대비하여 더미데이터 추가*/
+				List<CommunityPost> posts = new ArrayList<>();
+
+				LocalDateTime now = LocalDateTime.now();
+
+				for (int i = 0; i < 103; i++) {
+					CommunityPost noticeDummyData = new CommunityPost();
+					noticeDummyData.setTitle("테스트 제목" + i);
+					noticeDummyData.setContent("테스트 내용 추가");
+					noticeDummyData.setAuthor("전산팀");
+					noticeDummyData.setCreatedAt(now);
+					noticeDummyData.setViewCount(i);
+					noticeDummyData.setLikeCount(0);
+
+					posts.add(noticeDummyData);
+				}
+
 				repository.save(post1);
 				repository.save(post2);
 				repository.save(post3);
+
+				repository.saveAll(posts);
 			}
 		};
 	}
