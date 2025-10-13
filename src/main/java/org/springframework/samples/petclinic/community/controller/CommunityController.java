@@ -57,16 +57,18 @@ public class CommunityController {
 		model.addAttribute("page", pageResponse);
 		model.addAttribute("posts", pageResponse.getContent());
 		model.addAttribute("keyword", keyword);
+		model.addAttribute("type", type);
 		model.addAttribute("template", "community/noticeList");
 
 		return "fragments/layout";
 	}
 
-	@GetMapping("/{id}")
+	@GetMapping("detail/{id}")
 	public String detail(@PathVariable("id") Long id, Model model) {
 		log.info("### detail called");
 		model.addAttribute("post", communityService.getPost(id));
-		return "community/detail";
+		model.addAttribute("template", "community/noticeDetail");
+		return "fragments/layout";
 	}
 
 	@PostMapping

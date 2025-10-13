@@ -7,12 +7,12 @@
 
       <!-- 처음 -->
       <li class="page-item" th:classappend="${page.currentPage == 0} ? 'disabled'">
-        <a class="page-link link-secondary" th:href="@{${pageUrl}(page=0, size=${page.size})}">처음</a>
+        <a class="page-link link-secondary" th:href="@{${pageUrl}(page=0, size=${page.size}, type=${param.type}, keyword=${param.keyword})}">처음</a>
       </li>
 
       <!-- 이전 -->
       <li class="page-item" th:classappend="${page.currentPage == 0} ? 'disabled'">
-        <a class="page-link link-secondary" th:href="@{${pageUrl}(page=${page.currentPage-1}, size=${page.size})}">&laquo;</a>
+        <a class="page-link link-secondary" th:href="@{${pageUrl}(page=${page.currentPage-1}, size=${page.size}, type=${param.type}, keyword=${param.keyword})}">&laquo;</a>
       </li>
 
       <!-- 페이지 번호 (10개 블록 단위) -->
@@ -20,17 +20,17 @@
           th:each="i : ${#numbers.sequence((page.currentPage/10)*10, T(java.lang.Math).min(((page.currentPage/10)*10+9), page.totalPages-1))}"
           th:classappend="${i == page.currentPage} ? 'active'">
         <a class="page-link link-secondary" th:text="${i+1}"
-           th:href="@{${pageUrl}(page=${i}, size=${page.size})}"></a>
+           th:href="@{${pageUrl}(page=${i}, size=${page.size}, type=${param.type}, keyword=${param.keyword})}"></a>
       </li>
 
       <!-- 다음 -->
       <li class="page-item" th:classappend="${page.currentPage == page.totalPages-1} ? 'disabled'">
-        <a class="page-link link-secondary" th:href="@{${pageUrl}(page=${page.currentPage+1}, size=${page.size})}">&raquo;</a>
+        <a class="page-link link-secondary" th:href="@{${pageUrl}(page=${page.currentPage+1}, size=${page.size}, type=${param.type}, keyword=${param.keyword})}">&raquo;</a>
       </li>
 
       <!-- 마지막 -->
       <li class="page-item" th:classappend="${page.currentPage == page.totalPages-1} ? 'disabled'">
-        <a class="page-link link-secondary" th:href="@{${pageUrl}(page=${page.totalPages-1}, size=${page.size})}">마지막</a>
+        <a class="page-link link-secondary" th:href="@{${pageUrl}(page=${page.totalPages-1}, size=${page.size}, type=${param.type}, keyword=${param.keyword})}">마지막</a>
       </li>
 
     </ul>
