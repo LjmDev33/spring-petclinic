@@ -11,6 +11,39 @@
   <link th:href="@{/webjars/font-awesome/css/font-awesome.min.css}" rel="stylesheet">
   <link rel="stylesheet" th:href="@{/css/petclinic.css}" />
 <!--  <link th:href="@{/webjars/bootstrap/dist/css/bootstrap.css}" rel="stylesheet">-->
+  <style>
+    .nav-item.dropdown:hover .dropdown-menu {
+      display: block;
+      margin-top: 0;
+    }
+    .dropdown-toggle::after {
+      display: none !important;
+    }
+    .dropdown-item {
+      padding-top: 0.9rem !important;
+      padding-bottom: 0.9rem !important;
+      line-height: 1.2 !important;
+      font-size: 0.95rem;
+    }
+    .navbar .container{
+      max-width: 1280px;
+    }
+    /* 기본 상태 */
+    .navbar-nav .nav-item .nav-link {
+      position: relative;
+      color: #555;
+      text-decoration: none;
+      background-color: transparent; /* 배경 제거 */
+      transition: color 0.3s ease;
+    }
+
+    /* hover 시 텍스트 컬러만 변경 */
+    .navbar-nav .nav-item:hover > .nav-link {
+      color: #6db33f; /* 초록빛 텍스트 */
+      background-color: transparent; /* 배경색 제거 */
+    }
+
+  </style>
 </head>
 
 <body>
@@ -26,41 +59,80 @@
     </div>
   </div>
 </div>
-<!-- Navbar -->
-<nav class="navbar navbar-expand-lg navbar-light bg-light border-bottom">
-  <div class="container-fluid  me-5 ms-5">
-
-    <div class="row w-100 align-items-center">
-
+    <nav class="navbar navbar-expand-lg bg-body-tertiary">
+      <div class="container mx-auto px-3 d-flex align-items-center justify-content-between">
       <!-- 왼쪽 로고 영역 (넓게) -->
-      <div class="col-3 d-flex align-items-center ms-5">
-        <a class="navbar-brand d-flex align-items-center" th:href="@{/}">
-          <img th:src="@{/images/home_logo01.png}" alt="로고1" height="80" class="me-2">
+        <a class="navbar-brand me-5" th:href="@{/}">
+          <img th:src="@{/images/home_logo01.png}" alt="로고1" style="height:48px;">
         </a>
-      </div>
-
-      <!-- 중앙 구분선 -->
-      <div class="col-auto border-start" style="height: 40px;"></div>
-
       <!-- 오른쪽 메뉴 (오른쪽 끝 정렬) -->
-      <div class="col d-flex justify-content-end">
-        <div class="collapse navbar-collapse" id="main-navbar">
-          <ul class="navbar-nav mb-2 mb-lg-0 gap-5">
-            <li class="nav-item"><a class="nav-link fs-5" href="#">솔 동물의료센터 소개</a></li>
-            <li class="nav-item"><a class="nav-link fs-5" href="#">일반클리닉</a></li>
-            <li class="nav-item"><a class="nav-link fs-5" href="#">특화클리닉</a></li>
-            <li class="nav-item"><a class="nav-link fs-5" href="#">건강검진프로그램</a></li>
-            <li class="nav-item"><a class="nav-link fs-5" href="#">최소침습시술</a></li>
-            <li class="nav-item"><a class="nav-link fs-5" href="#">온라인상담</a></li>
-            <li class="nav-item">
-              <a class="nav-link fs-5" th:href="@{/community}">커뮤니티</a>
+      <div class="collapse navbar-collapse justify-content-center" id="navbarNav">
+          <ul class="navbar-nav d-flex flex-row justify-content-between align-items-center gap-4">
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" style="font-size: 16px;" aria-current="page" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">솔 동물의료센터 소개</a>
+              <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="#">인사말</a></li>
+                <li><a class="dropdown-item" href="#">의료진소개</a></li>
+                <li><a class="dropdown-item" href="#">진료철학</a></li>
+                <li><a class="dropdown-item" href="#">특별함</a></li>
+                <li><a class="dropdown-item" href="#">운영시간</a></li>
+                <li><a class="dropdown-item" href="#">병원 둘러보기</a></li>
+                <li><a class="dropdown-item" href="#">찾아오시는길</a></li>
+              </ul>
+            </li>
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" style="font-size: 16px;" aria-current="page" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">일반클리닉</a>
+              <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="#">내과 클리닉</a></li>
+                <li><a class="dropdown-item" href="#">외과 클리닉</a></li>
+                <li><a class="dropdown-item" href="#">고양이 클리닉</a></li>
+                <li><a class="dropdown-item" href="#">Skin & Ear 클리닉</a></li>
+                <li><a class="dropdown-item" href="#">예방의학 클리닉</a></li>
+              </ul>
+            </li>
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" style="font-size: 16px;" aria-current="page" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">특화클리닉</a>
+              <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="#">심장질환전문</a></li>
+                <li><a class="dropdown-item" href="#">관절&척추전문</a></li>
+                <li><a class="dropdown-item" href="#">골절전문</a></li>
+                <li><a class="dropdown-item" href="#">치과전문</a></li>
+                <li><a class="dropdown-item" href="#">내시경전문</a></li>
+                <li><a class="dropdown-item" href="#">고양이 비뇨기계</a></li>
+              </ul>
+            </li>
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" style="font-size: 16px;" aria-current="page" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">건강검진프로그램</a>
+              <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="#">건강검진프로그램</a></li>
+              </ul>
+            </li>
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" style="font-size: 16px;" aria-current="page" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">최소침습시술</a>
+              <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="#">복강경중성화수술</a></li>
+                <li><a class="dropdown-item" href="#">단두종호흡부전증후군</a></li>
+              </ul>
+            </li>
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" style="font-size: 16px;" aria-current="page" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">온라인상담</a>
+              <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="#">온라인상담</a></li>
+                <li><a class="dropdown-item" href="#">자주묻는질문</a></li>
+              </ul>
+            </li>
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" style="font-size: 16px;" aria-current="page" role="button" data-bs-toggle="dropdown" aria-expanded="false">커뮤니티</a>
+              <ul class="dropdown-menu">
+                <li><a class="dropdown-item" th:href="@{/community}">공지사항</a></li>
+                <li><a class="dropdown-item" href="#">고객포토</a></li>
+                <li><a class="dropdown-item" href="#">진료후기</a></li>
+                <li><a class="dropdown-item" href="#">닥터칼럼</a></li>
+              </ul>
             </li>
           </ul>
-        </div>
+<!--        </div>-->
       </div>
-
-    </div>
-
   </div>
 </nav>
 
