@@ -56,3 +56,7 @@ _site/
 ### Docker / DB data ###
 data/
 *.sock
+
+### Querydsl ###
+**/src/main/generated/
+**/build/generated/
