@@ -1,8 +1,9 @@
-package org.springframework.samples.petclinic.community.repository;
+package org.springframework.samples.petclinic.counsel.repository;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.samples.petclinic.common.dto.PageResponse;
 import org.springframework.samples.petclinic.community.table.CommunityPost;
+import org.springframework.samples.petclinic.counsel.table.CounselPost;
 
 import java.util.Optional;
 
@@ -28,7 +29,7 @@ import java.util.Optional;
  *         2. 입문자에겐 진입장벽 : 스프링 데이터 JPA의 기본 동작을 이해해야 Impl이 정상 인식됨(Impl 네이밍 규칙 등). 초반에 혼란스럽기 쉬움
  *         3. 단순 쿼리에도 오버엔지니어링 가능 : CRUD 몇 줄이면 되는 걸 CustomImpl로 빼면 관리 오히려 불편해짐. “복잡한 동적 쿼리”일 때만 가치가 큼.
  *         4. Service와 Repository의 경계가 모호해질 수 있음 : 쿼리 관련 비즈니스 로직을 어디까지 Impl에 둘지 경계 설정이 필요. 안 하면 중복/혼동 생김.
- *         커스텀과 impl구조를 사용하는 이유
+ *		   커스텀과 impl구조를 사용하는 이유
  *         저는 RepositoryCustom + Impl 구조를 사용했습니다. 이유는 QueryDSL을 통한 동적 검색 쿼리를 Service에서 직접 구현하면 비즈니스 로직이 복잡해지고 테스트가 어려워지기 때문입니다.
  * 		   RepositoryImpl 쪽에서 쿼리를 캡슐화하면 Service는 비즈니스 로직에 집중할 수 있고, 쿼리 로직만 단위 테스트로 따로 검증할 수 있습니다.
  * 		   단, 단순 CRUD만 있는 경우에는 오히려 구조가 과해질 수 있으므로, 저는 복잡한 조건 검색이나 다중 조인 쿼리가 필요한 모듈에 한해 CustomImpl을 적용합니다.
@@ -36,8 +37,6 @@ import java.util.Optional;
  * License :
  *   Copyright (c) 2025 AOF(AllForOne) / All rights reserved.
  */
-public interface CommunityPostRepositoryCustom {
-	PageResponse<CommunityPost> search(String type, String keyword, Pageable pageable);
-	Optional<CommunityPost> getPrevPost(Long id);
-	Optional<CommunityPost> getNextPost(Long id);
+public interface CounselPostRepositoryCustom {
+	PageResponse<CounselPost> search(String type, String keyword, Pageable pageable);
 }

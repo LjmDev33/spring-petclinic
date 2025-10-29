@@ -1,6 +1,6 @@
 package org.springframework.samples.petclinic.community.mapper;
 
-import org.springframework.samples.petclinic.community.CommunityPost;
+import org.springframework.samples.petclinic.community.table.CommunityPost;
 import org.springframework.samples.petclinic.community.dto.CommunityPostDto;
 
 /*

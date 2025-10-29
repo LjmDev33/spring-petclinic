@@ -14,7 +14,7 @@ spring:
         jdbc:
           batch_size: 50
     hibernate:
-      ddl-auto: none
+      ddl-auto: create
     open-in-view: false
   sql:
     init:

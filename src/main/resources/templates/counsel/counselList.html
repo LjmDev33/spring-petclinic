@@ -6,11 +6,11 @@
   <div class="container-fluid px-0">
     <div class="row">
       <div class="col-12 col-md-3 mt-md-2">
-        <h2 class="">공지사항(<span th:text="${page.totalElements}"></span>)</h2>
+        <h2 class="">온라인상담(<span th:text="${page.totalElements}"></span>)</h2>
       </div>
       <div class="col-12 col-md-5"></div>
       <div class="col-12 col-md-4 d-flex justify-content-end mb-md-2">
-        <form th:action="@{/community/list}" method="get" class="input-group">
+        <form th:action="@{/counsel/list}" method="get" class="input-group">
         <div class="input-group">
           <div class="col-12 col-md-4">
             <select class="form-select form-select-md" name="type">

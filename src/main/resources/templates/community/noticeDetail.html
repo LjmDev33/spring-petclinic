@@ -5,64 +5,59 @@
 <div class="container mt-4">
   <div class="container-fluid px-0">
     <div class="row">
-      <div class="col-12 col-md-3 mt-md-2">
-        <h2 class="">공지사항(<span th:text="${page.totalElements}"></span>)</h2>
+      <div class="col-12 d-md-flex justify-content-end px-0">
+<!--        <h2 class=""><span th:text="${post.title}"></span></h2>-->
+        <button class="btn btn-light">인쇄</button>
+        <button class="btn btn-light">스크랩</button>
+        <button class="btn btn-light">
+          <a style="text-decoration: none; color: inherit;" th:href="@{/community/list(subject=${subject})}">
+            목록보기
+          </a>
+        </button>
       </div>
-      <div class="col-12 col-md-5"></div>
-      <div class="col-12 col-md-4 d-flex justify-content-end mb-md-2">
-        <form th:action="@{/community}" method="get" class="input-group">
-        <div class="input-group">
-          <div class="col-12 col-md-4">
-            <select class="form-select form-select-md" name="type">
-              <option value="title" th:selected="${type == 'title'}">제목</option>
-              <option value="author" th:selected="${type == 'author'}">글쓴이</option>
-            </select>
-          </div>
-          <div class="col-12 col-md-8">
-            <div class="input-group">
-            <input type="text" class="form-control" name="keyword" th:value="${keyword}" placeholder="Search" aria-label="Search">
-            <button class="btn btn-outline-secondary" type="submit">
-              <i class="fa fa-search"></i>
-            </button>
-            </div>
-          </div>
-        </div>
-        </form>
+    </div>
+
+    <div class="row">
+      <hr class="mt-md-2 border-2 opacity-25"/>
+      <h1><span th:text="${post.title}"></span></h1>
+      <hr class="mt-md-2 border-1 opacity-25"/>
+      <div class="d-md-flex gap-4">
+        <h3 class="mb-0">작성자 : <span class="opacity-75" th:text="${post.author}"></span></h3>
+        <h3 class="mb-0">작성일 : <span class="opacity-75" th:text="${#temporals.format(post.createdAt, 'yyyy-MM-dd HH:mm:ss')}"></span></h3>
+        <h3 class="mb-0">조회 : <span class="opacity-75" th:text="${post.likeCount}"></span></h3>
       </div>
+    </div>
+
+    <div class="row mt-md-2">
+      <table class="table table-bordered">
+        <td class="d-flex justify-content-center" style="height: 250px; max-height: 500px;"><span th:text="${post.content}"></span></td>
+      </table>
+    </div>
+
+    <div class="row mt-md-1">
+        <p>
+          <span class="border-2 me-3 fs-6">이전글 ▲ </span>
+          <span class="border-2 me-3 opacity-50">|</span>
+          <span th:if="${prevPost != null}">
+            <a th:href="@{/community/detail/{id}(id=${prevPost.id} , subject = ${subject})}"
+               th:text="${prevPost.title}"></a>
+          </span>
+          <span th:if="${prevPost==null}" class="opacity-50">이전글이 없습니다.</span>
+        </p>
+        <hr class="mt-md-2 border-1 opacity-25"/>
+        <p>
+          <span class="border-2 me-3">다음글 ▼ </span>
+          <span class="border-2 me-3 opacity-50">|</span>
+          <span th:if="${nextPost != null}">
+          <a th:href="@{/community/detail/{id}(id=${nextPost.id} , subject = ${subject})}"
+            th:text="${nextPost.title}"></a>
+          </span>
+          <span th:if="${nextPost == null}" class="opacity-50">다음글이 없습니다</span>
+        </p>
+        <hr class="mt-md-2 border-1 opacity-25"/>
     </div>
   </div>
 
-  <table class="table text-center align-middle">
-    <thead >
-    <tr style="border-top: 1px solid;">
-      <th scope="col">No</th>
-      <th scope="col">제목</th>
-      <th scope="col">글쓴이</th>
-      <th scope="col">작성시간</th>
-      <th scope="col">조회수</th>
-      <th scope="col">좋아요</th>
-    </tr>
-    </thead>
-    <tbody>
-    <tr th:if="${#lists.isEmpty(posts)}">
-      <td colspan="6">데이터가 없습니다.</td>
-    </tr>
-    <tr th:each="post : ${posts}">
-      <td th:text="${post.id}"></td>
-      <td class="text-start">
-        <a style= "cursor: pointer; text-decoration: none; color: inherit" th:href="@{/community/detail/{id}(id=${post.id})}">
-          <span th:text="${post.title}"></span>
-        </a>
-      </td>
-      <td th:text="${post.author}"></td>
-      <td th:text="${#temporals.format(post.createdAt, 'yyyy-MM-dd HH:mm:ss')}"></td>
-      <td th:text="${post.viewCount}"></td>
-      <td th:text="${post.likeCount}"></td>
-    </tr>
-    </tbody>
-  </table>
-    <!-- 페이징 -->
-  <div th:replace="fragments/pagination :: pagination('/community', ${page})"></div>
 </div>
 </body>
 </html>

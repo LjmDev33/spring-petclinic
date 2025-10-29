@@ -9423,7 +9423,7 @@ table td.action-column {
   -webkit-animation-timing-function: linear; }
 
 hr {
-  border-top: 1px dotted #34302D; }
+  border-top: 1px solid #34302D; }
 
 @font-face {
   font-family: 'varela_roundregular';

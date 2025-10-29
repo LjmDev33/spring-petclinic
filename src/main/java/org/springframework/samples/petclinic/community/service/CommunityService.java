@@ -1,10 +1,9 @@
 package org.springframework.samples.petclinic.community.service;
 
 import jakarta.transaction.Transactional;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.samples.petclinic.common.dto.PageResponse;
-import org.springframework.samples.petclinic.community.CommunityPost;
+import org.springframework.samples.petclinic.community.table.CommunityPost;
 import org.springframework.samples.petclinic.community.dto.CommunityPostDto;
 import org.springframework.samples.petclinic.community.mapper.CommunityPostMapper;
 import org.springframework.samples.petclinic.community.repository.CommunityPostRepository;
@@ -12,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /*
@@ -64,5 +64,13 @@ public class CommunityService {
 
 	public PageResponse<CommunityPost> search(String type, String keyword, Pageable pageable) {
 		return communityPostRepository.search(type,keyword,pageable);
+	}
+
+	public Optional<CommunityPost> getPrevPost(Long id){
+		return communityPostRepository.getPrevPost(id);
+	}
+
+	public Optional<CommunityPost> getNextPost(Long id){
+		return communityPostRepository.getNextPost(id);
 	}
 }
