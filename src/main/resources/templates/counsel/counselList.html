@@ -1,77 +1,105 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
-
 <body>
 <div class="container mt-4">
+  <!-- 검색 영역: 반응형 레이아웃 개선 -->
   <div class="container-fluid px-0">
-    <div class="row">
-      <div class="col-12 col-md-3 mt-md-2">
-        <h2 class="">온라인상담(<span th:text="${page.totalElements}"></span>)</h2>
+    <div class="row g-2 align-items-center">
+      <!-- 제목 영역: 모바일 100%, 태블릿 이상 25% -->
+      <div class="col-12 col-md-3">
+        <h2>온라인상담(<span th:text="${page.totalElements}">0</span>)</h2>
       </div>
-      <div class="col-12 col-md-5"></div>
-      <div class="col-12 col-md-4 d-flex justify-content-end mb-md-2">
-        <form th:action="@{/counsel/list}" method="get" class="input-group">
-        <div class="input-group">
-          <div class="col-12 col-md-4">
-            <select class="form-select form-select-md" name="type">
-              <option value="title" th:selected="${type == 'title'}">제목</option>
-              <option value="author" th:selected="${type == 'author'}">글쓴이</option>
-            </select>
-          </div>
-          <div class="col-12 col-md-8">
-            <div class="input-group">
-            <input type="text" class="form-control" name="keyword" th:value="${keyword}" placeholder="Search" aria-label="Search">
-            <button class="btn btn-outline-secondary" type="submit">
-              <i class="fa fa-search"></i>
-            </button>
+
+      <!-- 빈 공간: 모바일에서 숨김, 태블릿 이상에서 표시 -->
+      <div class="col-md-5 d-none d-md-block"></div>
+
+      <!-- 검색 폼: 모바일 100%, 태블릿 이상 33% -->
+      <div class="col-12 col-md-4">
+        <form th:action="@{/counsel/list}" method="get">
+          <div class="row g-2">
+            <div class="col-4">
+              <select class="form-select" name="type" style="height: 42px;">
+                <option value="title" th:selected="${type == 'title'}">제목</option>
+                <option value="author" th:selected="${type == 'author'}">글쓴이</option>
+              </select>
+            </div>
+            <div class="col-8">
+              <div class="input-group">
+                <input type="text"
+                       class="form-control"
+                       name="keyword"
+                       th:value="${keyword}"
+                       placeholder="검색어를 입력하세요"
+                       style="height: 42px; font-size: 0.95rem;"
+                       aria-label="Search">
+                <button class="btn btn-outline-secondary"
+                        type="submit"
+                        style="height: 42px;">
+                  <i class="fa fa-search"></i>
+                </button>
+              </div>
             </div>
           </div>
-          <input type="hidden" name="subject" value="notice"/>
-        </div>
         </form>
       </div>
     </div>
   </div>
 
   <table class="table text-center align-middle mb-md-1">
-    <thead >
+    <thead>
     <tr style="border-top: 1px solid;">
-      <th scope="col">No</th>
+      <th scope="col">번호</th>
+      <th scope="col">공개</th>
       <th scope="col">제목</th>
       <th scope="col">글쓴이</th>
-      <th scope="col">작성시간</th>
-      <th scope="col">조회수</th>
-      <th scope="col">좋아요</th>
+      <th scope="col">날짜</th>
+      <th scope="col">조회</th>
+      <th scope="col">상태</th>
     </tr>
     </thead>
     <tbody>
-    <tr th:if="${#lists.isEmpty(posts)}">
-      <td colspan="6">데이터가 없습니다.</td>
-    </tr>
+    <tr th:if="${#lists.isEmpty(posts)}"><td colspan="7">데이터가 없습니다.</td></tr>
     <tr th:each="post : ${posts}">
       <td th:text="${post.id}"></td>
+      <td>
+        <div class="text-center" style="min-width: 80px;">
+          <span th:text="${post.secret ? '비공개' : '공개'}" th:classappend="${!post.secret ? 'text-primary' : ''}"></span>
+        </div>
+      </td>
       <td class="text-start">
-        <a style= "cursor: pointer; text-decoration: none; color: inherit" th:href="@{/community/detail/{id}(id=${post.id} , subject=${subject})}">
+        <a style="cursor:pointer; text-decoration:none; color:inherit" th:href="@{/counsel/detail/{id}(id=${post.id})}">
           <span th:text="${post.title}"></span>
         </a>
+        <!-- 최근 댓글 요약(댓글이 있을 때만 표시) -->
+        <div th:if="${post.lastCommentAuthor != null}" class="small opacity-75 mt-1">
+          └ <span class="me-2" th:text="${post.lastCommentTitle}"></span>
+          <span th:text="${post.lastCommentAuthor}"></span>
+          <span class="mx-1">|</span>
+          <span th:text="${#temporals.format(post.lastCommentCreatedAt, 'yyyy-MM-dd HH:mm')}"></span>
+        </div>
       </td>
-      <td th:text="${post.author}"></td>
-      <td th:text="${#temporals.format(post.createdAt, 'yyyy-MM-dd HH:mm:ss')}"></td>
+      <td th:text="${post.authorName}"></td>
+      <td th:text="${#temporals.format(post.createdAt, 'yyyy-MM-dd')}"></td>
       <td th:text="${post.viewCount}"></td>
-      <td th:text="${post.likeCount}"></td>
+      <td>
+        <span th:classappend="${post.status.name() == 'COMPLETE'} ? 'badge bg-secondary fs-6' : 'badge bg-warning text-dark fs-6'"
+              style="min-width: 80px; display: inline-block;"
+              th:text="${post.status.displayName}"></span>
+      </td>
     </tr>
     </tbody>
   </table>
-    <!--  게시판 글쓰기 버튼 -->
-  <div class="container-fluid px-0">
-    <div class="row">
-      <div class="col-12 col-md-12 d-md-flex justify-content-end px-md-0">
-        <button class="btn btn-dark">글쓰기</button>
-      </div>
+  <!-- 글쓰기 버튼: 반응형 정렬 -->
+  <div class="container-fluid px-0 mt-3">
+    <div class="d-grid d-md-flex justify-content-md-end">
+      <a th:href="@{/counsel/write}"
+         class="btn btn-dark"
+         style="min-width: 120px; height: 42px; line-height: 28px;">
+        <i class="fa fa-pencil"></i> 글쓰기
+      </a>
     </div>
   </div>
-    <!-- 페이징 -->
-  <div th:replace="fragments/pagination :: pagination('/community/list', ${page})"></div>
+  <div th:replace="fragments/pagination :: pagination('/counsel/list', ${page})"></div>
 </div>
 </body>
 </html>

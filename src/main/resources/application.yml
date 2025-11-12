@@ -2,6 +2,9 @@ spring:
   application:
     name: petclinic
 
+  profiles:
+    active: dev
+
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/petclinic
@@ -9,15 +12,12 @@ spring:
     password: ezflow_010
 
   jpa:
-    hibernate:
-      ddl-auto: none
     open-in-view: false
+    show-sql: false
 
   sql:
     init:
       mode: never
-      schema-locations: classpath*:db/mysql/schema.sql
-      data-locations: classpath*:db/mysql/data.sql
 
 
   thymeleaf:

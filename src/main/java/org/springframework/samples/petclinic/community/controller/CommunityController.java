@@ -6,7 +6,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.samples.petclinic.common.dto.PageResponse;
-import org.springframework.samples.petclinic.community.table.CommunityPost;
 import org.springframework.samples.petclinic.community.dto.CommunityPostDto;
 import org.springframework.samples.petclinic.community.service.CommunityService;
 import org.springframework.stereotype.Controller;
@@ -44,7 +43,7 @@ public class CommunityController {
 					   @RequestParam(value = "subject", required = true) String subject,
 					   Model model) {
 
-		PageResponse<CommunityPost> pageResponse;
+		PageResponse<CommunityPostDto> pageResponse;
 
 		type = (type == null || type.isBlank()) ? "" : type;
 

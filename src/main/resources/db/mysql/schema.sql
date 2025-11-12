@@ -53,3 +53,12 @@ CREATE TABLE IF NOT EXISTS visits (
   description VARCHAR(255),
   FOREIGN KEY (pet_id) REFERENCES pets(id)
 ) engine=InnoDB;
+
+-- Spring Security Remember-Me 토큰 저장 테이블
+CREATE TABLE IF NOT EXISTS persistent_logins (
+  username VARCHAR(64) NOT NULL,
+  series VARCHAR(64) PRIMARY KEY,
+  token VARCHAR(64) NOT NULL,
+  last_used TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) engine=InnoDB;
+

@@ -5,8 +5,11 @@ import jakarta.persistence.Table;
 import org.hibernate.annotations.*;
 import org.springframework.samples.petclinic.common.entity.BaseEntity;
 import org.springframework.samples.petclinic.counsel.CounselStatus;
+import org.springframework.samples.petclinic.counsel.table.CounselPostAttachment;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 /*
  * Project : spring-petclinic
@@ -28,54 +31,61 @@ import java.time.LocalDateTime;
 public class CounselPost  extends BaseEntity {
 
 	@Column(nullable = false, length = 255)
-	private String title;
+	private String title; // 게시글 제목
 
 	@Lob
 	@Column(columnDefinition = "MEDIUMTEXT", nullable = false)
-	private String content;
+	private String content; // 게시글 내용 (TUI Editor의 HTML)
+
+	// 본문 파일 경로 (요구사항: 파일로 저장, 이 경로에서 로드)
+	@Column(name = "content_path", length = 500)
+	private String contentPath; // 본문 내용이 저장된 파일 경로
 
 	@Column(name = "author_name", nullable = false, length = 100)
-	private String authorName;
+	private String authorName; // 작성자 이름
 
 	@Column(name = "author_email", length = 120)
-	private String authorEmail;
+	private String authorEmail; // 작성자 이메일
 
 	@Column(name = "password_hash", length = 100)
-	private String passwordHash;
+	private String passwordHash; // BCrypt로 해시된 비밀번호
 
 	@Column(name = "is_secret", nullable = false)
-	private boolean secret = false;
+	private boolean secret = false; // 비공개 글 여부 (true: 비공개)
 
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false, length = 20)
-	private CounselStatus status = CounselStatus.WAIT;
+	private CounselStatus status = CounselStatus.WAIT; // 상담 상태 (WAIT: 대기, COMPLETE: 완료)
 
 	@Column(name = "view_count", nullable = false , columnDefinition = "INT DEFAULT 0")
-	private int viewCount = 0;
+	private int viewCount = 0; // 조회수
 
 	@Column(name = "comment_count", nullable = false)
-	private int commentCount = 0;
+	private int commentCount = 0; // 댓글 수
 
 	@CreationTimestamp
 	@Column(name = "created_at", nullable = false, updatable = false)
-	private LocalDateTime createdAt;
+	private LocalDateTime createdAt; // 생성 일시
 
 	@UpdateTimestamp
 	@Column(name = "updated_at", nullable = false)
-	private LocalDateTime updatedAt;
+	private LocalDateTime updatedAt; // 수정 일시
 
 	@Column(name = "del_flag", nullable = false)
-	private boolean delFlag = false;
+	private boolean delFlag = false; // 삭제 플래그
 
 	@Column(name = "deleted_at")
-	private LocalDateTime deletedAt;
+	private LocalDateTime deletedAt; // 삭제 일시
 
 	@Column(name = "deleted_by", length = 60)
-	private String deletedBy;
+	private String deletedBy; // 삭제한 사용자
 
 	// VARCHAR(1) : 'Y' / 'N'
 	@Column(name = "attach_flag", nullable = false)
-	private boolean attachFlag = false;
+	private boolean attachFlag = false; // 첨부파일 존재 여부
+
+	@OneToMany(mappedBy = "counselPost", cascade = jakarta.persistence.CascadeType.ALL, orphanRemoval = true)
+	private List<CounselPostAttachment> attachments = new ArrayList<>(); // 첨부파일 관계 목록
 
 	public String getTitle() {
 		return title;
@@ -91,6 +101,14 @@ public class CounselPost  extends BaseEntity {
 
 	public void setContent(String content) {
 		this.content = content;
+	}
+
+	public String getContentPath() {
+		return contentPath;
+	}
+
+	public void setContentPath(String contentPath) {
+		this.contentPath = contentPath;
 	}
 
 	public String getAuthorName() {
@@ -195,5 +213,18 @@ public class CounselPost  extends BaseEntity {
 
 	public void setAttachFlag(boolean attachFlag) {
 		this.attachFlag = attachFlag;
+	}
+
+	public List<CounselPostAttachment> getAttachments() {
+		return attachments;
+	}
+
+	public void setAttachments(List<CounselPostAttachment> attachments) {
+		this.attachments = attachments;
+	}
+
+	public void addAttachment(org.springframework.samples.petclinic.counsel.table.CounselPostAttachment attachment) {
+		this.attachments.add(attachment);
+		attachment.setCounselPost(this);
 	}
 }

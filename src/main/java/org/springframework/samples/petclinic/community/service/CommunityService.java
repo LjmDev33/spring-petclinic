@@ -1,6 +1,8 @@
 package org.springframework.samples.petclinic.community.service;
 
 import jakarta.transaction.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.samples.petclinic.common.dto.PageResponse;
 import org.springframework.samples.petclinic.community.table.CommunityPost;
@@ -38,8 +40,16 @@ public class CommunityService {
 		this.communityPostRepository = communityPostRepository;
 	}
 
-	public PageResponse<CommunityPost> getPagedPosts(Pageable pageable) {
-		return new PageResponse<>(repository.findAll(pageable));
+	// 페이지 조회는 DTO로 매핑하여 반환 (규칙: Entity를 직접 노출 금지)
+	public PageResponse<CommunityPostDto> getPagedPosts(Pageable pageable) {
+		Page<CommunityPost> entityPage = repository.findAll(pageable);
+		List<CommunityPostDto> dtoList = entityPage
+			.getContent()
+			.stream()
+			.map(CommunityPostMapper::toDto)
+			.collect(Collectors.toList());
+		Page<CommunityPostDto> dtoPage = new PageImpl<>(dtoList, pageable, entityPage.getTotalElements());
+		return new PageResponse<>(dtoPage);
 	}
 
 	/* 전체 게시글 리스트 가져오기 */
@@ -62,15 +72,22 @@ public class CommunityService {
 		return CommunityPostMapper.toDto(saved);
 	}
 
-	public PageResponse<CommunityPost> search(String type, String keyword, Pageable pageable) {
-		return communityPostRepository.search(type,keyword,pageable);
+	// 검색 결과도 DTO 페이지로 매핑
+	public PageResponse<CommunityPostDto> search(String type, String keyword, Pageable pageable) {
+		PageResponse<CommunityPost> entityResponse = communityPostRepository.search(type, keyword, pageable);
+		List<CommunityPostDto> dtoList = entityResponse.getContent()
+			.stream()
+			.map(CommunityPostMapper::toDto)
+			.collect(Collectors.toList());
+		Page<CommunityPostDto> dtoPage = new PageImpl<>(dtoList, pageable, entityResponse.getTotalElements());
+		return new PageResponse<>(dtoPage);
 	}
 
-	public Optional<CommunityPost> getPrevPost(Long id){
-		return communityPostRepository.getPrevPost(id);
+	public Optional<CommunityPostDto> getPrevPost(Long id){
+		return communityPostRepository.getPrevPost(id).map(CommunityPostMapper::toDto);
 	}
 
-	public Optional<CommunityPost> getNextPost(Long id){
-		return communityPostRepository.getNextPost(id);
+	public Optional<CommunityPostDto> getNextPost(Long id){
+		return communityPostRepository.getNextPost(id).map(CommunityPostMapper::toDto);
 	}
 }

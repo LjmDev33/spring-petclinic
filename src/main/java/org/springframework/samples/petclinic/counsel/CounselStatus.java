@@ -13,7 +13,17 @@ package org.springframework.samples.petclinic.counsel;
  *   Copyright (c) 2025 AOF(AllForOne) / All rights reserved.
  */
 public enum CounselStatus {
-	WAIT,
-	COMPLETE ,
-	END
+	WAIT("답변대기"),
+	COMPLETE("답변완료"),
+	END("상담종료");
+
+	private final String displayName;
+
+	CounselStatus(String displayName) {
+		this.displayName = displayName;
+	}
+
+	public String getDisplayName() {
+		return displayName;
+	}
 }

@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <script src="https://uicdn.toast.com/editor/latest/toastui-editor-all.min.js"></script>
+  <link rel="stylesheet" href="https://uicdn.toast.com/editor/latest/toastui-editor.min.css" />
+</head>
+<body>
+<div class="container mt-4">
+  <h2 class="mb-4">
+    <i class="bi bi-pencil-square"></i> 온라인 상담 글쓰기
+  </h2>
+
+  <form id="counselForm" th:action="@{/counsel}" method="post" enctype="multipart/form-data">
+    <!-- 이름 입력 -->
+    <div class="mb-3">
+      <label class="form-label">
+        <i class="bi bi-person"></i> 이름 <span class="text-danger">*</span>
+      </label>
+      <input type="text" name="authorName" class="form-control" required>
+    </div>
+
+    <!-- 이메일 입력 -->
+    <div class="mb-3">
+      <label class="form-label">
+        <i class="bi bi-envelope"></i> 이메일
+      </label>
+      <input type="email" name="authorEmail" class="form-control">
+    </div>
+
+    <!-- 제목 입력 -->
+    <div class="mb-3">
+      <label class="form-label">
+        <i class="bi bi-chat-left-text"></i> 제목 <span class="text-danger">*</span>
+      </label>
+      <input type="text" name="title" class="form-control" required>
+    </div>
+
+    <!-- 비공개 여부 체크박스 -->
+    <div class="mb-3 form-check">
+      <input type="checkbox" name="secret" class="form-check-input" id="secretChk">
+      <label class="form-check-label" for="secretChk">
+        <i class="bi bi-lock"></i> 비공개
+      </label>
+    </div>
+
+    <!-- 비밀번호 입력 (비공개 시 필수) -->
+    <div class="mb-3">
+      <label class="form-label">
+        <i class="bi bi-key"></i> 비밀번호
+      </label>
+      <input type="password" name="password" class="form-control" placeholder="비공개글 열람용 비밀번호">
+      <small class="form-text text-muted">비공개 글로 작성 시 입력한 비밀번호로 조회할 수 있습니다.</small>
+    </div>
+
+    <!-- 에디터 영역 -->
+    <div class="mb-3">
+      <label class="form-label">
+        <i class="bi bi-file-text"></i> 내용 <span class="text-danger">*</span>
+      </label>
+      <div id="editor" style="height: 400px;"></div>
+      <textarea name="content" id="content" hidden></textarea>
+    </div>
+
+    <!-- 첨부파일 입력 -->
+    <div class="mb-3">
+      <label for="attachments" class="form-label">
+        <i class="bi bi-paperclip"></i> 첨부파일
+      </label>
+      <input type="file" name="attachments" id="attachments" class="form-control" multiple
+             accept="image/jpeg, image/png, image/gif">
+      <small class="form-text text-muted">
+        이미지 파일(JPG, PNG, GIF)만 업로드 가능하며, 파일당 최대 5MB까지 허용됩니다.
+      </small>
+    </div>
+
+    <!-- 파일 업로드 Progress Bar -->
+    <div class="progress mt-3 mb-3" id="uploadProgress" style="display: none; height: 35px;">
+      <div class="progress-bar progress-bar-striped progress-bar-animated"
+           role="progressbar"
+           id="uploadProgressBar"
+           aria-valuenow="0"
+           aria-valuemin="0"
+           aria-valuemax="100"
+           style="width: 0%;">
+        <span id="uploadProgressText" class="fw-bold fs-6">0%</span>
+      </div>
+    </div>
+
+    <!-- 버튼 영역 -->
+    <div class="d-flex justify-content-end gap-2">
+      <a th:href="@{/counsel/list}" class="btn btn-secondary">
+        <i class="bi bi-x-circle"></i> 취소
+      </a>
+      <button type="submit" class="btn btn-primary" id="submitBtn">
+        <i class="bi bi-send"></i> 작성완료
+      </button>
+    </div>
+  </form>
+</div>
+
+<script>
+/**
+ * Toast UI Editor 초기화
+ * - WYSIWYG 에디터로 설정
+ * - 높이: 400px
+ * - 미리보기: 세로 분할
+ */
+const editor = new toastui.Editor({
+  el: document.querySelector('#editor'),
+  height: '400px',
+  initialEditType: 'wysiwyg',
+  previewStyle: 'vertical',
+  placeholder: '상담 내용을 입력하세요...'
+});
+
+/**
+ * 에디터 내용을 hidden textarea로 동기화
+ * 폼 제출 전 반드시 호출되어야 함
+ */
+function syncContent() {
+  const htmlContent = editor.getHTML();
+  document.getElementById('content').value = htmlContent;
+}
+
+/**
+ * 폼 제출 이벤트 핸들러
+ * - 에디터 내용 동기화
+ * - 파일 업로드 Progress Bar 표시
+ * - AJAX 방식으로 업로드 진행률 추적
+ */
+document.getElementById('counselForm').addEventListener('submit', async function(e) {
+  // 기본 폼 제출 동작 방지 (AJAX로 처리하기 위해)
+  e.preventDefault();
+
+  // 1. 에디터 내용 동기화
+  syncContent();
+
+  // 2. 폼 데이터 생성
+  const formData = new FormData(this);
+
+  // 3. UI 요소 참조
+  const submitBtn = document.getElementById('submitBtn');
+  const progressContainer = document.getElementById('uploadProgress');
+  const progressBar = document.getElementById('uploadProgressBar');
+  const progressText = document.getElementById('uploadProgressText');
+
+  // 4. 제출 버튼 비활성화 (중복 제출 방지)
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>업로드 중...';
+
+  // 5. Progress Bar 표시
+  progressContainer.style.display = 'block';
+  progressBar.style.width = '0%';
+  progressBar.setAttribute('aria-valuenow', '0');
+  progressText.textContent = '0%';
+
+  try {
+    // 6. 파일 업로드 실행 (XMLHttpRequest 사용)
+    await uploadWithProgress(formData, '/counsel');
+
+    // 7. 업로드 성공 처리
+    progressBar.classList.remove('progress-bar-animated');
+    progressBar.classList.add('bg-success');
+    progressBar.style.width = '100%';
+    progressBar.setAttribute('aria-valuenow', '100');
+    progressText.textContent = '완료!';
+
+    // 8. 1초 후 목록 페이지로 이동
+    setTimeout(() => {
+      alert('게시글이 등록되었습니다.');
+      window.location.href = '/counsel/list';
+    }, 1000);
+
+  } catch (error) {
+    // 9. 업로드 실패 처리
+    console.error('Upload error:', error);
+
+    progressBar.classList.remove('progress-bar-animated');
+    progressBar.classList.add('bg-danger');
+    progressText.textContent = '업로드 실패';
+
+    alert('업로드 실패: ' + error.message);
+
+    // 10. 버튼 복구 (재시도 가능하도록)
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = '<i class="bi bi-send"></i> 작성완료';
+
+    // 11. Progress Bar 숨김
+    setTimeout(() => {
+      progressContainer.style.display = 'none';
+    }, 3000);
+  }
+});
+
+/**
+ * XMLHttpRequest를 사용한 파일 업로드 (진행률 추적)
+ *
+ * @param {FormData} formData - 업로드할 폼 데이터
+ * @param {string} url - 업로드 엔드포인트 URL
+ * @returns {Promise} 업로드 완료 시 resolve, 실패 시 reject
+ */
+function uploadWithProgress(formData, url) {
+  return new Promise((resolve, reject) => {
+    // XMLHttpRequest 객체 생성
+    const xhr = new XMLHttpRequest();
+
+    // UI 요소 참조
+    const progressBar = document.getElementById('uploadProgressBar');
+    const progressText = document.getElementById('uploadProgressText');
+
+    /**
+     * 업로드 진행률 이벤트 리스너
+     * - 업로드 중 실시간으로 진행률 업데이트
+     * - e.lengthComputable: 파일 크기를 알 수 있는지 여부
+     * - e.loaded: 현재까지 전송된 바이트 수
+     * - e.total: 전송할 총 바이트 수
+     */
+    xhr.upload.addEventListener('progress', (e) => {
+      if (e.lengthComputable) {
+        // 진행률 계산 (0~100)
+        const percent = Math.round((e.loaded / e.total) * 100);
+
+        // Progress Bar 업데이트
+        progressBar.style.width = percent + '%';
+        progressBar.setAttribute('aria-valuenow', percent);
+        progressText.textContent = percent + '%';
+
+        console.log(`Upload progress: ${percent}% (${e.loaded}/${e.total} bytes)`);
+      }
+    });
+
+    /**
+     * 업로드 완료 이벤트 리스너
+     * - HTTP 상태 코드에 따라 성공/실패 처리
+     * - 200 (OK) 또는 302 (Redirect): 성공
+     * - 기타: 실패
+     */
+    xhr.addEventListener('load', () => {
+      if (xhr.status === 200 || xhr.status === 302) {
+        console.log('Upload success:', xhr.status);
+        resolve(xhr.response);
+      } else {
+        console.error('Upload failed with status:', xhr.status);
+        reject(new Error('Upload failed with status ' + xhr.status));
+      }
+    });
+
+    /**
+     * 네트워크 에러 이벤트 리스너
+     * - 인터넷 연결 끊김, 서버 다운 등
+     */
+    xhr.addEventListener('error', () => {
+      console.error('Network error during upload');
+      reject(new Error('Network error'));
+    });
+
+    /**
+     * 업로드 중단 이벤트 리스너
+     * - 사용자가 브라우저를 닫거나 페이지 이동 시
+     */
+    xhr.addEventListener('abort', () => {
+      console.warn('Upload aborted by user');
+      reject(new Error('Upload aborted'));
+    });
+
+    /**
+     * 타임아웃 이벤트 리스너 (30초)
+     * - 대용량 파일 업로드 시 타임아웃 방지
+     */
+    xhr.timeout = 30000; // 30초
+    xhr.addEventListener('timeout', () => {
+      console.error('Upload timeout');
+      reject(new Error('Upload timeout'));
+    });
+
+    // XMLHttpRequest 설정 및 전송
+    xhr.open('POST', url);
+    xhr.send(formData);
+  });
+}
+</script>
+</body>
+</html>

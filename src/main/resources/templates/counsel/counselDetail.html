@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<div class="container mt-4">
+  <!-- Flash 메시지 표시 -->
+  <div th:if="${message}" class="alert alert-success alert-dismissible fade show" role="alert">
+    <span th:text="${message}"></span>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+    <span th:text="${error}"></span>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+
+  <div class="container-fluid px-0">
+    <div class="row">
+      <div class="col-12 d-md-flex justify-content-between px-0">
+        <div class="d-flex">
+          <!-- 수정 버튼 -->
+          <a th:href="@{/counsel/edit/{id}(id=${post.id})}" class="btn btn-warning" style="min-width: 80px;">수정</a>
+
+          <!-- 삭제 버튼 (비밀번호 모달) -->
+          <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal" style="min-width: 80px;">
+            삭제
+          </button>
+        </div>
+        <a th:href="@{/counsel/list}" class="btn btn-light">목록</a>
+      </div>
+    </div>
+
+    <div class="row">
+      <hr class="mt-md-2 border-2 opacity-25"/>
+      <h1><span th:text="${post.title}"></span></h1>
+      <hr class="mt-md-2 border-1 opacity-25"/>
+      <div class="d-md-flex gap-4">
+        <h3 class="mb-0">작성자 : <span class="opacity-75" th:text="${post.authorName}"></span></h3>
+        <h3 class="mb-0">작성일 : <span class="opacity-75" th:text="${#temporals.format(post.createdAt, 'yyyy-MM-dd HH:mm:ss')}"></span></h3>
+        <h3 class="mb-0">조회 : <span class="opacity-75" th:text="${post.viewCount}"></span></h3>
+      </div>
+    </div>
+
+    <div class="row mt-md-2">
+      <div class="table table-bordered">
+        <div class="p-3" th:utext="${post.content}"></div>
+      </div>
+    </div>
+
+    <!-- 첨부파일 표시 -->
+    <div class="row mt-3" th:if="${post.attachments != null and !post.attachments.isEmpty()}">
+      <div class="col-12">
+        <h5><i class="bi bi-paperclip"></i> 첨부파일</h5>
+        <ul class="list-group">
+          <li class="list-group-item d-flex justify-content-between align-items-center" th:each="file : ${post.attachments}">
+            <a th:href="@{/counsel/download/{fileId}(fileId=${file.id})}" th:text="${file.originalFileName}"></a>
+            <span class="badge bg-secondary rounded-pill" th:text="${#numbers.formatDecimal(file.fileSize / 1024, 1, 2)} + ' KB'"></span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 댓글 영역 -->
+    <div class="row mt-5">
+      <div class="col-12">
+        <!-- 댓글 헤더 -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h4 class="mb-0">
+            <i class="bi bi-chat-dots"></i> 댓글
+            <span class="badge bg-secondary" th:text="${#lists.size(comments)}">0</span>
+          </h4>
+          <!-- 댓글 작성 버튼 (오른쪽 끝) -->
+          <button type="button"
+                  class="btn btn-primary"
+                  data-bs-toggle="modal"
+                  data-bs-target="#commentWriteModal"
+                  id="openCommentModalBtn">
+            <i class="bi bi-pencil-square"></i> 댓글 작성
+          </button>
+        </div>
+
+        <hr>
+
+        <!-- 댓글 목록 -->
+        <div th:if="${#lists.isEmpty(comments)}" class="alert alert-light text-center py-5">
+          <i class="bi bi-chat-text fs-1 text-muted"></i>
+          <p class="mt-3 mb-0 text-muted">아직 댓글이 없습니다. 첫 댓글을 작성해보세요!</p>
+        </div>
+
+        <div th:if="${!#lists.isEmpty(comments)}">
+          <!-- 일반 댓글 / 대댓글 구분 렌더링 -->
+          <div th:each="c : ${comments}"
+               class="comment-item mb-3"
+               th:classappend="${c.parentId != null ? 'ms-5' : ''}">
+
+            <!-- 대댓글인 경우 연결선 표시 -->
+            <div th:if="${c.parentId != null}" class="d-flex align-items-start mb-2">
+              <i class="bi bi-arrow-return-right text-info fs-4 me-2"></i>
+              <small class="text-muted">
+                <i class="bi bi-reply-fill"></i> 위 댓글에 대한 답변
+              </small>
+            </div>
+
+            <!-- 댓글 카드 -->
+            <div class="card border"
+                 th:classappend="${c.parentId != null ? 'border-info shadow-sm' : 'border-secondary'}">
+              <div class="card-body">
+                <!-- 댓글 헤더 (작성자, 날짜) -->
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                  <div>
+                    <strong class="fs-6" th:text="${c.authorName}"></strong>
+
+                    <!-- 운영자 답변 배지 -->
+                    <span th:if="${c.staffReply}" class="badge bg-success ms-2">
+                      <i class="bi bi-shield-check"></i> 운영자
+                    </span>
+
+                    <!-- 대댓글 배지 -->
+                    <span th:if="${c.parentId != null}" class="badge bg-info ms-2">
+                      <i class="bi bi-reply"></i> 답글
+                    </span>
+                  </div>
+                  <small class="text-muted">
+                    <i class="bi bi-clock"></i>
+                    <span th:text="${#temporals.format(c.createdAt, 'yyyy-MM-dd HH:mm')}"></span>
+                  </small>
+                </div>
+
+                <!-- 댓글 내용 -->
+                <div class="comment-content py-2" th:text="${c.content}"></div>
+
+                <!-- 댓글 액션 버튼 -->
+                <div class="d-flex justify-content-end gap-2 mt-2" th:if="${!c.staffReply}">
+                  <!-- 답글 달기 버튼 (대댓글이 아닌 경우만) -->
+                  <button th:if="${c.parentId == null}"
+                          type="button"
+                          class="btn btn-sm btn-outline-primary"
+                          data-bs-toggle="modal"
+                          data-bs-target="#commentWriteModal"
+                          th:onclick="'setReplyTo(' + ${c.id} + ', \'' + ${c.authorName} + '\')'">
+                    <i class="bi bi-reply"></i> 답글
+                  </button>
+
+                  <!-- 삭제 버튼 -->
+                  <button type="button"
+                          class="btn btn-sm btn-outline-danger"
+                          th:attr="data-comment-id=${c.id},data-has-password=${c.passwordHash != null}"
+                          onclick="openDeleteCommentModal(this)">
+                    <i class="bi bi-trash"></i> 삭제
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 게시글 삭제 모달 -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="deleteModalLabel">게시글 삭제</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form th:action="@{/counsel/delete/{id}(id=${post.id})}" method="post">
+        <div class="modal-body">
+          <p>정말로 이 게시글을 삭제하시겠습니까?</p>
+          <div class="mb-3" th:if="${post.secret}">
+            <label for="deletePassword" class="form-label">비밀번호 확인</label>
+            <input type="password" id="deletePassword" name="password" class="form-control"
+                   placeholder="게시글 작성 시 설정한 비밀번호를 입력하세요" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+          <button type="submit" class="btn btn-danger">삭제</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- 댓글 작성 모달 -->
+<div class="modal fade" id="commentWriteModal" tabindex="-1" aria-labelledby="commentWriteModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="commentWriteModalLabel">
+          <i class="bi bi-pencil-square"></i> <span id="modalTitle">댓글 작성</span>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form th:action="@{/counsel/detail/{postId}/comments(postId=${post.id})}" method="post" id="commentForm">
+        <div class="modal-body">
+          <!-- 대댓글 대상 표시 -->
+          <div id="replyToInfo" class="alert alert-info" style="display: none;">
+            <i class="bi bi-reply"></i> <strong><span id="replyToName"></span></strong>님에게 답글 작성 중
+            <button type="button" class="btn-close float-end" onclick="resetCommentModal()"></button>
+          </div>
+
+          <!-- 대댓글용 hidden input -->
+          <input type="hidden" id="parentId" name="parentId" value="">
+
+          <div class="mb-3">
+            <label for="commentAuthor" class="form-label">
+              <i class="bi bi-person"></i> 이름 <span class="text-danger">*</span>
+            </label>
+            <input type="text"
+                   id="commentAuthor"
+                   name="authorName"
+                   class="form-control"
+                   placeholder="이름을 입력하세요"
+                   th:value="${#authentication.principal.nickname}"
+                   required>
+          </div>
+          <div class="mb-3">
+            <label for="commentPassword" class="form-label">
+              <i class="bi bi-lock"></i> 비밀번호 (선택)
+            </label>
+            <input type="password" id="commentPassword" name="password" class="form-control"
+                   placeholder="댓글 삭제 시 필요합니다">
+            <small class="form-text text-muted">비밀번호를 설정하면 삭제 시 본인 확인이 가능합니다.</small>
+          </div>
+          <div class="mb-3">
+            <label for="commentContent" class="form-label">
+              <i class="bi bi-chat-text"></i> 내용 <span class="text-danger">*</span>
+            </label>
+            <textarea id="commentContent" name="content" class="form-control" rows="5"
+                      placeholder="댓글 내용을 입력하세요" required></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            <i class="bi bi-x-circle"></i> 취소
+          </button>
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-send"></i> 등록
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- 댓글 삭제 모달 -->
+<div class="modal fade" id="deleteCommentModal" tabindex="-1" aria-labelledby="deleteCommentModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="deleteCommentModalLabel">댓글 삭제</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="deleteCommentForm" method="post">
+        <div class="modal-body">
+          <p>정말로 이 댓글을 삭제하시겠습니까?</p>
+          <div class="mb-3" id="commentPasswordGroup" style="display: none;">
+            <label for="commentDeletePassword" class="form-label">비밀번호 확인</label>
+            <input type="password" id="commentDeletePassword" name="password" class="form-control"
+                   placeholder="댓글 작성 시 설정한 비밀번호를 입력하세요">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+          <button type="submit" class="btn btn-danger">삭제</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script th:inline="javascript">
+  /**
+   * 대댓글 작성 설정
+   * - 댓글의 "답글" 버튼 클릭 시 호출
+   * - 부모 댓글 ID 설정 및 안내 메시지 표시
+   */
+  function setReplyTo(parentId, parentAuthor) {
+    document.getElementById('parentId').value = parentId;
+    document.getElementById('replyToName').textContent = parentAuthor;
+    document.getElementById('replyToInfo').style.display = 'block';
+    document.getElementById('modalTitle').textContent = '답글 작성';
+  }
+
+  /**
+   * 댓글 모달 초기화
+   * - 일반 댓글 작성 모드로 전환
+   * - 대댓글 정보 초기화
+   */
+  function resetCommentModal() {
+    document.getElementById('parentId').value = '';
+    document.getElementById('replyToInfo').style.display = 'none';
+    document.getElementById('modalTitle').textContent = '댓글 작성';
+    document.getElementById('commentContent').value = '';
+  }
+
+  /**
+   * 댓글 삭제 모달 열기
+   * - 비밀번호 설정된 댓글은 비밀번호 입력 필드 표시
+   */
+  function openDeleteCommentModal(button) {
+    const commentId = button.getAttribute('data-comment-id');
+    const hasPassword = button.getAttribute('data-has-password') === 'true';
+    const postId = /*[[${post.id}]]*/ '';
+
+    const form = document.getElementById('deleteCommentForm');
+    form.action = '/counsel/detail/' + postId + '/comments/' + commentId + '/delete';
+
+    const passwordGroup = document.getElementById('commentPasswordGroup');
+    const passwordInput = document.getElementById('commentDeletePassword');
+
+    if (hasPassword) {
+      passwordGroup.style.display = 'block';
+      passwordInput.required = true;
+    } else {
+      passwordGroup.style.display = 'none';
+      passwordInput.required = false;
+    }
+
+    const modal = new bootstrap.Modal(document.getElementById('deleteCommentModal'));
+    modal.show();
+  }
+
+  /**
+   * 페이지 로드 후 이벤트 리스너 등록
+   */
+  document.addEventListener('DOMContentLoaded', function() {
+    // 댓글 작성 버튼 클릭 시 모달 초기화
+    const openCommentModalBtn = document.getElementById('openCommentModalBtn');
+    if (openCommentModalBtn) {
+      openCommentModalBtn.addEventListener('click', resetCommentModal);
+    }
+  });
+</script>
+
+</body>
+</html>

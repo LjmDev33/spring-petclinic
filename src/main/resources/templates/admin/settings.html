@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<body>
+<div class="container mt-5">
+  <div class="row">
+    <div class="col-12">
+      <h2 class="mb-4">
+        <i class="bi bi-gear"></i> 시스템 설정 관리
+        <span class="badge bg-danger ms-2">관리자 전용</span>
+      </h2>
+
+      <!-- Flash 메시지 -->
+      <div th:if="${message}" class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle-fill"></i> <span th:text="${message}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+      <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle-fill"></i> <span th:text="${error}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+
+      <!-- 설정 안내 -->
+      <div class="alert alert-info" role="alert">
+        <i class="bi bi-info-circle"></i>
+        <strong>설정 관리 안내</strong>
+        <p class="mb-0 mt-2">
+          시스템 설정을 변경하면 즉시 적용됩니다. 신중하게 설정해주세요.
+        </p>
+      </div>
+
+      <!-- 설정 목록 -->
+      <div class="row">
+        <div class="col-md-8">
+          <div class="card shadow-sm mb-4">
+            <div class="card-header bg-primary text-white">
+              <h5 class="mb-0">
+                <i class="bi bi-sliders"></i> 시스템 설정 목록
+              </h5>
+            </div>
+            <div class="card-body">
+              <div class="table-responsive">
+                <table class="table table-hover">
+                  <thead>
+                    <tr>
+                      <th width="30%">설정 키</th>
+                      <th width="20%">현재 값</th>
+                      <th width="35%">설명</th>
+                      <th width="15%">액션</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr th:each="config : ${configs}">
+                      <td>
+                        <strong th:text="${config.propertyKey}"></strong>
+                      </td>
+                      <td>
+                        <!-- Boolean 값은 배지로 표시 (클릭 가능) -->
+                        <span th:if="${config.propertyValue == 'true'}"
+                              class="badge bg-success"
+                              style="cursor: pointer;"
+                              th:attr="data-key=${config.propertyKey},
+                                       data-value=${config.propertyValue},
+                                       data-description=${config.description}"
+                              onclick="openToggleModal(this)">
+                          <i class="bi bi-check-circle"></i> 활성화
+                        </span>
+                        <span th:if="${config.propertyValue == 'false'}"
+                              class="badge bg-secondary"
+                              style="cursor: pointer;"
+                              th:attr="data-key=${config.propertyKey},
+                                       data-value=${config.propertyValue},
+                                       data-description=${config.description}"
+                              onclick="openToggleModal(this)">
+                          <i class="bi bi-x-circle"></i> 비활성화
+                        </span>
+                        <!-- 숫자 값은 그대로 표시 -->
+                        <span th:if="${config.propertyValue != 'true' && config.propertyValue != 'false'}"
+                              th:text="${config.propertyValue}"></span>
+                      </td>
+                      <td>
+                        <small th:text="${config.description}"></small>
+                      </td>
+                      <td>
+                        <!-- true/false 값이 아닌 경우에만 수정 버튼 표시 -->
+                        <button th:if="${config.propertyValue != 'true' && config.propertyValue != 'false'}"
+                                type="button"
+                                class="btn btn-sm btn-outline-primary"
+                                data-bs-toggle="modal"
+                                data-bs-target="#editModal"
+                                th:attr="data-key=${config.propertyKey},
+                                         data-value=${config.propertyValue},
+                                         data-description=${config.description}"
+                                onclick="openEditModal(this)">
+                          <i class="bi bi-pencil"></i> 수정
+                        </button>
+                        <span th:if="${config.propertyValue == 'true' || config.propertyValue == 'false'}"
+                              class="text-muted small">
+                          <i class="bi bi-hand-index"></i> 클릭하여 토글
+                        </span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 현재 상태 패널 -->
+        <div class="col-md-4">
+          <div class="card shadow-sm mb-4">
+            <div class="card-header bg-info text-white">
+              <h5 class="mb-0">
+                <i class="bi bi-info-circle"></i> 현재 상태
+              </h5>
+            </div>
+            <div class="card-body">
+              <ul class="list-group list-group-flush">
+                <li class="list-group-item d-flex justify-content-between align-items-center" th:each="config : ${configs}">
+                  <div>
+                    <strong th:text="${config.propertyKey}"></strong>
+                    <br>
+                    <small class="text-muted" th:text="${config.description}"></small>
+                  </div>
+                  <div>
+                    <span th:if="${config.propertyValue == 'true'}" class="badge bg-success">활성화</span>
+                    <span th:if="${config.propertyValue == 'false'}" class="badge bg-secondary">비활성화</span>
+                    <span th:if="${config.propertyValue != 'true' && config.propertyValue != 'false'}"
+                          class="badge bg-primary" th:text="${config.propertyValue}"></span>
+                  </div>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- 설정 안내 -->
+          <div class="card shadow-sm">
+            <div class="card-header bg-warning text-dark">
+              <h5 class="mb-0">
+                <i class="bi bi-exclamation-triangle"></i> 주의사항
+              </h5>
+            </div>
+            <div class="card-body">
+              <h6>멀티로그인 설정</h6>
+              <p class="small">
+                활성화 시 동일 계정으로 <strong>최대 5개 기기</strong>에서 동시 로그인이 가능합니다.
+              </p>
+              <hr>
+              <h6>파일 업로드 설정</h6>
+              <p class="small">
+                파일 업로드 기능의 활성화 여부를 설정합니다.
+              </p>
+              <hr>
+              <h6>설정 변경</h6>
+              <p class="small mb-0">
+                설정 변경 시 경고 메시지를 확인한 후 적용됩니다.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 하단 버튼 -->
+      <div class="d-flex justify-content-between mt-4">
+        <a th:href="@{/}" class="btn btn-secondary">
+          <i class="bi bi-house"></i> 홈으로
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 토글 경고 모달 -->
+<div class="modal fade" id="toggleModal" tabindex="-1" aria-labelledby="toggleModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-warning">
+        <h5 class="modal-title" id="toggleModalLabel">
+          <i class="bi bi-exclamation-triangle"></i> 설정 변경 확인
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-warning" role="alert">
+          <i class="bi bi-exclamation-triangle-fill"></i>
+          <strong>경고:</strong> 시스템 설정을 변경하시겠습니까?
+        </div>
+        <div class="mb-3">
+          <label class="form-label"><strong>설정 키</strong></label>
+          <p id="toggleKey" class="form-control-plaintext"></p>
+        </div>
+        <div class="mb-3">
+          <label class="form-label"><strong>현재 상태</strong></label>
+          <p id="toggleCurrentValue" class="form-control-plaintext"></p>
+        </div>
+        <div class="mb-3">
+          <label class="form-label"><strong>변경 후 상태</strong></label>
+          <p id="toggleNewValue" class="form-control-plaintext"></p>
+        </div>
+        <div class="mb-3">
+          <label class="form-label"><strong>설명</strong></label>
+          <p id="toggleDescription" class="form-control-plaintext"></p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          <i class="bi bi-x-circle"></i> No (취소)
+        </button>
+        <button type="button" class="btn btn-primary" onclick="submitToggle()">
+          <i class="bi bi-check-circle"></i> Yes (변경)
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 설정 수정 모달 (숫자 값 등) -->
+<div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="editModalLabel">
+          <i class="bi bi-pencil-square"></i> 설정 수정
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form th:action="@{/admin/settings/update}" method="post" id="editForm">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="editKey" class="form-label">설정 키</label>
+            <input type="text"
+                   id="editKey"
+                   name="key"
+                   class="form-control"
+                   readonly>
+          </div>
+          <div class="mb-3">
+            <label for="editValue" class="form-label">
+              설정 값 <span class="text-danger">*</span>
+            </label>
+            <input type="text"
+                   id="editValue"
+                   name="value"
+                   class="form-control"
+                   required>
+            <small class="form-text text-muted">
+              숫자 값을 입력하세요.
+            </small>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">설명</label>
+            <p id="editDescription" class="form-control-plaintext"></p>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            <i class="bi bi-x-circle"></i> 취소
+          </button>
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-save"></i> 저장
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+let toggleKeyValue = '';
+let toggleNewValueText = '';
+
+/**
+ * 토글 경고 모달 열기
+ * - true/false 값 클릭 시 경고 모달 표시
+ */
+function openToggleModal(element) {
+  const key = element.getAttribute('data-key');
+  const currentValue = element.getAttribute('data-value');
+  const description = element.getAttribute('data-description');
+
+  // 토글 값 계산
+  const newValue = currentValue === 'true' ? 'false' : 'true';
+
+  // 표시 텍스트
+  const currentText = currentValue === 'true' ? '활성화' : '비활성화';
+  const newText = newValue === 'true' ? '활성화' : '비활성화';
+
+  // 모달 내용 설정
+  document.getElementById('toggleKey').textContent = key;
+  document.getElementById('toggleCurrentValue').innerHTML =
+    `<span class="badge ${currentValue === 'true' ? 'bg-success' : 'bg-secondary'}">${currentText}</span>`;
+  document.getElementById('toggleNewValue').innerHTML =
+    `<span class="badge ${newValue === 'true' ? 'bg-success' : 'bg-secondary'}">${newText}</span>`;
+  document.getElementById('toggleDescription').textContent = description;
+
+  // 전역 변수에 저장
+  toggleKeyValue = key;
+  toggleNewValueText = newValue;
+
+  // 모달 표시
+  const modal = new bootstrap.Modal(document.getElementById('toggleModal'));
+  modal.show();
+}
+
+/**
+ * 토글 값 제출
+ * - Yes 클릭 시 폼 제출
+ */
+function submitToggle() {
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = '/admin/settings/update';
+
+  const keyInput = document.createElement('input');
+  keyInput.type = 'hidden';
+  keyInput.name = 'key';
+  keyInput.value = toggleKeyValue;
+
+  const valueInput = document.createElement('input');
+  valueInput.type = 'hidden';
+  valueInput.name = 'value';
+  valueInput.value = toggleNewValueText;
+
+  form.appendChild(keyInput);
+  form.appendChild(valueInput);
+  document.body.appendChild(form);
+  form.submit();
+}
+
+/**
+ * 설정 수정 모달 열기 (숫자 값 등)
+ * - 설정 키, 값, 설명 표시
+ */
+function openEditModal(button) {
+  const key = button.getAttribute('data-key');
+  const value = button.getAttribute('data-value');
+  const description = button.getAttribute('data-description');
+
+  document.getElementById('editKey').value = key;
+  document.getElementById('editValue').value = value;
+  document.getElementById('editDescription').textContent = description;
+}
+</script>
+</body>
+</html>
+
