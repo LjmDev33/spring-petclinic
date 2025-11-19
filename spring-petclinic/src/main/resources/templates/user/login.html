@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<div class="container mt-5">
+  <!-- ...existing layout... -->
+  <form th:action="@{/login}" method="post">
+    <!-- ...existing username/password fields... -->
+
+    <div class="mb-3 form-check">
+      <input type="checkbox"
+             id="save-username"
+             class="form-check-input">
+      <label for="save-username" class="form-check-label">
+        <i class="bi bi-person-check"></i> 아이디 저장
+      </label>
+    </div>
+
+    <div class="mb-3 form-check">
+      <input type="checkbox"
+             id="remember-me"
+             name="remember-me"
+             class="form-check-input">
+      <label for="remember-me" class="form-check-label">
+        <i class="bi bi-shield-check"></i> 자동 로그인 (7일간 유지)
+      </label>
+    </div>
+
+    <!-- ...existing submit button, links, 안내문... -->
+  </form>
+</div>
+
+<script>
+  // 아이디 저장 기능: localStorage를 사용하여 사용자 브라우저에만 아이디를 보관
+  document.addEventListener('DOMContentLoaded', function () {
+    var usernameInput = document.getElementById('username');
+    var saveUsernameCheckbox = document.getElementById('save-username');
+
+    if (!usernameInput || !saveUsernameCheckbox) {
+      return;
+    }
+
+    try {
+      var savedUsername = localStorage.getItem('petclinic_saved_username');
+      if (savedUsername) {
+        usernameInput.value = savedUsername;
+        saveUsernameCheckbox.checked = true;
+      }
+    } catch (e) {
+      console.error('Failed to read saved username from localStorage', e);
+    }
+
+    saveUsernameCheckbox.addEventListener('change', function () {
+      try {
+        if (this.checked) {
+          localStorage.setItem('petclinic_saved_username', usernameInput.value || '');
+        } else {
+          localStorage.removeItem('petclinic_saved_username');
+        }
+      } catch (e) {
+        console.error('Failed to save username to localStorage', e);
+      }
+    });
+
+    usernameInput.addEventListener('input', function () {
+      if (saveUsernameCheckbox.checked) {
+        try {
+          localStorage.setItem('petclinic_saved_username', usernameInput.value || '');
+        } catch (e) {
+          console.error('Failed to update saved username in localStorage', e);
+        }
+      }
+    });
+  });
+</script>
+</body>
+</html>
+

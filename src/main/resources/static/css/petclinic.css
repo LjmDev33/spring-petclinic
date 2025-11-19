@@ -9555,4 +9555,22 @@ strong {
     margin-top: 10px;
     margin-bottom: 30px; } }
 
+/* ========================================
+   프로젝트 커스텀 버튼 시스템
+   ========================================
+   Bootstrap btn 클래스와의 충돌을 피하기 위해
+   custom-buttons.css 파일에서 독립적인 버튼 시스템 사용
+
+   - custom-btn-primary
+   - custom-btn-secondary
+   - custom-btn-success
+   - custom-btn-danger
+   - custom-btn-warning
+   - custom-btn-dark
+   - custom-btn-outline-*
+
+   자세한 내용은 /css/custom-buttons.css 참조
+   ======================================== */
+
+
 /*# sourceMappingURL=../../../../../../target/petclinic.css.map */

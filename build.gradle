@@ -79,9 +79,10 @@ dependencies {
 
   // Uppy 파일 업로드 Progress Bar 라이브러리 (CDN 사용 금지, 로컬 내장)
   // 오프라인 환경 실행 지원을 위해 WebJars 방식 사용
-  runtimeOnly 'org.webjars.npm:uppy__core:3.3.1'
-  runtimeOnly 'org.webjars.npm:uppy__dashboard:3.3.1'
-  runtimeOnly 'org.webjars.npm:uppy__xhr-upload:3.3.1'
+  // TODO: Uppy는 WebJars에 존재하지 않으므로, 수동으로 static/js/uppy/ 폴더에 추가 필요
+  // runtimeOnly 'org.webjars.npm:uppy__core:3.3.1'
+  // runtimeOnly 'org.webjars.npm:uppy__dashboard:3.3.1'
+  // runtimeOnly 'org.webjars.npm:uppy__xhr-upload:3.3.1'
 
   // checkstyle "io.spring.javaformat:spring-javaformat-checkstyle:${springJavaformatCheckstyleVersion}"
   // checkstyle "com.puppycrawl.tools:checkstyle:${checkstyleVersion}"
@@ -134,3 +135,7 @@ wrapper {
   gradleVersion = "8.14.3"
   distributionType = Wrapper.DistributionType.ALL
 }
+
+// Uppy 기반 파일 업로드 UI는 외부 CDN을 사용하지 않고
+// src/main/resources/static/js, static/css 등에 직접 번들된 정적 리소스로 관리한다.
+// 별도의 Java 의존성 추가는 필요하지 않으므로 build.gradle에는 Uppy 관련 dependency를 추가하지 않는다.

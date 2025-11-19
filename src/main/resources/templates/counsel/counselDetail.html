@@ -1,5 +1,9 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+  <title>온라인 상담 상세 - Spring PetClinic</title>
+  <link rel="stylesheet" th:href="@{/css/custom-buttons.css}">
+</head>
 <body>
 <div class="container mt-4">
   <!-- Flash 메시지 표시 -->
@@ -13,19 +17,21 @@
   </div>
 
   <div class="container-fluid px-0">
-    <div class="row">
-      <div class="col-12 d-md-flex justify-content-between px-0">
-        <div class="d-flex">
-          <!-- 수정 버튼 -->
-          <a th:href="@{/counsel/edit/{id}(id=${post.id})}" class="btn btn-warning" style="min-width: 80px;">수정</a>
-
-          <!-- 삭제 버튼 (비밀번호 모달) -->
-          <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal" style="min-width: 80px;">
-            삭제
-          </button>
-        </div>
-        <a th:href="@{/counsel/list}" class="btn btn-light">목록</a>
+    <!-- 버튼 그룹 -->
+    <div class="d-flex justify-content-between mb-3">
+      <div class="d-flex" style="gap: 8px;">
+        <!-- 수정 버튼 -->
+        <a th:href="@{/counsel/edit/{id}(id=${post.id})}" class="custom-btn custom-btn-warning">
+          <i class="bi bi-pencil me-1"></i> 수정
+        </a>
+        <!-- 삭제 버튼 -->
+        <button type="button" class="custom-btn custom-btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+          <i class="bi bi-trash me-1"></i> 삭제
+        </button>
       </div>
+      <a th:href="@{/counsel/list}" class="custom-btn custom-btn-secondary">
+        <i class="bi bi-list me-1"></i> 목록
+      </a>
     </div>
 
     <div class="row">
@@ -128,23 +134,23 @@
                 <div class="comment-content py-2" th:text="${c.content}"></div>
 
                 <!-- 댓글 액션 버튼 -->
-                <div class="d-flex justify-content-end gap-2 mt-2" th:if="${!c.staffReply}">
+                <div class="d-flex justify-content-end mt-2" style="gap: 8px;" th:if="${!c.staffReply}">
                   <!-- 답글 달기 버튼 (대댓글이 아닌 경우만) -->
                   <button th:if="${c.parentId == null}"
                           type="button"
-                          class="btn btn-sm btn-outline-primary"
+                          class="custom-btn custom-btn-outline-primary custom-btn-sm"
                           data-bs-toggle="modal"
                           data-bs-target="#commentWriteModal"
                           th:onclick="'setReplyTo(' + ${c.id} + ', \'' + ${c.authorName} + '\')'">
-                    <i class="bi bi-reply"></i> 답글
+                    <i class="bi bi-reply me-1"></i> 답글
                   </button>
 
                   <!-- 삭제 버튼 -->
                   <button type="button"
-                          class="btn btn-sm btn-outline-danger"
+                          class="custom-btn custom-btn-outline-danger custom-btn-sm"
                           th:attr="data-comment-id=${c.id},data-has-password=${c.passwordHash != null}"
                           onclick="openDeleteCommentModal(this)">
-                    <i class="bi bi-trash"></i> 삭제
+                    <i class="bi bi-trash me-1"></i> 삭제
                   </button>
                 </div>
               </div>
@@ -174,8 +180,8 @@
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
-          <button type="submit" class="btn btn-danger">삭제</button>
+          <button type="button" class="custom-btn custom-btn-secondary" data-bs-dismiss="modal">취소</button>
+          <button type="submit" class="custom-btn custom-btn-danger">삭제</button>
         </div>
       </form>
     </div>
@@ -232,11 +238,11 @@
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-            <i class="bi bi-x-circle"></i> 취소
+          <button type="button" class="custom-btn custom-btn-secondary" data-bs-dismiss="modal">
+            <i class="bi bi-x-circle me-1"></i> 취소
           </button>
-          <button type="submit" class="btn btn-primary">
-            <i class="bi bi-send"></i> 등록
+          <button type="submit" class="custom-btn custom-btn-primary">
+            <i class="bi bi-send me-1"></i> 등록
           </button>
         </div>
       </form>
@@ -262,8 +268,8 @@
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
-          <button type="submit" class="btn btn-danger">삭제</button>
+          <button type="button" class="custom-btn custom-btn-secondary" data-bs-dismiss="modal">취소</button>
+          <button type="submit" class="custom-btn custom-btn-danger">삭제</button>
         </div>
       </form>
     </div>

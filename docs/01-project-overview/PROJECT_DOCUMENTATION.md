@@ -619,6 +619,125 @@ public class CounselPost extends BaseEntity {
 }
 ```
 
+#### **5-1. 테이블 변경 시 문서 즉각 반영** ⭐NEW (2025-11-12)
+
+**규칙**: 테이블 추가/수정 시 `TABLE_DEFINITION.md`를 즉각 업데이트
+
+**적용 시점**:
+- ✅ Entity 클래스 생성/수정 완료 직후
+- ✅ 테이블 컬럼 추가/삭제/변경 직후
+- ✅ 외래키 제약 조건 변경 직후
+- ✅ 인덱스 추가/삭제 직후
+
+**업데이트 내용**:
+1. 테이블 구조 (컬럼명, 타입, 제약조건)
+2. 컬럼 설명 (각 필드의 용도)
+3. 관계도 (외래키, 연관 관계)
+4. 변경 이력 (날짜, 변경 사유)
+
+**예시**:
+```markdown
+## counsel_post (온라인 상담 게시글)
+
+| 컬럼명 | 타입 | 제약조건 | 설명 |
+|--------|------|----------|------|
+| id | BIGINT | PK, AUTO_INCREMENT | 게시글 ID |
+| title | VARCHAR(200) | NOT NULL | 게시글 제목 |
+| content | TEXT | NOT NULL | 게시글 내용 |
+| secret | BOOLEAN | NOT NULL, DEFAULT false | 비공개 여부 |
+| password | VARCHAR(100) | NULL | 비공개 게시글 비밀번호 (BCrypt) |
+| author_name | VARCHAR(50) | NOT NULL | 작성자 이름 |
+| status | VARCHAR(20) | NOT NULL | 상태 (WAIT, COMPLETE, END) |
+| view_count | INT | NOT NULL, DEFAULT 0 | 조회수 |
+| del_flag | BOOLEAN | NOT NULL, DEFAULT false | 삭제 플래그 (Soft Delete) |
+| created_at | DATETIME | NOT NULL | 생성일시 |
+| updated_at | DATETIME | NOT NULL | 수정일시 |
+| deleted_at | DATETIME | NULL | 삭제일시 |
+
+**변경 이력**:
+- 2025-11-06: 테이블 생성
+- 2025-11-10: `view_count` 컬럼 추가
+```
+
+**체크리스트**:
+- [ ] Entity 클래스 코드 작성 완료
+- [ ] 테이블 정의서 업데이트 완료
+- [ ] 컬럼 설명 주석 추가 완료
+- [ ] 변경 이력 기록 완료
+- [ ] CHANGELOG.md 업데이트 완료
+
+#### **5-2. API 변경 시 문서 즉각 반영** ⭐NEW (2025-11-12)
+
+**규칙**: API 추가/수정 시 `API_SPECIFICATION.md`를 즉각 업데이트
+
+**적용 시점**:
+- ✅ Controller 메서드 추가/수정 완료 직후
+- ✅ 요청/응답 DTO 변경 직후
+- ✅ 엔드포인트 URL 변경 직후
+- ✅ HTTP 메서드 변경 직후
+
+**업데이트 내용**:
+1. 엔드포인트 정보 (URL, HTTP 메서드)
+2. 요청 파라미터/바디 (DTO 구조)
+3. 응답 포맷 (성공/실패 케이스)
+4. 권한 요구사항 (로그인 필요 여부)
+5. 변경 이력 (날짜, 변경 사유)
+
+**예시**:
+```markdown
+### 온라인 상담 게시글 목록 조회
+
+**엔드포인트**: `GET /counsel/list`
+
+**권한**: 공개 (로그인 불필요)
+
+**요청 파라미터**:
+| 파라미터 | 타입 | 필수 | 설명 | 기본값 |
+|----------|------|------|------|--------|
+| type | String | X | 검색 타입 (title, author) | title |
+| keyword | String | X | 검색 키워드 | - |
+| page | Integer | X | 페이지 번호 (0부터 시작) | 0 |
+| size | Integer | X | 페이지 크기 | 10 |
+
+**응답 (성공 - 200 OK)**:
+```json
+{
+  "content": [
+    {
+      "id": 1,
+      "title": "강아지 중성화 수술 문의",
+      "authorName": "홍길동",
+      "status": "COMPLETE",
+      "createdAt": "2025-11-06T10:30:00",
+      "secret": false
+    }
+  ],
+  "totalElements": 112,
+  "totalPages": 12,
+  "currentPage": 0
+}
+```
+
+**응답 (실패 - 400 Bad Request)**:
+```json
+{
+  "error": "Invalid search type",
+  "message": "검색 타입은 title 또는 author만 가능합니다."
+}
+```
+
+**변경 이력**:
+- 2025-11-06: API 생성
+- 2025-11-10: `secret` 필드 추가
+```
+
+**체크리스트**:
+- [ ] Controller 메서드 구현 완료
+- [ ] API 명세서 업데이트 완료
+- [ ] 요청/응답 예시 작성 완료
+- [ ] 권한 요구사항 명시 완료
+- [ ] CHANGELOG.md 업데이트 완료
+
 #### **6. 로그 관리**
 ```java
 private static final Logger log = LoggerFactory.getLogger(CounselService.class);
@@ -741,12 +860,27 @@ dependencies {
 <input type="text" id="input1" name="input1">
 ```
 
+**버튼 균일성 규칙** ⭐NEW (2025-11-12):
+```html
+<!-- ✅ 같은 행의 버튼은 크기 및 라인 동일 -->
+<div class="d-flex justify-content-end gap-2">
+  <a href="/list" class="btn btn-secondary" style="min-width: 120px; height: 42px;">목록</a>
+  <button type="submit" class="btn btn-primary" style="min-width: 120px; height: 42px;">확인</button>
+</div>
+
+<!-- ❌ 잘못된 예시: 크기 불일치 -->
+<div class="d-flex gap-2">
+  <a href="/list" class="btn btn-secondary">목록</a>
+  <button type="submit" class="btn btn-primary btn-lg">확인</button>
+</div>
+```
+
 **버튼 배치 규칙**:
 ```html
 <!-- ✅ 주요 액션 버튼은 오른쪽 끝 -->
 <div class="d-flex justify-content-between">
-  <a href="/list" class="btn btn-secondary">취소</a>
-  <button type="submit" class="btn btn-primary">저장</button>
+  <a href="/list" class="btn btn-secondary" style="min-width: 120px; height: 42px;">취소</a>
+  <button type="submit" class="btn btn-primary" style="min-width: 120px; height: 42px;">저장</button>
 </div>
 
 <!-- ✅ 여러 액션 버튼은 gap으로 간격 조정 -->

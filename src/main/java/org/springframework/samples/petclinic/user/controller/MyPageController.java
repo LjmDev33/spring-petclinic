@@ -5,11 +5,11 @@ import org.springframework.samples.petclinic.user.table.User;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Project : spring-petclinic
@@ -68,23 +68,27 @@ public class MyPageController {
 	 * @return 마이페이지로 리다이렉트
 	 */
 	@PostMapping("/update")
-	public String updateProfile(
+	@ResponseBody
+	public Map<String, Object> updateProfile(
 		Authentication authentication,
 		@RequestParam String email,
 		@RequestParam String name,
 		@RequestParam String nickname,
-		@RequestParam(required = false) String phone,
-		RedirectAttributes redirectAttributes) {
+		@RequestParam(required = false) String phone) {
 
+		Map<String, Object> response = new HashMap<>();
 		try {
 			String username = authentication.getName();
 			userService.updateProfile(username, email, name, nickname, phone);
-			redirectAttributes.addFlashAttribute("message", "프로필이 수정되었습니다.");
+			response.put("success", true);
+			response.put("message", "프로필이 수정되었습니다.");
+			response.put("nickname", nickname);
 		} catch (Exception e) {
-			redirectAttributes.addFlashAttribute("error", e.getMessage());
+			response.put("success", false);
+			response.put("message", e.getMessage());
 		}
 
-		return "redirect:/mypage";
+		return response;
 	}
 
 	/**

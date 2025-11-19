@@ -8,6 +8,910 @@
 
 ---
 
+## [3.5.18] - 2025-11-12 (오후 - 4차)
+
+### 🎨 UI/UX 개선
+
+#### 1. 닉네임 표출 개선 ✅
+**문제**: 닉네임이 없는 계정은 빈 값으로 표시됨
+
+**해결**:
+```html
+<!-- Before: 닉네임만 표시 -->
+<span th:text="${#authentication.principal.nickname}"></span>님
+
+<!-- After: 닉네임이 없으면 username 표시 -->
+<span th:text="${#authentication.principal.nickname != null && !#strings.isEmpty(#authentication.principal.nickname) 
+               ? #authentication.principal.nickname 
+               : #authentication.principal.username}"></span>님
+```
+
+**효과**:
+- ✅ 닉네임 미설정 시 아이디 표출
+- ✅ 모든 사용자에게 일관된 표시
+
+---
+
+#### 2. 마이페이지 프로필 저장 비동기 처리 ✅
+**문제**: 프로필 저장 후 페이지 새로고침 필요, 헤더 닉네임 즉시 반영 안됨
+
+**변경 사항**:
+
+**Controller (MyPageController.java)**:
+```java
+// Before: 리다이렉트 방식
+@PostMapping("/update")
+public String updateProfile(..., RedirectAttributes redirectAttributes) {
+    // ...
+    return "redirect:/mypage";
+}
+
+// After: JSON 응답 방식
+@PostMapping("/update")
+@ResponseBody
+public Map<String, Object> updateProfile(...) {
+    Map<String, Object> response = new HashMap<>();
+    try {
+        userService.updateProfile(username, email, name, nickname, phone);
+        response.put("success", true);
+        response.put("message", "프로필이 수정되었습니다.");
+        response.put("nickname", nickname);
+    } catch (Exception e) {
+        response.put("success", false);
+        response.put("message", e.getMessage());
+    }
+    return response;
+}
+```
+
+**Frontend (mypage.html)**:
+```javascript
+// 비동기 폼 제출
+document.getElementById('profileForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    
+    try {
+        const response = await fetch('/mypage/update', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            // 헤더 닉네임 즉시 업데이트
+            const headerNickname = document.querySelector('.text-success.fw-bold');
+            if (headerNickname && result.nickname) {
+                headerNickname.textContent = result.nickname;
+            }
+            alert(result.message);
+        } else {
+            alert(result.message);
+        }
+    } catch (error) {
+        alert('프로필 저장 중 오류가 발생했습니다.');
+    }
+});
+```
+
+**효과**:
+- ✅ 페이지 새로고침 없이 프로필 저장
+- ✅ 헤더 닉네임 즉시 반영
+- ✅ 사용자 경험 개선
+
+---
+
+#### 3. 관리자 설정 페이지 상세 버튼 변경 ✅
+**문제**: 원형 버튼이 아닌 일반 버튼 요청
+
+**Before**:
+```html
+<button class="btn btn-sm btn-light rounded-circle" 
+        style="width: 32px; height: 32px;">
+  <i class="bi bi-plus-lg"></i>
+</button>
+```
+
+**After**:
+```html
+<button class="btn btn-sm btn-light">
+  <i class="bi bi-plus-lg"></i> 상세
+</button>
+```
+
+**효과**:
+- ✅ 일반 버튼 형태로 변경
+- ✅ 텍스트 + 아이콘으로 명확한 의미 전달
+
+---
+
+### 📚 프로젝트 규칙 추가
+
+#### 4. 버튼 균일성 규칙 추가 ✅
+**규칙**: 같은 행의 버튼은 크기 및 라인 동일
+
+**문서**: `PROJECT_DOCUMENTATION.md` > UI 설계 규칙 9번
+
+**추가된 원칙**:
+```
+7. ✅ 버튼 균일성: 같은 행의 버튼은 크기 및 라인 동일 ⭐NEW (2025-11-12)
+```
+
+**예시**:
+```html
+<!-- ✅ 올바른 예시: 같은 행의 버튼 크기 동일 -->
+<div class="d-flex justify-content-end gap-2">
+  <a href="/list" class="btn btn-secondary" style="min-width: 120px; height: 42px;">목록</a>
+  <button type="submit" class="btn btn-primary" style="min-width: 120px; height: 42px;">확인</button>
+</div>
+
+<!-- ❌ 잘못된 예시: 크기 불일치 -->
+<div class="d-flex gap-2">
+  <a href="/list" class="btn btn-secondary">목록</a>
+  <button type="submit" class="btn btn-primary btn-lg">확인</button>
+</div>
+```
+
+---
+
+### 🐛 버그 수정
+
+#### 5. 게시글 상세/삭제 ERR_INCOMPLETE_CHUNKED_ENCODING 오류 해결 ✅
+**문제**: 게시글 상세화면 및 삭제 시 `net::ERR_INCOMPLETE_CHUNKED_ENCODING 200 (OK)` 오류 발생
+
+**원인**:
+```java
+// Controller에서 IOException을 throw하지만 처리하지 않음
+@GetMapping("/detail/{id}")
+public String detail(...) throws IOException {
+    CounselPostDto post = counselService.getDetail(id); // IOException 발생 가능
+    // ...
+}
+```
+
+**해결**:
+```java
+@GetMapping("/detail/{id}")
+public String detail(...) {
+    CounselPostDto post;
+    try {
+        post = counselService.getDetail(id);
+    } catch (Exception e) {
+        log.error("Failed to load post detail: id={}", id, e);
+        model.addAttribute("error", "게시글을 불러오는 중 오류가 발생했습니다.");
+        return "error";
+    }
+    // ...
+}
+```
+
+**효과**:
+- ✅ 게시글 상세화면 정상 표시
+- ✅ 게시글 삭제 정상 작동
+- ✅ 에러 발생 시 에러 페이지로 안내
+
+---
+
+### 🔧 수정된 파일
+
+**Backend (2개)**:
+1. ✅ `MyPageController.java`
+   - 프로필 업데이트 JSON 응답으로 변경
+   - `Map<String, Object>` 반환
+   - `@ResponseBody` 추가
+
+2. ✅ `CounselController.java`
+   - `detail()` 메서드 IOException 처리
+   - try-catch로 에러 핸들링
+
+**Frontend (3개)**:
+1. ✅ `fragments/layout.html`
+   - 닉네임 없으면 username 표시
+
+2. ✅ `user/mypage.html`
+   - 프로필 저장 비동기 처리
+   - fetch API 사용
+   - 헤더 닉네임 즉시 업데이트
+
+3. ✅ `admin/settings.html`
+   - 원형 버튼 → 일반 버튼 변경
+   - 텍스트 + 아이콘
+
+**문서 (2개)**:
+1. ✅ `PROJECT_DOCUMENTATION.md`
+   - 버튼 균일성 규칙 추가
+
+2. ✅ `CHANGELOG.md`
+   - [3.5.18] 변경 이력 추가
+
+---
+
+### ✅ 검증 완료
+
+**컴파일**: ✅ 성공 (경고만 존재)  
+**문법 오류**: ❌ 없음
+
+---
+
+### 📊 개선 효과
+
+| 항목 | Before | After | 개선점 |
+|------|--------|-------|--------|
+| **닉네임 표출** | 빈 값 | username 대체 | 일관성 |
+| **프로필 저장** | 페이지 새로고침 | 비동기 처리 | UX 개선 |
+| **헤더 닉네임** | 새로고침 필요 | 즉시 반영 | 실시간 업데이트 |
+| **상세 버튼** | 원형 | 일반 버튼 | 명확성 |
+| **게시글 상세** | 오류 발생 | 정상 표시 | 버그 수정 |
+
+---
+
+## [3.5.17] - 2025-11-12 (오후 - 3차)
+
+### 🎨 UI/UX 개선
+
+#### 1. 관리자 설정 페이지 상세 보기 아이콘 개선 ✅
+**변경 사항**: 상세 보기 버튼을 원형 + 아이콘으로 변경
+
+**Before**:
+```html
+<button class="btn btn-sm btn-light">
+  <i class="bi bi-plus-circle"></i> 상세 보기
+</button>
+```
+
+**After**:
+```html
+<button class="btn btn-sm btn-light rounded-circle" 
+        style="width: 32px; height: 32px; padding: 0;"
+        title="상세 보기">
+  <i class="bi bi-plus-lg" style="font-size: 1.2rem;"></i>
+</button>
+```
+
+**효과**:
+- ✅ 깔끔한 원형 버튼 디자인
+- ✅ 공간 효율성 향상
+- ✅ + 아이콘으로 직관성 개선
+
+---
+
+#### 2. 모달 종료 시 흑백 화면 현상 해결 ✅
+**문제**: 상세 보기 모달 닫을 때 화면이 흑백으로 유지
+
+**원인**: 
+```javascript
+// 기존 모달을 강제로 닫는 로직이 문제
+const detailModal = bootstrap.Modal.getInstance(document.getElementById('detailModal'));
+if (detailModal) {
+  detailModal.hide(); // ❌ backdrop 제거 실패
+}
+```
+
+**해결**:
+```javascript
+// Bootstrap이 자동으로 모달 전환 처리하도록 수정
+function openEditModal(button) {
+  // ... 모달 내용 설정
+  // ✅ 기존 모달 닫기 로직 제거
+}
+```
+
+**효과**:
+- ✅ 모달 전환 시 backdrop 정상 제거
+- ✅ 화면 흑백 현상 해결
+- ✅ Bootstrap 기본 동작 활용
+
+---
+
+#### 3. 글쓰기 화면 UI 개선 ✅
+**변경 사항**:
+
+**1) 헤더 레이아웃 개선**
+```html
+<!-- Before: 제목만 표시 -->
+<h2>온라인 상담 글쓰기</h2>
+
+<!-- After: 제목 + 목록 버튼 -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2>
+    <i class="bi bi-pencil-square"></i> 온라인 상담 글쓰기
+  </h2>
+  <a href="/counsel/list" class="btn btn-outline-secondary">
+    <i class="bi bi-list"></i> 목록
+  </a>
+</div>
+```
+
+**2) 하단 버튼 단순화**
+```html
+<!-- Before: 취소 + 작성완료 -->
+<div class="d-grid d-md-flex gap-2">
+  <a class="btn btn-secondary">취소</a>
+  <button class="btn btn-primary">작성완료</button>
+</div>
+
+<!-- After: 작성완료만 표시 (취소는 헤더 목록 버튼으로 대체) -->
+<div class="d-grid d-md-flex gap-2 justify-content-md-end mt-4">
+  <button class="btn btn-primary" style="min-width: 120px; height: 42px;">
+    <i class="bi bi-send"></i> 작성완료
+  </button>
+</div>
+```
+
+**효과**:
+- ✅ 헤더 목록 버튼으로 접근성 향상
+- ✅ 하단 버튼 단순화 (주요 액션만 강조)
+- ✅ 일관된 레이아웃
+
+---
+
+#### 4. 게시글 수정 화면 UI 개선 ✅
+**변경 사항**:
+
+**1) 헤더 레이아웃 개선**
+```html
+<!-- Before: 제목만 표시 -->
+<h2>온라인 상담 수정</h2>
+
+<!-- After: 제목 + 상세보기/목록 버튼 -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2>
+    <i class="bi bi-pencil-square"></i> 온라인 상담 수정
+  </h2>
+  <div class="d-flex gap-2">
+    <a href="/counsel/detail/{id}" class="btn btn-outline-secondary">
+      <i class="bi bi-eye"></i> 상세보기
+    </a>
+    <a href="/counsel/list" class="btn btn-outline-secondary">
+      <i class="bi bi-list"></i> 목록
+    </a>
+  </div>
+</div>
+```
+
+**2) Flash 메시지 아이콘 추가**
+```html
+<!-- 성공 메시지 -->
+<div class="alert alert-success">
+  <i class="bi bi-check-circle-fill"></i> <span th:text="${message}"></span>
+</div>
+
+<!-- 에러 메시지 -->
+<div class="alert alert-danger">
+  <i class="bi bi-exclamation-triangle-fill"></i> <span th:text="${error}"></span>
+</div>
+```
+
+**3) 하단 버튼 단순화**
+```html
+<!-- Before: 취소 + 수정완료 -->
+<div class="d-grid d-md-flex gap-2">
+  <a class="btn btn-secondary">취소</a>
+  <button class="btn btn-primary">수정 완료</button>
+</div>
+
+<!-- After: 수정완료만 표시 (취소는 헤더 상세보기 버튼으로 대체) -->
+<div class="d-grid d-md-flex gap-2 justify-content-md-end mt-4">
+  <button class="btn btn-primary" style="min-width: 120px; height: 42px;">
+    <i class="bi bi-save"></i> 수정 완료
+  </button>
+</div>
+```
+
+**효과**:
+- ✅ 헤더 버튼으로 네비게이션 개선
+- ✅ 하단 버튼 단순화
+- ✅ 아이콘으로 시각적 피드백 강화
+
+---
+
+### 🐛 버그 수정
+
+#### 5. 로그아웃 에러 해결 ✅
+**문제**: 마이페이지에서 로그아웃 클릭 시 에러 페이지 표시
+
+**원인**:
+```html
+<!-- ❌ GET 방식 링크 사용 (Spring Security는 POST 요구) -->
+<a th:href="@{/logout}" class="btn btn-outline-danger">
+  로그아웃
+</a>
+```
+
+**에러 메시지**:
+```
+405 Method Not Allowed
+Request method 'GET' not supported
+```
+
+**해결**:
+```html
+<!-- ✅ POST 방식 폼 사용 -->
+<form th:action="@{/logout}" method="post" class="d-inline mb-0">
+  <button type="submit" class="btn btn-outline-danger" 
+          style="min-width: 120px; height: 42px;">
+    <i class="bi bi-box-arrow-right"></i> 로그아웃
+  </button>
+</form>
+```
+
+**Spring Security 설정**:
+```java
+.logout(logout -> logout
+  .logoutUrl("/logout")  // POST 방식만 허용
+  .logoutSuccessUrl("/?logout=true")
+  .invalidateHttpSession(true)
+  .deleteCookies("JSESSIONID", "remember-me")
+)
+```
+
+**효과**:
+- ✅ 로그아웃 정상 작동
+- ✅ 홈 페이지로 리다이렉트 정상
+- ✅ 세션 정상 종료
+- ✅ 쿠키 정상 삭제
+
+---
+
+### 🔧 수정된 파일
+
+**Frontend (4개)**:
+1. ✅ `admin/settings.html`
+   - 상세 보기 버튼 원형 아이콘으로 변경
+   - 모달 전환 로직 개선
+
+2. ✅ `counsel/counsel-write.html`
+   - 헤더 목록 버튼 추가
+   - 하단 버튼 단순화
+
+3. ✅ `counsel/counsel-edit.html`
+   - 헤더 상세보기/목록 버튼 추가
+   - Flash 메시지 아이콘 추가
+   - 하단 버튼 단순화
+
+4. ✅ `user/mypage.html`
+   - 로그아웃 링크 → 폼 방식 변경
+   - 버튼 크기 통일
+
+---
+
+### ✅ 검증 완료
+
+```bash
+BUILD SUCCESSFUL in 23s
+2 actionable tasks: 2 executed
+```
+
+**컴파일**: ✅ 성공  
+**문법 오류**: ❌ 없음
+
+---
+
+### 📊 개선 효과
+
+| 항목 | Before | After | 개선점 |
+|------|--------|-------|--------|
+| **상세 보기 버튼** | 텍스트 버튼 | 원형 + 아이콘 | 공간 효율성 |
+| **모달 전환** | backdrop 유지 | 정상 제거 | 흑백 현상 해결 |
+| **글쓰기 헤더** | 제목만 | 제목 + 목록 | 접근성 향상 |
+| **수정 헤더** | 제목만 | 제목 + 상세/목록 | 네비게이션 개선 |
+| **하단 버튼** | 취소 + 저장 | 저장만 강조 | 주요 액션 집중 |
+| **로그아웃** | GET (에러) | POST (정상) | 기능 정상화 |
+
+---
+
+## [3.5.16] - 2025-11-12 (오후 - 2차)
+
+### 📚 문서 규칙 추가
+
+#### 테이블/API 변경 시 문서 즉각 반영 규칙 ✅
+**목적**: 코드와 문서의 싱크 유지, 협업 효율성 향상
+
+**신규 규칙**:
+
+**1. 테이블 변경 시 `TABLE_DEFINITION.md` 즉각 업데이트** ⭐NEW
+- ✅ Entity 클래스 생성/수정 완료 직후
+- ✅ 테이블 컬럼 추가/삭제/변경 직후
+- ✅ 외래키 제약 조건 변경 직후
+- ✅ 인덱스 추가/삭제 직후
+
+**업데이트 내용**:
+- 테이블 구조 (컬럼명, 타입, 제약조건)
+- 컬럼 설명 (각 필드의 용도)
+- 관계도 (외래키, 연관 관계)
+- 변경 이력 (날짜, 변경 사유)
+
+**2. API 변경 시 `API_SPECIFICATION.md` 즉각 업데이트** ⭐NEW
+- ✅ Controller 메서드 추가/수정 완료 직후
+- ✅ 요청/응답 DTO 변경 직후
+- ✅ 엔드포인트 URL 변경 직후
+- ✅ HTTP 메서드 변경 직후
+
+**업데이트 내용**:
+- 엔드포인트 정보 (URL, HTTP 메서드)
+- 요청 파라미터/바디 (DTO 구조)
+- 응답 포맷 (성공/실패 케이스)
+- 권한 요구사항 (로그인 필요 여부)
+- 변경 이력 (날짜, 변경 사유)
+
+---
+
+### 🔧 데이터베이스 업데이트
+
+#### 멀티로그인 설정 설명 업데이트 ✅
+**파일**: `DataInit.java`
+
+**Before**:
+```java
+multiLogin.setDescription("멀티로그인 허용 여부. true: 멀티로그인 허용, false: 단일 로그인만 허용");
+```
+
+**After**:
+```java
+multiLogin.setDescription("멀티로그인 허용 여부 (최대 5개 기기). true: 멀티로그인 허용, false: 단일 로그인만 허용");
+```
+
+**효과**:
+- ✅ DB 설명 컬럼에서도 최대 기기 개수 확인 가능
+- ✅ 관리자 설정 페이지에서 자동으로 표시
+
+---
+
+### 🎨 관리자 설정 페이지 대폭 리팩토링 ✅
+
+#### 1. 헤더 레이아웃 변경
+**Before**:
+```html
+<h2>시스템 설정 관리</h2>
+<!-- 하단에 홈으로 버튼 -->
+<div class="d-flex justify-content-between mt-4">
+  <a href="/" class="btn btn-secondary">홈으로</a>
+</div>
+```
+
+**After**:
+```html
+<!-- 헤더: 제목 + 홈 버튼 (오른쪽 끝 배치) -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2>시스템 설정 관리</h2>
+  <a href="/" class="btn btn-secondary" style="min-width: 120px; height: 42px;">
+    홈으로
+  </a>
+</div>
+```
+
+**효과**: ✅ 홈 버튼 상단 배치로 접근성 향상
+
+---
+
+#### 2. Boolean 값 액션 버튼 변경
+**Before**:
+```html
+<!-- 활성화/비활성화 배지 클릭 -->
+<span class="badge bg-success" onclick="openToggleModal(this)">활성화</span>
+<td>클릭하여 토글</td>
+```
+
+**After**:
+```html
+<!-- 현재 값: 활성화 → 액션: 비활성화 버튼 -->
+<span class="badge bg-success">활성화</span>
+<button class="btn btn-sm btn-warning" onclick="openToggleModal(this, 'false')">
+  비활성화
+</button>
+
+<!-- 현재 값: 비활성화 → 액션: 활성화 버튼 -->
+<span class="badge bg-secondary">비활성화</span>
+<button class="btn btn-sm btn-success" onclick="openToggleModal(this, 'true')">
+  활성화
+</button>
+```
+
+**효과**: ✅ 직관적인 액션 버튼 (활성화 상태에서 비활성화 버튼 표시)
+
+---
+
+#### 3. 스크롤 처리 추가
+**테이블 영역**:
+```html
+<div class="card-body" style="max-height: 500px; overflow-y: auto;">
+  <table class="table table-hover">
+    <thead class="sticky-top bg-white">
+      <!-- 헤더 고정 -->
+    </thead>
+    <tbody>
+      <!-- 많은 데이터 시 스크롤 -->
+    </tbody>
+  </table>
+</div>
+```
+
+**효과**: ✅ 설정 개수가 많아져도 푸터 침범 없음
+
+---
+
+#### 4. 상세 보기 모달 추가
+**시스템 설정 목록 상세 모달**:
+```html
+<button class="btn btn-sm btn-light" data-bs-toggle="modal" data-bs-target="#detailModal">
+  <i class="bi bi-plus-circle"></i> 상세 보기
+</button>
+
+<!-- 모달: 전체 설정 목록 스크롤 가능 (modal-xl) -->
+<div class="modal-dialog modal-xl">
+  <div class="modal-body" style="max-height: 600px; overflow-y: auto;">
+    <!-- 전체 설정 목록 -->
+  </div>
+</div>
+```
+
+**현재 상태 상세 모달**:
+```html
+<!-- 모달: 현재 상태만 표시 (modal-lg) -->
+<div class="modal-dialog modal-lg">
+  <div class="modal-body" style="max-height: 600px; overflow-y: auto;">
+    <!-- 현재 상태 목록 -->
+  </div>
+</div>
+```
+
+**효과**: 
+- ✅ + 기호 클릭 시 모달로 전체 목록 확인 가능
+- ✅ 모달 내부도 스크롤 처리로 많은 데이터 표시
+
+---
+
+#### 5. 현재 상태 패널 단순화
+**Before**:
+```html
+<li class="list-group-item">
+  <div>
+    <strong>multiLoginEnabled</strong>
+    <br>
+    <small class="text-muted">설명...</small>
+  </div>
+  <span class="badge bg-success">활성화</span>
+</li>
+```
+
+**After**:
+```html
+<li class="list-group-item d-flex justify-content-between align-items-center">
+  <strong>multiLoginEnabled</strong>
+  <span class="badge bg-success">활성화</span>
+</li>
+```
+
+**효과**: ✅ 설정 키와 상태만 표시 (간결)
+
+---
+
+#### 6. 주의사항 제거 → 토글 모달에 통합
+**Before** (설정 페이지):
+```html
+<div class="card shadow-sm">
+  <div class="card-header bg-warning">주의사항</div>
+  <div class="card-body">
+    <h6>멀티로그인 설정</h6>
+    <p>최대 5개 기기...</p>
+  </div>
+</div>
+```
+
+**After** (토글 모달):
+```html
+<div class="card bg-light" id="toggleWarningCard">
+  <div class="card-header bg-danger text-white">주의사항</div>
+  <div class="card-body">
+    <!-- JavaScript로 동적 생성 -->
+    <ul>
+      <li>활성화 시: 최대 5개 기기...</li>
+      <li>예시: PC 2대 + 모바일 3대...</li>
+      <li>초과 시: 가장 오래된 세션 종료...</li>
+    </ul>
+  </div>
+</div>
+```
+
+**효과**: 
+- ✅ 설정 페이지 깔끔하게 유지
+- ✅ 변경 전 주의사항을 모달에서 확인 가능
+
+---
+
+#### 7. JavaScript 함수 개선
+**주의사항 정의**:
+```javascript
+const warnings = {
+  'multiLoginEnabled': {
+    title: '멀티로그인 설정 주의사항',
+    content: `
+      <ul>
+        <li><strong>활성화 시:</strong> 최대 5개 기기에서 동시 로그인 가능</li>
+        <li><strong>예시:</strong> PC 2대 + 모바일 3대 = 총 5개 기기</li>
+        <li><strong>초과 시:</strong> 6번째 기기에서 로그인 시 가장 오래된 세션 종료</li>
+        <li><strong>비활성화 시:</strong> 단일 로그인만 허용</li>
+      </ul>
+    `
+  },
+  'fileUploadEnabled': {
+    title: '파일 업로드 설정 주의사항',
+    content: `...`
+  }
+};
+```
+
+**토글 모달 열기**:
+```javascript
+function openToggleModal(element, newValue) {
+  // ... 기존 로직
+  
+  // 주의사항 동적 표시
+  if (warnings[key]) {
+    warningCard.style.display = 'block';
+    warningContent.innerHTML = warnings[key].content;
+  } else {
+    warningCard.style.display = 'none';
+  }
+}
+```
+
+**효과**: ✅ 설정별 맞춤 주의사항 표시
+
+---
+
+### 🎨 UI 버튼 크기 통일 ✅
+
+#### 수정된 파일 (4개)
+1. ✅ `counselDetail.html`
+2. ✅ `counsel-write.html`
+3. ✅ `counsel-edit.html`
+4. ✅ `admin/settings.html`
+
+#### 통일된 버튼 규격
+```html
+<!-- 주요 액션 버튼 -->
+<button class="btn btn-primary" style="min-width: 120px; height: 42px;">
+  저장
+</button>
+
+<!-- 상세화면 수정/삭제 버튼 (붙여서) -->
+<div class="d-flex gap-0">
+  <a class="btn btn-warning" style="min-width: 80px; height: 42px;">수정</a>
+  <button class="btn btn-danger" style="min-width: 80px; height: 42px;">삭제</button>
+</div>
+
+<!-- 반응형 버튼 그룹 -->
+<div class="d-grid d-md-flex gap-2 justify-content-md-end">
+  <a class="btn btn-secondary" style="min-width: 120px; height: 42px;">취소</a>
+  <button class="btn btn-primary" style="min-width: 120px; height: 42px;">저장</button>
+</div>
+```
+
+#### 주요 변경 사항
+
+**1. counselDetail.html**
+```html
+<!-- Before: 크기 불규칙 -->
+<div class="d-flex">
+  <a class="btn btn-warning" style="min-width: 80px;">수정</a>
+  <button class="btn btn-danger" style="min-width: 80px;">삭제</button>
+</div>
+<a class="btn btn-light">목록</a>
+
+<!-- After: 크기 통일 + 아이콘 추가 -->
+<div class="d-grid d-md-flex gap-2 justify-content-md-between">
+  <div class="d-flex gap-0">
+    <a class="btn btn-warning" style="min-width: 80px; height: 42px;">
+      <i class="bi bi-pencil"></i> 수정
+    </a>
+    <button class="btn btn-danger" style="min-width: 80px; height: 42px;">
+      <i class="bi bi-trash"></i> 삭제
+    </button>
+  </div>
+  <a class="btn btn-secondary" style="min-width: 120px; height: 42px;">
+    <i class="bi bi-list"></i> 목록
+  </a>
+</div>
+```
+
+**2. counsel-write.html**
+```html
+<!-- Before -->
+<div class="d-flex justify-content-end gap-2">
+  <a class="btn btn-secondary">취소</a>
+  <button class="btn btn-primary">작성완료</button>
+</div>
+
+<!-- After -->
+<div class="d-grid d-md-flex gap-2 justify-content-md-end">
+  <a class="btn btn-secondary" style="min-width: 120px; height: 42px; display: flex; align-items: center; justify-content: center;">
+    <i class="bi bi-x-circle"></i> 취소
+  </a>
+  <button class="btn btn-primary" style="min-width: 120px; height: 42px;">
+    <i class="bi bi-send"></i> 작성완료
+  </button>
+</div>
+```
+
+**3. counsel-edit.html**
+```html
+<!-- Before -->
+<div class="d-flex justify-content-end gap-2">
+  <a class="btn btn-secondary" style="min-width: 100px;">취소</a>
+  <button class="btn btn-primary" style="min-width: 100px;">수정 완료</button>
+</div>
+
+<!-- After -->
+<div class="d-grid d-md-flex gap-2 justify-content-md-end">
+  <a class="btn btn-secondary" style="min-width: 120px; height: 42px; display: flex; align-items: center; justify-content: center;">
+    <i class="bi bi-x-circle"></i> 취소
+  </a>
+  <button class="btn btn-primary" style="min-width: 120px; height: 42px;">
+    <i class="bi bi-save"></i> 수정 완료
+  </button>
+</div>
+```
+
+---
+
+### 📊 개선 효과
+
+**1. 문서 관리**
+- ✅ 테이블/API 변경 시 즉각 문서 반영 규칙 확립
+- ✅ 코드-문서 싱크 유지
+- ✅ 협업 효율성 향상
+
+**2. 관리자 페이지**
+- ✅ 홈 버튼 상단 배치 (접근성 향상)
+- ✅ Boolean 액션 버튼 직관성 개선
+- ✅ 스크롤 처리로 많은 설정 표시 가능
+- ✅ 상세 보기 모달로 전체 목록 확인
+- ✅ 주의사항 모달 통합 (설정 페이지 깔끔)
+
+**3. UI 일관성**
+- ✅ 모든 버튼 크기 통일 (42px, 120px x 42px)
+- ✅ 아이콘 + 텍스트 일관성
+- ✅ 반응형 버튼 그룹 (`d-grid d-md-flex`)
+- ✅ 사용자 직관성 향상
+
+**4. 데이터베이스**
+- ✅ 멀티로그인 설정 설명에 "최대 5개 기기" 명시
+- ✅ DB 레벨에서도 제한 사항 확인 가능
+
+---
+
+### 🔧 수정된 파일
+
+**Backend (1개)**:
+1. ✅ `DataInit.java` - 멀티로그인 설명 업데이트
+
+**Frontend (4개)**:
+1. ✅ `admin/settings.html` - 대폭 리팩토링
+2. ✅ `counsel/counselDetail.html` - 버튼 크기 통일
+3. ✅ `counsel/counsel-write.html` - 버튼 크기 통일
+4. ✅ `counsel/counsel-edit.html` - 버튼 크기 통일
+
+**문서 (2개)**:
+1. ✅ `PROJECT_DOCUMENTATION.md` - 테이블/API 문서 규칙 추가
+2. ✅ `CHANGELOG.md` - [3.5.16] 변경 이력 추가
+
+---
+
+### ✅ 검증 완료
+
+```bash
+BUILD SUCCESSFUL in 22s
+2 actionable tasks: 2 executed
+```
+
+**컴파일**: ✅ 성공  
+**문법 오류**: ❌ 없음
+
+---
+
 ## [3.5.15] - 2025-11-12 (오후)
 
 ### 🐛 버그 수정

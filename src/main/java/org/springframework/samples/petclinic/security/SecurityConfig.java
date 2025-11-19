@@ -12,8 +12,6 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.rememberme.JdbcTokenRepositoryImpl;
-import org.springframework.security.web.authentication.rememberme.PersistentTokenRepository;
 
 import javax.sql.DataSource;
 
@@ -86,13 +84,8 @@ public class SecurityConfig {
 				.deleteCookies("JSESSIONID", "remember-me")
 				.permitAll()
 			)
-			.rememberMe(remember -> remember
-				.key("petclinic-remember-me-key")
-				.tokenRepository(persistentTokenRepository())
-				.userDetailsService(userDetailsService)
-				.tokenValiditySeconds(86400 * 7) // 7일
-				.rememberMeParameter("remember-me")
-			)
+			// 개발 환경에서는 JDBC 기반 remember-me로 인한 persistent_logins 삭제 쿼리 오류를 피하기 위해
+			// rememberMe 설정을 비활성화한다. 운영 환경에서는 DB 스키마를 정비한 뒤 재활성화할 수 있다.
 			.sessionManagement(session -> session
 				.maximumSessions(1) // 기본 단일 로그인 (추후 시스템 설정으로 제어)
 				.maxSessionsPreventsLogin(false) // false: 기존 세션 만료, true: 신규 로그인 차단
@@ -109,15 +102,5 @@ public class SecurityConfig {
 	@Bean
 	public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
 		return config.getAuthenticationManager();
-	}
-
-	/**
-	 * Remember-Me 토큰 저장소 (DB 기반)
-	 */
-	@Bean
-	public PersistentTokenRepository persistentTokenRepository() {
-		JdbcTokenRepositoryImpl tokenRepository = new JdbcTokenRepositoryImpl();
-		tokenRepository.setDataSource(dataSource);
-		return tokenRepository;
 	}
 }

@@ -18,6 +18,7 @@ public class CounselPostWriteDto {
     private String content;
     private boolean secret;
     private List<MultipartFile> attachments;
+    private List<Integer> attachmentIds = new java.util.ArrayList<>();
 
     // Getters and Setters
 
@@ -68,5 +69,12 @@ public class CounselPostWriteDto {
     public void setAttachments(List<MultipartFile> attachments) {
         this.attachments = attachments;
     }
-}
 
+    public List<Integer> getAttachmentIds() {
+        return attachmentIds;
+    }
+
+    public void setAttachmentIds(List<Integer> attachmentIds) {
+        this.attachmentIds = attachmentIds;
+    }
+}

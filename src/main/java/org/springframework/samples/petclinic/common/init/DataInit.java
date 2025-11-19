@@ -92,7 +92,7 @@ public class DataInit {
 		SystemConfig multiLogin = new SystemConfig();
 		multiLogin.setPropertyKey("multiLoginEnabled");
 		multiLogin.setPropertyValue("true");
-		multiLogin.setDescription("멀티로그인 허용 여부. true: 멀티로그인 허용, false: 단일 로그인만 허용");
+		multiLogin.setDescription("멀티로그인 허용 여부 (최대 5개 기기). true: 멀티로그인 허용, false: 단일 로그인만 허용");
 		multiLogin.setActive(true);
 		multiLogin.setUpdatedBy("SYSTEM");
 		configs.add(multiLogin);

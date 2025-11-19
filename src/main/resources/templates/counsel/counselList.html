@@ -1,5 +1,9 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+  <title>온라인 상담 - Spring PetClinic</title>
+  <link rel="stylesheet" th:href="@{/css/custom-buttons.css}">
+</head>
 <body>
 <div class="container mt-4">
   <!-- 검색 영역: 반응형 레이아웃 개선 -->
@@ -15,37 +19,28 @@
 
       <!-- 검색 폼: 모바일 100%, 태블릿 이상 33% -->
       <div class="col-12 col-md-4">
-        <form th:action="@{/counsel/list}" method="get">
-          <div class="row g-2">
-            <div class="col-4">
-              <select class="form-select" name="type" style="height: 42px;">
-                <option value="title" th:selected="${type == 'title'}">제목</option>
-                <option value="author" th:selected="${type == 'author'}">글쓴이</option>
-              </select>
-            </div>
-            <div class="col-8">
-              <div class="input-group">
-                <input type="text"
-                       class="form-control"
-                       name="keyword"
-                       th:value="${keyword}"
-                       placeholder="검색어를 입력하세요"
-                       style="height: 42px; font-size: 0.95rem;"
-                       aria-label="Search">
-                <button class="btn btn-outline-secondary"
-                        type="submit"
-                        style="height: 42px;">
-                  <i class="fa fa-search"></i>
-                </button>
-              </div>
-            </div>
+        <form th:action="@{/counsel/list}" method="get" class="d-flex" style="gap: 8px;">
+          <select class="form-select" name="type" style="flex: 0 0 30%;">
+            <option value="title" th:selected="${type == 'title'}">제목</option>
+            <option value="author" th:selected="${type == 'author'}">글쓴이</option>
+          </select>
+          <div class="input-group" style="flex: 1;">
+            <input type="text"
+                   class="form-control"
+                   name="keyword"
+                   th:value="${keyword}"
+                   placeholder="검색어를 입력하세요"
+                   aria-label="Search">
+            <button class="custom-btn custom-btn-primary" type="submit" style="min-width: 80px;">
+              <i class="fa fa-search"></i> 검색
+            </button>
           </div>
         </form>
       </div>
     </div>
   </div>
 
-  <table class="table text-center align-middle mb-md-1">
+  <table class="table text-center align-middle mb-md-1 mt-4">
     <thead>
     <tr style="border-top: 1px solid;">
       <th scope="col">번호</th>
@@ -89,15 +84,12 @@
     </tr>
     </tbody>
   </table>
-  <!-- 글쓰기 버튼: 반응형 정렬 -->
-  <div class="container-fluid px-0 mt-3">
-    <div class="d-grid d-md-flex justify-content-md-end">
-      <a th:href="@{/counsel/write}"
-         class="btn btn-dark"
-         style="min-width: 120px; height: 42px; line-height: 28px;">
-        <i class="fa fa-pencil"></i> 글쓰기
-      </a>
-    </div>
+
+  <!-- 글쓰기 버튼 -->
+  <div class="d-flex justify-content-end mb-3">
+    <a th:href="@{/counsel/write}" class="custom-btn custom-btn-dark" style="height: 42px; min-width: 110px; display: flex; align-items: center; justify-content: center;">
+      <i class="fa fa-pencil me-1"></i> 글쓰기
+    </a>
   </div>
   <div th:replace="fragments/pagination :: pagination('/counsel/list', ${page})"></div>
 </div>

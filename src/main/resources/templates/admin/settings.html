@@ -4,16 +4,19 @@
 <div class="container mt-5">
   <div class="row">
     <div class="col-12">
-      <h2 class="mb-4">
-        <i class="bi bi-gear"></i> 시스템 설정 관리
-        <span class="badge bg-danger ms-2">관리자 전용</span>
-      </h2>
-
-      <!-- Flash 메시지 -->
-      <div th:if="${message}" class="alert alert-success alert-dismissible fade show" role="alert">
-        <i class="bi bi-check-circle-fill"></i> <span th:text="${message}"></span>
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      <!-- 헤더: 제목 + 홈 버튼 -->
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">
+          <i class="bi bi-gear"></i> 시스템 설정 관리
+          <span class="badge bg-danger ms-2">관리자 전용</span>
+        </h2>
+        <a th:href="@{/}" class="btn btn-secondary" style="min-width: 120px; height: 42px;">
+          <i class="bi bi-house"></i> 홈으로
+        </a>
       </div>
+
+      <!-- Flash 메시지 (hidden, modal로 표시) -->
+      <div th:if="${message}" style="display: none;" id="flashMessage" th:attr="data-message=${message}"></div>
       <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
         <i class="bi bi-exclamation-triangle-fill"></i> <span th:text="${error}"></span>
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
@@ -32,20 +35,27 @@
       <div class="row">
         <div class="col-md-8">
           <div class="card shadow-sm mb-4">
-            <div class="card-header bg-primary text-white">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
               <h5 class="mb-0">
                 <i class="bi bi-sliders"></i> 시스템 설정 목록
               </h5>
+              <button type="button"
+                      class="btn btn-sm btn-light"
+                      data-bs-toggle="modal"
+                      data-bs-target="#detailModal"
+                      title="상세 보기">
+                <i class="bi bi-plus-lg"></i> 상세
+              </button>
             </div>
-            <div class="card-body">
+            <div class="card-body" style="max-height: 500px; overflow-y: auto;">
               <div class="table-responsive">
                 <table class="table table-hover">
-                  <thead>
+                  <thead class="sticky-top bg-white">
                     <tr>
-                      <th width="30%">설정 키</th>
-                      <th width="20%">현재 값</th>
-                      <th width="35%">설명</th>
-                      <th width="15%">액션</th>
+                      <th style="width: 25%;">설정 키</th>
+                      <th style="width: 20%;">현재 값</th>
+                      <th style="width: 35%;">설명</th>
+                      <th style="width: 20%;">액션</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -54,23 +64,11 @@
                         <strong th:text="${config.propertyKey}"></strong>
                       </td>
                       <td>
-                        <!-- Boolean 값은 배지로 표시 (클릭 가능) -->
-                        <span th:if="${config.propertyValue == 'true'}"
-                              class="badge bg-success"
-                              style="cursor: pointer;"
-                              th:attr="data-key=${config.propertyKey},
-                                       data-value=${config.propertyValue},
-                                       data-description=${config.description}"
-                              onclick="openToggleModal(this)">
+                        <!-- Boolean 값은 배지로 표시 -->
+                        <span th:if="${config.propertyValue == 'true'}" class="badge bg-success">
                           <i class="bi bi-check-circle"></i> 활성화
                         </span>
-                        <span th:if="${config.propertyValue == 'false'}"
-                              class="badge bg-secondary"
-                              style="cursor: pointer;"
-                              th:attr="data-key=${config.propertyKey},
-                                       data-value=${config.propertyValue},
-                                       data-description=${config.description}"
-                              onclick="openToggleModal(this)">
+                        <span th:if="${config.propertyValue == 'false'}" class="badge bg-secondary">
                           <i class="bi bi-x-circle"></i> 비활성화
                         </span>
                         <!-- 숫자 값은 그대로 표시 -->
@@ -81,10 +79,32 @@
                         <small th:text="${config.description}"></small>
                       </td>
                       <td>
-                        <!-- true/false 값이 아닌 경우에만 수정 버튼 표시 -->
+                        <!-- Boolean 값: 활성화 → 비활성화 버튼, 비활성화 → 활성화 버튼 -->
+                        <button th:if="${config.propertyValue == 'true'}"
+                                type="button"
+                                class="btn btn-sm btn-warning"
+                                style="min-width: 90px;"
+                                th:attr="data-key=${config.propertyKey},
+                                         data-value=${config.propertyValue},
+                                         data-description=${config.description}"
+                                onclick="openToggleModal(this, 'false')">
+                          <i class="bi bi-x-circle"></i> 비활성화
+                        </button>
+                        <button th:if="${config.propertyValue == 'false'}"
+                                type="button"
+                                class="btn btn-sm btn-success"
+                                style="min-width: 90px;"
+                                th:attr="data-key=${config.propertyKey},
+                                         data-value=${config.propertyValue},
+                                         data-description=${config.description}"
+                                onclick="openToggleModal(this, 'true')">
+                          <i class="bi bi-check-circle"></i> 활성화
+                        </button>
+                        <!-- 숫자 값: 수정 버튼 -->
                         <button th:if="${config.propertyValue != 'true' && config.propertyValue != 'false'}"
                                 type="button"
                                 class="btn btn-sm btn-outline-primary"
+                                style="min-width: 90px;"
                                 data-bs-toggle="modal"
                                 data-bs-target="#editModal"
                                 th:attr="data-key=${config.propertyKey},
@@ -93,10 +113,6 @@
                                 onclick="openEditModal(this)">
                           <i class="bi bi-pencil"></i> 수정
                         </button>
-                        <span th:if="${config.propertyValue == 'true' || config.propertyValue == 'false'}"
-                              class="text-muted small">
-                          <i class="bi bi-hand-index"></i> 클릭하여 토글
-                        </span>
                       </td>
                     </tr>
                   </tbody>
@@ -109,19 +125,22 @@
         <!-- 현재 상태 패널 -->
         <div class="col-md-4">
           <div class="card shadow-sm mb-4">
-            <div class="card-header bg-info text-white">
+            <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
               <h5 class="mb-0">
                 <i class="bi bi-info-circle"></i> 현재 상태
               </h5>
+              <button type="button"
+                      class="btn btn-sm btn-light"
+                      data-bs-toggle="modal"
+                      data-bs-target="#statusModal"
+                      title="상세 보기">
+                <i class="bi bi-plus-lg"></i> 상세
+              </button>
             </div>
-            <div class="card-body">
+            <div class="card-body" style="max-height: 500px; overflow-y: auto;">
               <ul class="list-group list-group-flush">
                 <li class="list-group-item d-flex justify-content-between align-items-center" th:each="config : ${configs}">
-                  <div>
-                    <strong th:text="${config.propertyKey}"></strong>
-                    <br>
-                    <small class="text-muted" th:text="${config.description}"></small>
-                  </div>
+                  <strong th:text="${config.propertyKey}"></strong>
                   <div>
                     <span th:if="${config.propertyValue == 'true'}" class="badge bg-success">활성화</span>
                     <span th:if="${config.propertyValue == 'false'}" class="badge bg-secondary">비활성화</span>
@@ -132,39 +151,7 @@
               </ul>
             </div>
           </div>
-
-          <!-- 설정 안내 -->
-          <div class="card shadow-sm">
-            <div class="card-header bg-warning text-dark">
-              <h5 class="mb-0">
-                <i class="bi bi-exclamation-triangle"></i> 주의사항
-              </h5>
-            </div>
-            <div class="card-body">
-              <h6>멀티로그인 설정</h6>
-              <p class="small">
-                활성화 시 동일 계정으로 <strong>최대 5개 기기</strong>에서 동시 로그인이 가능합니다.
-              </p>
-              <hr>
-              <h6>파일 업로드 설정</h6>
-              <p class="small">
-                파일 업로드 기능의 활성화 여부를 설정합니다.
-              </p>
-              <hr>
-              <h6>설정 변경</h6>
-              <p class="small mb-0">
-                설정 변경 시 경고 메시지를 확인한 후 적용됩니다.
-              </p>
-            </div>
-          </div>
         </div>
-      </div>
-
-      <!-- 하단 버튼 -->
-      <div class="d-flex justify-content-between mt-4">
-        <a th:href="@{/}" class="btn btn-secondary">
-          <i class="bi bi-house"></i> 홈으로
-        </a>
       </div>
     </div>
   </div>
@@ -172,7 +159,7 @@
 
 <!-- 토글 경고 모달 -->
 <div class="modal fade" id="toggleModal" tabindex="-1" aria-labelledby="toggleModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
+  <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header bg-warning">
         <h5 class="modal-title" id="toggleModalLabel">
@@ -185,29 +172,177 @@
           <i class="bi bi-exclamation-triangle-fill"></i>
           <strong>경고:</strong> 시스템 설정을 변경하시겠습니까?
         </div>
-        <div class="mb-3">
-          <label class="form-label"><strong>설정 키</strong></label>
-          <p id="toggleKey" class="form-control-plaintext"></p>
+
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <label class="form-label"><strong>설정 키</strong></label>
+            <p id="toggleKey" class="form-control-plaintext"></p>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label"><strong>설명</strong></label>
+            <p id="toggleDescription" class="form-control-plaintext small"></p>
+          </div>
         </div>
-        <div class="mb-3">
-          <label class="form-label"><strong>현재 상태</strong></label>
-          <p id="toggleCurrentValue" class="form-control-plaintext"></p>
+
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <label class="form-label"><strong>현재 상태</strong></label>
+            <p id="toggleCurrentValue" class="form-control-plaintext"></p>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label"><strong>변경 후 상태</strong></label>
+            <p id="toggleNewValue" class="form-control-plaintext"></p>
+          </div>
         </div>
-        <div class="mb-3">
-          <label class="form-label"><strong>변경 후 상태</strong></label>
-          <p id="toggleNewValue" class="form-control-plaintext"></p>
-        </div>
-        <div class="mb-3">
-          <label class="form-label"><strong>설명</strong></label>
-          <p id="toggleDescription" class="form-control-plaintext"></p>
+
+        <!-- 주의사항 영역 -->
+        <div class="card bg-light" id="toggleWarningCard" style="display: none;">
+          <div class="card-header bg-danger text-white">
+            <h6 class="mb-0">
+              <i class="bi bi-exclamation-octagon"></i> 주의사항
+            </h6>
+          </div>
+          <div class="card-body" id="toggleWarning">
+            <!-- JavaScript로 동적 생성 -->
+          </div>
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+        <button type="button" class="btn btn-secondary" style="min-width: 120px; height: 42px;" data-bs-dismiss="modal">
           <i class="bi bi-x-circle"></i> No (취소)
         </button>
-        <button type="button" class="btn btn-primary" onclick="submitToggle()">
+        <button type="button" class="btn btn-primary" style="min-width: 120px; height: 42px;" onclick="submitToggle()">
           <i class="bi bi-check-circle"></i> Yes (변경)
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 시스템 설정 목록 상세 보기 모달 -->
+<div class="modal fade" id="detailModal" tabindex="-1" aria-labelledby="detailModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="detailModalLabel">
+          <i class="bi bi-list-ul"></i> 시스템 설정 목록 상세
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" style="max-height: 600px; overflow-y: auto;">
+        <table class="table table-bordered table-hover">
+          <thead class="table-primary sticky-top">
+            <tr>
+              <th style="width: 25%;">설정 키</th>
+              <th style="width: 15%;">현재 값</th>
+              <th style="width: 40%;">설명</th>
+              <th style="width: 20%;">액션</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr th:each="config : ${configs}">
+              <td><strong th:text="${config.propertyKey}"></strong></td>
+              <td>
+                <span th:if="${config.propertyValue == 'true'}" class="badge bg-success">활성화</span>
+                <span th:if="${config.propertyValue == 'false'}" class="badge bg-secondary">비활성화</span>
+                <span th:if="${config.propertyValue != 'true' && config.propertyValue != 'false'}"
+                      th:text="${config.propertyValue}"></span>
+              </td>
+              <td><small th:text="${config.description}"></small></td>
+              <td>
+                <button th:if="${config.propertyValue == 'true'}"
+                        type="button"
+                        class="btn btn-sm btn-warning"
+                        th:attr="data-key=${config.propertyKey},
+                                 data-value=${config.propertyValue},
+                                 data-description=${config.description}"
+                        onclick="openToggleModal(this, 'false')">
+                  비활성화
+                </button>
+                <button th:if="${config.propertyValue == 'false'}"
+                        type="button"
+                        class="btn btn-sm btn-success"
+                        th:attr="data-key=${config.propertyKey},
+                                 data-value=${config.propertyValue},
+                                 data-description=${config.description}"
+                        onclick="openToggleModal(this, 'true')">
+                  활성화
+                </button>
+                <button th:if="${config.propertyValue != 'true' && config.propertyValue != 'false'}"
+                        type="button"
+                        class="btn btn-sm btn-outline-primary"
+                        data-bs-toggle="modal"
+                        data-bs-target="#editModal"
+                        th:attr="data-key=${config.propertyKey},
+                                 data-value=${config.propertyValue},
+                                 data-description=${config.description}"
+                        onclick="openEditModal(this)">
+                  수정
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" style="min-width: 120px; height: 42px;" data-bs-dismiss="modal">
+          <i class="bi bi-x-circle"></i> 닫기
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 현재 상태 상세 보기 모달 -->
+<div class="modal fade" id="statusModal" tabindex="-1" aria-labelledby="statusModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-info text-white">
+        <h5 class="modal-title" id="statusModalLabel">
+          <i class="bi bi-info-circle"></i> 현재 상태 상세
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" style="max-height: 600px; overflow-y: auto;">
+        <ul class="list-group">
+          <li class="list-group-item d-flex justify-content-between align-items-start" th:each="config : ${configs}">
+            <div class="ms-2 me-auto" style="flex: 1;">
+              <div class="fw-bold" th:text="${config.propertyKey}"></div>
+              <small class="text-muted" th:text="${config.description}"></small>
+            </div>
+            <span th:if="${config.propertyValue == 'true'}" class="badge bg-success rounded-pill">활성화</span>
+            <span th:if="${config.propertyValue == 'false'}" class="badge bg-secondary rounded-pill">비활성화</span>
+            <span th:if="${config.propertyValue != 'true' && config.propertyValue != 'false'}"
+                  class="badge bg-primary rounded-pill" th:text="${config.propertyValue}"></span>
+          </li>
+        </ul>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" style="min-width: 120px; height: 42px;" data-bs-dismiss="modal">
+          <i class="bi bi-x-circle"></i> 닫기
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 성공 모달 -->
+<div class="modal fade" id="successModal" tabindex="-1" aria-labelledby="successModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title" id="successModalLabel">
+          <i class="bi bi-check-circle-fill"></i> 설정 변경 완료
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body text-center py-4">
+        <i class="bi bi-check-circle text-success" style="font-size: 4rem;"></i>
+        <h4 class="mt-3" id="successMessage"></h4>
+      </div>
+      <div class="modal-footer justify-content-center">
+        <button type="button" class="btn btn-success" style="min-width: 120px; height: 42px;" data-bs-dismiss="modal">
+          <i class="bi bi-check"></i> 확인
         </button>
       </div>
     </div>
@@ -253,10 +388,10 @@
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+          <button type="button" class="btn btn-secondary" style="min-width: 120px; height: 42px;" data-bs-dismiss="modal">
             <i class="bi bi-x-circle"></i> 취소
           </button>
-          <button type="submit" class="btn btn-primary">
+          <button type="submit" class="btn btn-primary" style="min-width: 120px; height: 42px;">
             <i class="bi bi-save"></i> 저장
           </button>
         </div>
@@ -270,16 +405,41 @@ let toggleKeyValue = '';
 let toggleNewValueText = '';
 
 /**
- * 토글 경고 모달 열기
- * - true/false 값 클릭 시 경고 모달 표시
+ * 주의사항 정의
+ * - 각 설정 키별 주의사항을 미리 정의
  */
-function openToggleModal(element) {
+const warnings = {
+  'multiLoginEnabled': {
+    title: '멀티로그인 설정 주의사항',
+    content: `
+      <ul class="mb-0">
+        <li><strong>활성화 시:</strong> 동일 계정으로 최대 5개 기기에서 동시 로그인 가능</li>
+        <li><strong>예시:</strong> PC 2대 + 모바일 3대 = 총 5개 기기</li>
+        <li><strong>초과 시:</strong> 6번째 기기에서 로그인 시 가장 오래된 세션이 자동으로 종료됩니다</li>
+        <li><strong>비활성화 시:</strong> 단일 로그인만 허용 (새 로그인 시 기존 세션 종료)</li>
+      </ul>
+    `
+  },
+  'fileUploadEnabled': {
+    title: '파일 업로드 설정 주의사항',
+    content: `
+      <ul class="mb-0">
+        <li><strong>활성화 시:</strong> 게시글 작성 시 파일 첨부 기능 사용 가능</li>
+        <li><strong>비활성화 시:</strong> 파일 첨부 버튼이 숨겨지며 업로드 불가능</li>
+        <li><strong>주의:</strong> 비활성화 시 기존에 업로드된 파일은 유지되나 다운로드만 가능</li>
+      </ul>
+    `
+  }
+};
+
+/**
+ * 토글 경고 모달 열기
+ * - 버튼 클릭 시 경고 모달 표시 + 주의사항 표출
+ */
+function openToggleModal(element, newValue) {
   const key = element.getAttribute('data-key');
   const currentValue = element.getAttribute('data-value');
   const description = element.getAttribute('data-description');
-
-  // 토글 값 계산
-  const newValue = currentValue === 'true' ? 'false' : 'true';
 
   // 표시 텍스트
   const currentText = currentValue === 'true' ? '활성화' : '비활성화';
@@ -293,11 +453,25 @@ function openToggleModal(element) {
     `<span class="badge ${newValue === 'true' ? 'bg-success' : 'bg-secondary'}">${newText}</span>`;
   document.getElementById('toggleDescription').textContent = description;
 
+  // 주의사항 표시
+  const warningCard = document.getElementById('toggleWarningCard');
+  const warningContent = document.getElementById('toggleWarning');
+
+  if (warnings[key]) {
+    warningCard.style.display = 'block';
+    warningContent.innerHTML = `
+      <h6 class="text-danger">${warnings[key].title}</h6>
+      ${warnings[key].content}
+    `;
+  } else {
+    warningCard.style.display = 'none';
+  }
+
   // 전역 변수에 저장
   toggleKeyValue = key;
   toggleNewValueText = newValue;
 
-  // 모달 표시
+  // 토글 모달 표시
   const modal = new bootstrap.Modal(document.getElementById('toggleModal'));
   modal.show();
 }
@@ -305,6 +479,7 @@ function openToggleModal(element) {
 /**
  * 토글 값 제출
  * - Yes 클릭 시 폼 제출
+ * - CSRF 토큰 포함
  */
 function submitToggle() {
   const form = document.createElement('form');
@@ -320,6 +495,18 @@ function submitToggle() {
   valueInput.type = 'hidden';
   valueInput.name = 'value';
   valueInput.value = toggleNewValueText;
+
+  // CSRF 토큰 추가
+  const csrfToken = document.querySelector('meta[name="_csrf"]');
+  const csrfHeader = document.querySelector('meta[name="_csrf_header"]');
+
+  if (csrfToken && csrfToken.content) {
+    const csrfInput = document.createElement('input');
+    csrfInput.type = 'hidden';
+    csrfInput.name = '_csrf';
+    csrfInput.value = csrfToken.content;
+    form.appendChild(csrfInput);
+  }
 
   form.appendChild(keyInput);
   form.appendChild(valueInput);
@@ -339,6 +526,37 @@ function openEditModal(button) {
   document.getElementById('editKey').value = key;
   document.getElementById('editValue').value = value;
   document.getElementById('editDescription').textContent = description;
+}
+
+/**
+ * 페이지 로드 시 성공 메시지 모달 표시
+ */
+document.addEventListener('DOMContentLoaded', function() {
+  const flashMessageEl = document.getElementById('flashMessage');
+  if (flashMessageEl) {
+    const message = flashMessageEl.getAttribute('data-message');
+    if (message) {
+      document.getElementById('successMessage').textContent = message;
+      const successModal = new bootstrap.Modal(document.getElementById('successModal'));
+      successModal.show();
+    }
+  }
+});
+
+/**
+ * 시스템 설정 목록 상세 보기 모달 표시
+ */
+function showDetailModal() {
+  const modal = new bootstrap.Modal(document.getElementById('detailModal'));
+  modal.show();
+}
+
+/**
+ * 현재 상태 상세 보기 모달 표시
+ */
+function showStatusModal() {
+  const modal = new bootstrap.Modal(document.getElementById('statusModal'));
+  modal.show();
 }
 </script>
 </body>

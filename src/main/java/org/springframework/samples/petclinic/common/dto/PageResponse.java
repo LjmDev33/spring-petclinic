@@ -40,6 +40,12 @@ public class PageResponse<T> {
 	public int getCurrentPage() { return currentPage; }
 	public void setCurrentPage(int currentPage) { this.currentPage = currentPage; }
 
+	/**
+	 * Spring Data Page 인터페이스 호환성을 위한 getter
+	 * pagination fragment에서 page.number로 접근 가능
+	 */
+	public int getNumber() { return currentPage; }
+
 	public long getTotalElements() { return totalElements; }
 	public void setTotalElements(long totalElements) { this.totalElements = totalElements; }
 

@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security" lang="ko">
+<head>
+  <title>자주묻는질문(FAQ) - Spring PetClinic</title>
+  <link rel="stylesheet" th:href="@{/css/custom-buttons.css}">
+</head>
+<body>
+<div class="container mt-4">
+  <!-- 제목 및 관리 버튼 영역 -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">
+      <i class="bi bi-question-circle"></i> 자주묻는질문(FAQ)
+    </h2>
+    <!-- 관리자 전용 버튼 -->
+    <div sec:authorize="hasRole('ADMIN')">
+      <a th:href="@{/admin/faq/write}" class="custom-btn custom-btn-dark" style="height: 42px; min-width: 110px; display: flex; align-items: center; justify-content: center;">
+        <i class="fa fa-pencil me-1"></i> 자주묻는질문 등록
+      </a>
+    </div>
+  </div>
+
+  <!-- 필터/검색 영역 -->
+  <div class="container-fluid px-0 mb-3">
+    <div class="row g-2 align-items-center">
+      <!-- 왼쪽: 리스트 개수 조절 -->
+      <div class="col-auto">
+        <select class="form-select" id="pageSizeSelect" onchange="changePageSize(this.value)">
+          <option value="10" th:selected="${pageSize == null || pageSize == 10}">10개씩 보기</option>
+          <option value="20" th:selected="${pageSize == 20}">20개씩 보기</option>
+          <option value="30" th:selected="${pageSize == 30}">30개씩 보기</option>
+          <option value="40" th:selected="${pageSize == 40}">40개씩 보기</option>
+          <option value="50" th:selected="${pageSize == 50}">50개씩 보기</option>
+        </select>
+      </div>
+
+      <!-- 왼쪽: 카테고리 선택 -->
+      <div class="col-auto">
+        <select class="form-select" id="categorySelect" onchange="changeCategory(this.value)">
+          <option value="" th:selected="${category == null || category == ''}">전체 카테고리</option>
+          <option value="일반" th:selected="${category == '일반'}">일반</option>
+          <option value="진료" th:selected="${category == '진료'}">진료</option>
+          <option value="예약" th:selected="${category == '예약'}">예약</option>
+          <option value="수술" th:selected="${category == '수술'}">수술</option>
+          <option value="기타" th:selected="${category == '기타'}">기타</option>
+        </select>
+      </div>
+
+      <!-- 가운데 빈 공간 -->
+      <div class="col"></div>
+
+      <!-- 오른쪽: 검색 타입 선택 -->
+      <div class="col-auto">
+        <form method="get" th:action="@{/faq}" id="searchForm" class="d-flex" style="gap: 8px;">
+          <input type="hidden" name="category" th:value="${category}">
+          <input type="hidden" name="pageSize" th:value="${pageSize}">
+          <select class="form-select" name="type">
+            <option value="question" th:selected="${type == 'question'}">제목</option>
+            <option value="all" th:selected="${type == null || type == 'all'}">제목+내용</option>
+          </select>
+          <div class="input-group" style="min-width: 350px;">
+            <input type="text"
+                   class="form-control"
+                   name="keyword"
+                   th:value="${keyword}"
+                   placeholder="검색어를 입력하세요">
+            <button type="submit" class="custom-btn custom-btn-primary" style="min-width: 80px;">
+              <i class="fa fa-search me-1"></i> 검색
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- 검색 조건 초기화: 검색 밑 우측 정렬 -->
+    <div class="row mt-2">
+      <div class="col d-flex justify-content-end">
+        <a href="/faq" class="reset-link">
+          <i class="bi bi-arrow-clockwise me-1"></i> 검색조건 초기화
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- FAQ 아코디언 -->
+  <div th:if="${#lists.isEmpty(faqs)}" class="alert alert-info text-center" role="alert">
+    <i class="bi bi-info-circle me-2"></i>
+    등록된 자주묻는질문이 없습니다.
+  </div>
+
+  <div th:if="${!#lists.isEmpty(faqs)}" class="accordion" id="faqAccordion">
+    <div class="accordion-item" th:each="faq, iterStat : ${faqs}">
+      <h2 class="accordion-header" th:attr="id='heading-' + ${faq.id}">
+        <button class="accordion-button collapsed" type="button"
+                data-bs-toggle="collapse"
+                th:attr="data-bs-target='#collapse-' + ${faq.id}"
+                aria-expanded="false"
+                th:attrappend="aria-controls='collapse-' + ${faq.id}">
+          <span class="badge bg-secondary me-2" th:text="${faq.category}">카테고리</span>
+          <span class="fw-bold me-2">Q.</span>
+          <span th:text="${faq.question}">질문</span>
+        </button>
+      </h2>
+      <div th:attr="id='collapse-' + ${faq.id}"
+           class="accordion-collapse collapse"
+           th:attrappend="aria-labelledby='heading-' + ${faq.id}"
+           data-bs-parent="#faqAccordion">
+        <div class="accordion-body bg-light">
+          <div class="mb-2">
+            <span class="badge bg-success">A.</span>
+          </div>
+          <div th:utext="${faq.answer}">답변</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 페이징 -->
+  <div th:if="${!#lists.isEmpty(faqs)}" class="mt-4">
+    <div th:replace="fragments/pagination :: pagination('/faq', ${page})"></div>
+  </div>
+</div>
+
+<script th:inline="javascript">
+  /**
+   * 카테고리 변경 시 필터링
+   */
+  function changeCategory(category) {
+    const currentUrl = new URL(window.location.href);
+    currentUrl.searchParams.set('category', category);
+    currentUrl.searchParams.delete('page'); // 카테고리 변경 시 첫 페이지로
+    window.location.href = currentUrl.toString();
+  }
+
+  /**
+   * 페이지 크기 변경
+   */
+  function changePageSize(size) {
+    const currentUrl = new URL(window.location.href);
+    currentUrl.searchParams.set('pageSize', size);
+    currentUrl.searchParams.delete('page'); // 페이지 크기 변경 시 첫 페이지로
+    window.location.href = currentUrl.toString();
+  }
+
+
+</script>
+</body>
+</html>
+
