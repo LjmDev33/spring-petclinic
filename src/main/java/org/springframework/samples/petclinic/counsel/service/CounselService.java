@@ -145,7 +145,41 @@ public class CounselService {
 			entity.setPasswordHash(BCrypt.hashpw(dto.getPassword(), BCrypt.gensalt()));
 		}
 
-		// 4. 첨부파일 처리
+		// 4. 첨부파일 처리 (Uppy 업로드된 파일 경로)
+		if (dto.getAttachmentPaths() != null && !dto.getAttachmentPaths().isBlank()) {
+			String[] filePaths = dto.getAttachmentPaths().split(",");
+
+			for (String filePath : filePaths) {
+				filePath = filePath.trim();
+				if (filePath.isEmpty()) continue;
+
+				try {
+					// Attachment 엔티티 생성 및 저장
+					Attachment attachment = new Attachment();
+					attachment.setFilePath(filePath);
+					attachment.setOriginalFileName(extractFileName(filePath)); // 경로에서 파일명 추출
+					attachment.setFileSize(0L); // 임시 업로드 시 크기 정보 없음 (추후 개선 가능)
+					attachment.setMimeType("application/octet-stream"); // 임시 업로드 시 MIME 타입 정보 없음
+					attachment.setCreatedAt(LocalDateTime.now());
+					attachmentRepository.save(attachment);
+
+					// CounselPost와 Attachment 연결
+					org.springframework.samples.petclinic.counsel.table.CounselPostAttachment postAttachment =
+						new org.springframework.samples.petclinic.counsel.table.CounselPostAttachment();
+					postAttachment.setCounselPost(entity);
+					postAttachment.setAttachment(attachment);
+					entity.addAttachment(postAttachment);
+
+					log.info("Attached file to post: path={}", filePath);
+				} catch (Exception e) {
+					log.error("Failed to attach file {}: {}", filePath, e.getMessage());
+					throw new RuntimeException("Error attaching file.", e);
+				}
+			}
+			entity.setAttachFlag(true); // 첨부파일 플래그 설정
+		}
+
+		// 5. 기존 MultipartFile 방식 첨부파일 처리 (하위 호환성 유지)
 		if (dto.getAttachments() != null && !dto.getAttachments().isEmpty()) {
 			for (MultipartFile file : dto.getAttachments()) {
 				if (file.isEmpty()) continue;
@@ -164,15 +198,13 @@ public class CounselService {
 					attachmentRepository.save(attachment);
 
 					// CounselPost와 Attachment 연결
-					org.springframework.samples.petclinic.counsel.table.CounselPostAttachment postAttachment = new org.springframework.samples.petclinic.counsel.table.CounselPostAttachment();
+					org.springframework.samples.petclinic.counsel.table.CounselPostAttachment postAttachment =
+						new org.springframework.samples.petclinic.counsel.table.CounselPostAttachment();
 					postAttachment.setCounselPost(entity);
 					postAttachment.setAttachment(attachment);
 					entity.addAttachment(postAttachment);
 				} catch (Exception e) {
 					log.error("Failed to process attachment file {}: {}", file.getOriginalFilename(), e.getMessage());
-					// 개별 첨부파일 실패가 전체 게시글 저장을 롤백시킬 수 있음 (Transactional)
-					// 요구사항에 따라 여기서 예외를 잡고 로깅만 할지, 아니면 계속 던질지 결정해야 함.
-					// 여기서는 트랜잭션 롤백을 위해 계속 던지도록 함.
 					throw new RuntimeException("Error processing attachment.", e);
 				}
 			}
@@ -358,5 +390,47 @@ public class CounselService {
 			log.error("Error incrementing view count for post ID {}: {}", postId, e.getMessage());
 			// 조회수 증가 실패는 치명적이지 않으므로 예외를 던지지 않음
 		}
+	}
+
+	/**
+	 * Uppy를 통한 임시 파일 저장 (게시글 작성 전 미리 업로드)
+	 * - 파일을 임시 저장하고 파일 경로를 반환
+	 * - 실제 게시글 저장 시 attachmentIds로 파일 경로를 전달받아 연결
+	 *
+	 * @param file 업로드된 파일
+	 * @return 저장된 파일 경로
+	 */
+	public String storeFileTemp(MultipartFile file) {
+		try {
+			// FileStorageService를 통해 파일 저장
+			String filePath = fileStorageService.storeFile(file);
+
+			log.info("Temp file stored: originalName={}, storedPath={}, size={}",
+				file.getOriginalFilename(), filePath, file.getSize());
+
+			return filePath;
+		} catch (Exception e) {
+			log.error("Failed to store temp file {}: {}", file.getOriginalFilename(), e.getMessage(), e);
+			throw new RuntimeException("임시 파일 저장 중 오류가 발생했습니다.", e);
+		}
+	}
+
+	/**
+	 * 파일 경로에서 파일명 추출 (UUID 파일명)
+	 * 예: "2025/11/abc123.jpg" → "abc123.jpg"
+	 *
+	 * @param filePath 파일 경로
+	 * @return 파일명
+	 */
+	private String extractFileName(String filePath) {
+		if (filePath == null || filePath.isBlank()) {
+			return "unknown";
+		}
+
+		// Windows/Linux 경로 구분자 모두 처리
+		String normalizedPath = filePath.replace('\\', '/');
+		int lastSlash = normalizedPath.lastIndexOf('/');
+
+		return lastSlash >= 0 ? normalizedPath.substring(lastSlash + 1) : normalizedPath;
 	}
 }

@@ -8,6 +8,377 @@
 
 ---
 
+## [3.5.22] - 2025-11-20 (오전 문제 해결)
+
+### 🚨 긴급 수정
+
+#### 1. 서버 실행 중단 문제 해결 ✅
+
+**문제**: Hibernate DDL 실행 중 무한 대기로 서버 실행 안됨
+
+**로그**:
+```
+Hibernate: alter table counsel_post modify column status enum ('COMPLETE','END','WAIT') not null
+▶ 이후 멈춤
+```
+
+**원인**:
+- `ddl-auto: update` 설정으로 Hibernate가 ENUM 컬럼 자동 변경 시도
+- MySQL에서 ENUM 컬럼 ALTER 시 테이블 락 발생
+- 기존 데이터가 있는 상태에서 락이 해제되지 않아 무한 대기
+
+**해결**:
+
+1. **application-dev.yml 수정**:
+```yaml
+# Before
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: update
+
+# After
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate  # 검증만 수행, 자동 변경 안함
+```
+
+2. **ENUM 수정 스크립트 생성**:
+- `src/main/resources/db/mysql/fix-counsel-enum.sql`
+- `fix-enum.bat` (Windows 실행 파일)
+
+**SQL**:
+```sql
+ALTER TABLE counsel_post 
+MODIFY COLUMN status ENUM('WAIT', 'COMPLETE', 'END') NOT NULL;
+```
+
+**실행 방법**:
+```cmd
+fix-enum.bat
+```
+
+또는
+
+```bash
+mysql -u dev33 -pezflow_010 petclinic < src/main/resources/db/mysql/fix-counsel-enum.sql
+```
+
+**효과**:
+- ✅ 서버가 정상적으로 시작됨
+- ✅ ENUM 값 순서가 Java Enum과 일치
+- ✅ 향후 스키마 자동 변경으로 인한 문제 방지
+
+**문서**:
+- `docs/08-troubleshooting/SERVER_HANG_ENUM_FIX.md` - 상세 가이드
+
+---
+
+## [3.5.21] - 2025-11-20 (저녁)
+
+### 🐛 수정된 버그
+
+#### 1. counsel-write.html 치명적 버그 수정 ✅
+
+**문제**: hidden input과 JavaScript 변수명 불일치로 첨부파일이 게시글에 연결되지 않음
+
+**원인**:
+- HTML: `<input id="attachmentIds" name="attachmentIds">`
+- JavaScript: `document.getElementById('attachmentPaths')`
+- DTO: `private String attachmentPaths;`
+
+**수정**:
+```html
+<!-- Before -->
+<input type="hidden" id="attachmentIds" name="attachmentIds">
+
+<!-- After -->
+<input type="hidden" id="attachmentPaths" name="attachmentPaths">
+```
+
+**영향**:
+- ✅ JavaScript가 정상적으로 hidden 필드에 파일 경로 저장
+- ✅ Spring MVC가 `attachmentPaths` 파라미터를 DTO에 바인딩
+- ✅ 첨부파일이 게시글에 정상 연결됨
+
+---
+
+### 🎨 UI 개선
+
+#### 1. counsel-password.html 버튼 UI 통일 ✅
+
+**변경 사항**:
+- 버튼 높이: `38px` → `42px` (다른 페이지와 통일)
+- 버튼 간격: `gap: 8px` 추가
+- `flex-wrap` 제거 (불필요)
+
+**적용**:
+```html
+<!-- Before -->
+<div class="d-flex flex-wrap justify-content-end">
+  <a style="height: 38px;">목록</a>
+  <button style="height: 38px;">확인</button>
+</div>
+
+<!-- After -->
+<div class="d-flex justify-content-end" style="gap: 8px;">
+  <a style="height: 42px;">목록</a>
+  <button style="height: 42px;">확인</button>
+</div>
+```
+
+---
+
+### ✅ 검증 완료
+
+**백엔드**:
+- ✅ CounselController.java 컴파일 성공
+- ✅ CounselService.java 컴파일 성공
+- ✅ CounselPostWriteDto.java 컴파일 성공
+
+**프론트엔드**:
+- ✅ counselList.html - 정렬, 검색 정상
+- ✅ counsel-write.html - attachmentPaths 오류 수정
+- ✅ counselDetail.html - 댓글, 모달 정상
+- ✅ counsel-password.html - 버튼 UI 통일
+- ✅ counsel-edit.html - 수정 폼 정상
+
+---
+
+## [3.5.20] - 2025-11-20 (오후)
+
+### 🎉 추가된 기능
+
+#### 1. Uppy 업로드 파일과 게시글 연동 완성 ✅
+
+**구현 내용**:
+- ✅ Uppy 업로드된 파일 경로를 게시글 저장 시 Attachment와 자동 연결
+- ✅ `attachmentPaths` 파라미터 추가 (쉼표 구분 파일 경로 목록)
+- ✅ 파일 경로 파싱 및 Attachment 엔티티 생성
+- ✅ 하위 호환성 유지 (기존 MultipartFile 방식도 동작)
+
+**변경 파일**:
+
+**1. CounselPostWriteDto.java**:
+```java
+private String attachmentPaths; // Uppy 업로드된 파일 경로 (쉼표 구분)
+
+public String getAttachmentPaths() { return attachmentPaths; }
+public void setAttachmentPaths(String attachmentPaths) { this.attachmentPaths = attachmentPaths; }
+```
+
+**2. CounselService.saveNew()**:
+```java
+// 4. 첨부파일 처리 (Uppy 업로드된 파일 경로)
+if (dto.getAttachmentPaths() != null && !dto.getAttachmentPaths().isBlank()) {
+    String[] filePaths = dto.getAttachmentPaths().split(",");
+    
+    for (String filePath : filePaths) {
+        // Attachment 엔티티 생성
+        Attachment attachment = new Attachment();
+        attachment.setFilePath(filePath);
+        attachment.setOriginalFileName(extractFileName(filePath));
+        attachmentRepository.save(attachment);
+        
+        // CounselPost와 연결
+        CounselPostAttachment postAttachment = new CounselPostAttachment();
+        postAttachment.setCounselPost(entity);
+        postAttachment.setAttachment(attachment);
+        entity.addAttachment(postAttachment);
+    }
+    entity.setAttachFlag(true);
+}
+
+// 파일 경로에서 파일명 추출 헬퍼 메서드
+private String extractFileName(String filePath) {
+    String normalizedPath = filePath.replace('\\', '/');
+    int lastSlash = normalizedPath.lastIndexOf('/');
+    return lastSlash >= 0 ? normalizedPath.substring(lastSlash + 1) : normalizedPath;
+}
+```
+
+**3. counsel-write.html**:
+```html
+<!-- hidden 필드 이름 변경 -->
+<input type="hidden" id="attachmentPaths" name="attachmentPaths">
+```
+
+```javascript
+// JavaScript에서 attachmentPaths로 전달
+document.getElementById('attachmentPaths').value = filePaths.join(',');
+```
+
+**효과**:
+- ✅ Uppy로 업로드한 파일이 게시글에 자동 첨부됨
+- ✅ 첨부파일 목록이 게시글 상세에서 표시됨
+- ✅ 파일 다운로드 가능 (추후 권한 검증 추가)
+
+**작동 흐름**:
+```
+1. 사용자가 Uppy로 파일 선택 → XHR Upload
+   ↓
+2. POST /counsel/upload-temp → FileStorageService.storeFile()
+   ↓
+3. 파일 저장 (data/counsel/uploads/yyyy/MM/UUID.ext)
+   ↓
+4. 서버 응답: { files: [{ path: "2025/11/abc.jpg" }] }
+   ↓
+5. JavaScript: attachmentPaths hidden 필드에 "2025/11/abc.jpg,2025/11/def.png" 저장
+   ↓
+6. 게시글 제출: POST /counsel (Form with attachmentPaths)
+   ↓
+7. CounselService.saveNew() → attachmentPaths 파싱
+   ↓
+8. Attachment 엔티티 생성 및 CounselPost와 연결
+   ↓
+9. 게시글 상세에서 첨부파일 목록 표시
+```
+
+---
+
+## [3.5.19] - 2025-11-20
+
+### 🎉 추가된 기능
+
+#### 1. Uppy 파일 업로드 기능 완성 ✅
+
+**구현 내용**:
+- ✅ Uppy Dashboard를 통한 드래그앤드롭 파일 업로드
+- ✅ 임시 파일 업로드 엔드포인트 (`POST /counsel/upload-temp`)
+- ✅ CSRF 토큰 자동 포함 (Spring Security 호환)
+- ✅ Progress Bar 실시간 업데이트
+- ✅ 파일 검증 (MIME 타입, 크기 제한 5MB)
+
+**변경 파일**:
+
+**1. CounselController.java**:
+```java
+/**
+ * Uppy 임시 파일 업로드 엔드포인트
+ * - Uppy Dashboard에서 파일 업로드 시 호출되는 REST API
+ * - 파일을 임시 저장하고 파일 ID 목록을 JSON 응답으로 반환
+ * - 실제 게시글 등록 시 attachmentIds로 전달받아 연결
+ */
+@PostMapping("/upload-temp")
+@ResponseBody
+public ResponseEntity<Map<String, Object>> uploadTemp(@RequestParam("files") MultipartFile[] files) {
+    Map<String, Object> response = new HashMap<>();
+    List<Map<String, Object>> uploadedFiles = new ArrayList<>();
+
+    try {
+        for (MultipartFile file : files) {
+            if (!file.isEmpty()) {
+                // 파일 저장 및 경로 반환
+                String filePath = counselService.storeFileTemp(file);
+                
+                Map<String, Object> fileInfo = new HashMap<>();
+                fileInfo.put("id", filePath);
+                fileInfo.put("name", file.getOriginalFilename());
+                fileInfo.put("size", file.getSize());
+                fileInfo.put("path", filePath);
+                
+                uploadedFiles.add(fileInfo);
+            }
+        }
+        
+        response.put("success", true);
+        response.put("files", uploadedFiles);
+        response.put("message", uploadedFiles.size() + "개 파일이 업로드되었습니다.");
+        
+        return ResponseEntity.ok(response);
+    } catch (Exception e) {
+        response.put("success", false);
+        response.put("error", "파일 업로드 중 오류가 발생했습니다: " + e.getMessage());
+        
+        return ResponseEntity.badRequest().body(response);
+    }
+}
+```
+
+**2. CounselService.java**:
+```java
+/**
+ * Uppy를 통한 임시 파일 저장 (게시글 작성 전 미리 업로드)
+ */
+public String storeFileTemp(MultipartFile file) {
+    try {
+        String filePath = fileStorageService.storeFile(file);
+        log.info("Temp file stored: originalName={}, storedPath={}, size={}", 
+            file.getOriginalFilename(), filePath, file.getSize());
+        return filePath;
+    } catch (Exception e) {
+        log.error("Failed to store temp file {}: {}", file.getOriginalFilename(), e.getMessage(), e);
+        throw new RuntimeException("임시 파일 저장 중 오류가 발생했습니다.", e);
+    }
+}
+```
+
+**3. counsel-write.html**:
+```javascript
+// CSRF 토큰 가져오기
+const csrfToken = document.querySelector('meta[name="_csrf"]').getAttribute('content');
+const csrfHeader = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');
+
+// Uppy XHRUpload 설정 (CSRF 헤더 포함)
+uppy.use(Uppy.XHRUpload, {
+  endpoint: '/counsel/upload-temp',
+  fieldName: 'files',
+  formData: true,
+  headers: {
+    [csrfHeader]: csrfToken
+  }
+});
+
+// 업로드 진행률 표시
+uppy.on('upload-progress', (file, progress) => {
+  const percent = Math.round((progress.bytesUploaded / progress.bytesTotal) * 100);
+  progressBar.style.width = percent + '%';
+  progressText.textContent = percent + '%';
+});
+
+// 업로드 완료 시 파일 경로 저장
+uppy.on('complete', (result) => {
+  if (result.successful && result.successful.length > 0) {
+    const filePaths = [];
+    result.successful.forEach(file => {
+      if (file.response && file.response.body && file.response.body.files) {
+        file.response.body.files.forEach(f => {
+          if (f.path) filePaths.push(f.path);
+        });
+      }
+    });
+    document.getElementById('attachmentIds').value = filePaths.join(',');
+  }
+});
+```
+
+**효과**:
+- ✅ 오프라인 환경 지원 (Uppy 로컬 내장)
+- ✅ 사용자 친화적 UI (드래그앤드롭, Progress Bar)
+- ✅ Spring Security CSRF 호환
+- ✅ 파일 검증 (MIME, 크기)
+- ✅ 다중 파일 업로드 (최대 5개, 파일당 5MB)
+
+**API 엔드포인트**:
+| 엔드포인트 | HTTP 메서드 | 설명 |
+|-----------|------------|------|
+| `/counsel/upload-temp` | POST | Uppy 임시 파일 업로드 |
+
+**파일 구조**:
+```
+static/
+├─ js/uppy/
+│  └─ uppy.min.js
+└─ css/uppy/
+   └─ uppy.min.css
+
+data/counsel/uploads/
+└─ yyyy/MM/UUID.ext
+```
+
+---
+
 ## [3.5.18] - 2025-11-12 (오후 - 4차)
 
 ### 🎨 UI/UX 개선

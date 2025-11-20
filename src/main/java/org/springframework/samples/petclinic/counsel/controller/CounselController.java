@@ -17,6 +17,13 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 /*
@@ -179,6 +186,55 @@ public class CounselController {
 	public String writeForm(Model model){
 		model.addAttribute("template", "counsel/counsel-write");
 		return "fragments/layout";
+	}
+
+	/**
+	 * Uppy 임시 파일 업로드 엔드포인트
+	 * - Uppy Dashboard에서 파일 업로드 시 호출되는 REST API
+	 * - 파일을 임시 저장하고 파일 ID 목록을 JSON 응답으로 반환
+	 * - 실제 게시글 등록 시 attachmentIds로 전달받아 연결
+	 *
+	 * @param files 업로드된 파일 배열
+	 * @return JSON 응답 (파일 ID 목록)
+	 */
+	@PostMapping("/upload-temp")
+	@ResponseBody
+	public ResponseEntity<Map<String, Object>> uploadTemp(@RequestParam("files") MultipartFile[] files) {
+		Map<String, Object> response = new HashMap<>();
+		List<Map<String, Object>> uploadedFiles = new ArrayList<>();
+
+		try {
+			for (MultipartFile file : files) {
+				if (!file.isEmpty()) {
+					// 파일 저장 및 경로 반환
+					String filePath = counselService.storeFileTemp(file);
+
+					Map<String, Object> fileInfo = new HashMap<>();
+					fileInfo.put("id", filePath); // 파일 경로를 ID로 사용
+					fileInfo.put("name", file.getOriginalFilename());
+					fileInfo.put("size", file.getSize());
+					fileInfo.put("path", filePath);
+
+					uploadedFiles.add(fileInfo);
+
+					log.info("Temp file uploaded: name={}, size={}, path={}",
+						file.getOriginalFilename(), file.getSize(), filePath);
+				}
+			}
+
+			response.put("success", true);
+			response.put("files", uploadedFiles);
+			response.put("message", uploadedFiles.size() + "개 파일이 업로드되었습니다.");
+
+			return ResponseEntity.ok(response);
+		} catch (Exception e) {
+			log.error("Temp file upload failed: {}", e.getMessage(), e);
+
+			response.put("success", false);
+			response.put("error", "파일 업로드 중 오류가 발생했습니다: " + e.getMessage());
+
+			return ResponseEntity.badRequest().body(response);
+		}
 	}
 
 	/**

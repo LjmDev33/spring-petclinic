@@ -19,6 +19,7 @@ public class CounselPostWriteDto {
     private boolean secret;
     private List<MultipartFile> attachments;
     private List<Integer> attachmentIds = new java.util.ArrayList<>();
+    private String attachmentPaths; // Uppy 업로드된 파일 경로 (쉼표 구분)
 
     // Getters and Setters
 
@@ -76,5 +77,13 @@ public class CounselPostWriteDto {
 
     public void setAttachmentIds(List<Integer> attachmentIds) {
         this.attachmentIds = attachmentIds;
+    }
+
+    public String getAttachmentPaths() {
+        return attachmentPaths;
+    }
+
+    public void setAttachmentPaths(String attachmentPaths) {
+        this.attachmentPaths = attachmentPaths;
     }
 }

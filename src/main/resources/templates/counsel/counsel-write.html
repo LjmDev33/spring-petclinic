@@ -75,8 +75,8 @@
       <label class="form-label">
         <i class="bi bi-paperclip"></i> 첨부파일
       </label>
-      <!-- 실제 서버 전송용 hidden input (추후 업로드된 파일 ID 목록을 담기 위해 사용) -->
-      <input type="hidden" id="attachmentIds" name="attachmentIds">
+      <!-- 실제 서버 전송용 hidden input (Uppy 업로드된 파일 경로, 쉼표 구분) -->
+      <input type="hidden" id="attachmentPaths" name="attachmentPaths">
       <!-- Uppy Dashboard가 렌더링될 영역 -->
       <div id="uppy-dashboard" class="border rounded p-2"></div>
       <small class="form-text text-muted">
@@ -164,10 +164,17 @@
       }
     });
 
+    // CSRF 토큰 가져오기
+    const csrfToken = document.querySelector('meta[name="_csrf"]').getAttribute('content');
+    const csrfHeader = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');
+
     uppy.use(Uppy.XHRUpload, {
       endpoint: '/counsel/upload-temp',
       fieldName: 'files',
-      formData: true
+      formData: true,
+      headers: {
+        [csrfHeader]: csrfToken
+      }
     });
 
     // 업로드 진행률 표시
@@ -192,10 +199,24 @@
         }, 1000);
       }
 
-      // 업로드 성공한 파일 ID들을 hidden 필드에 저장
+      // 업로드 성공한 파일 경로들을 hidden 필드에 저장
       if (result.successful && result.successful.length > 0) {
-        const ids = result.successful.map(file => file.response.body.id || file.id).join(',');
-        document.getElementById('attachmentIds').value = ids;
+        const filePaths = [];
+        result.successful.forEach(file => {
+          // 서버 응답에서 파일 정보 추출
+          if (file.response && file.response.body && file.response.body.files) {
+            file.response.body.files.forEach(f => {
+              if (f.path) {
+                filePaths.push(f.path);
+              }
+            });
+          }
+        });
+
+        if (filePaths.length > 0) {
+          document.getElementById('attachmentPaths').value = filePaths.join(',');
+          console.log('Uploaded file paths:', filePaths);
+        }
       }
     });
 

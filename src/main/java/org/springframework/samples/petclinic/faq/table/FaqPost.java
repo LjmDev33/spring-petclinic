@@ -19,18 +19,19 @@ import java.time.LocalDateTime;
  *     - FAQ 카테고리별 노출 순서 자동 조정
  */
 @Entity
-@Table(name = "faq_posts")
+@Table(name = "`faq_posts`")
 public class FaqPost {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")  // PK 컬럼명 명시
     private Long id;
 
     @Column(nullable = false, length = 200)
     private String question;
 
     @Lob
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String answer;
 
     @Column(name = "category", length = 50)

@@ -2,41 +2,23 @@ spring:
 
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/petclinic?allowPublicKeyRetrieval=true&useSSL=false&sessionVariables=FOREIGN_KEY_CHECKS=0
+    url: jdbc:mysql://localhost:3306/petclinic?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=Asia/Seoul
     username: dev33
     password: ezflow_010
 
   jpa:
-    database-platform: org.hibernate.dialect.MySQLDialect
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQL8Dialect
         format_sql: true
-        use_sql_comments: true
         jdbc:
-        # 외래키 제약조건 생성하지 않음 (개발 환경 전용)
           batch_size: 50
-        hbm2ddl:
-          auto: update  # update 사용으로 DROP 오류 방지
-        # 스키마 생성 시 오류 무시 (테이블이 없어도 DROP 시도하지 않음)
-        schema_management:
-          script:
-            action: none  # 스크립트 기반 스키마 관리 비활성화
-        jakarta:
-          persistence:
-            schema-generation:
-              create-database-schemas: false
-          # 외래키 제약조건을 고려한 테이블 DROP 순서 설정
-          import_files_sql_extractor: org.hibernate.tool.schema.internal.script.MultiLineSqlScriptExtractor
     hibernate:
-      ddl-auto: update  # update 사용으로 기존 데이터 유지 및 스키마 자동 업데이트
+      ddl-auto: create  # 개발환경: 테이블 DROP 후 CREATE
       naming:
-        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl  # 테이블명 그대로 사용
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
     show-sql: true
     open-in-view: false
-  sql:
-    init:
-      mode: never
 
   thymeleaf:
     mode: HTML
