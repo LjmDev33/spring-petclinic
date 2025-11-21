@@ -8,6 +8,32 @@
         <i class="bi bi-person-circle"></i> 마이페이지
       </h2>
 
+      <!-- 빠른 메뉴 -->
+      <div class="row mb-4">
+        <div class="col-md-6 mb-3">
+          <a th:href="@{/mypage/my-posts}" class="text-decoration-none">
+            <div class="card h-100 border-primary">
+              <div class="card-body text-center">
+                <i class="bi bi-file-earmark-text fs-1 text-primary"></i>
+                <h5 class="mt-3">내 게시글</h5>
+                <p class="text-muted mb-0">작성한 온라인상담 게시글을 확인하세요</p>
+              </div>
+            </div>
+          </a>
+        </div>
+        <div class="col-md-6 mb-3">
+          <a th:href="@{/mypage/my-comments}" class="text-decoration-none">
+            <div class="card h-100 border-success">
+              <div class="card-body text-center">
+                <i class="bi bi-chat-dots fs-1 text-success"></i>
+                <h5 class="mt-3">내 댓글</h5>
+                <p class="text-muted mb-0">작성한 댓글을 확인하세요</p>
+              </div>
+            </div>
+          </a>
+        </div>
+      </div>
+
       <!-- Flash 메시지 -->
       <div th:if="${message}" class="alert alert-success alert-dismissible fade show" role="alert">
         <i class="bi bi-check-circle-fill"></i> <span th:text="${message}"></span>
@@ -114,7 +140,7 @@
 
             <!-- 버튼 -->
             <div class="d-flex justify-content-end gap-2">
-              <button type="submit" class="btn btn-primary" style="min-width: 120px; height: 42px;">
+              <button type="submit" class="custom-btn custom-btn-primary">
                 <i class="bi bi-save"></i> 프로필 저장
               </button>
             </div>
@@ -166,7 +192,7 @@
 
             <!-- 버튼 -->
             <div class="d-flex justify-content-end gap-2">
-              <button type="submit" class="btn btn-warning" style="min-width: 120px; height: 42px;">
+              <button type="submit" class="custom-btn custom-btn-warning">
                 <i class="bi bi-key"></i> 비밀번호 변경
               </button>
             </div>
@@ -176,11 +202,11 @@
 
       <!-- 하단 버튼 -->
       <div class="d-flex justify-content-between mt-4">
-        <a th:href="@{/}" class="btn btn-secondary" style="min-width: 120px; height: 42px; display: flex; align-items: center; justify-content: center;">
+        <a th:href="@{/}" class="custom-btn custom-btn-secondary">
           <i class="bi bi-house"></i> 홈으로
         </a>
         <form th:action="@{/logout}" method="post" class="d-inline mb-0">
-          <button type="submit" class="btn btn-outline-danger" style="min-width: 120px; height: 42px;">
+          <button type="submit" class="custom-btn custom-btn-outline-danger">
             <i class="bi bi-box-arrow-right"></i> 로그아웃
           </button>
         </form>

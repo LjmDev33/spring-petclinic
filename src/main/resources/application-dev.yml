@@ -14,7 +14,7 @@ spring:
         jdbc:
           batch_size: 50
     hibernate:
-      ddl-auto: create  # 개발환경: 테이블 DROP 후 CREATE
+      ddl-auto: update  # 개발환경: 스키마 자동 업데이트 (테이블 추가/컬럼 변경)
       naming:
         physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
     show-sql: true

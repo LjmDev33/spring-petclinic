@@ -1,11 +1,16 @@
 <!DOCTYPE html>
-
-<html xmlns:th="https://www.thymeleaf.org" th:replace="~{fragments/layout :: layout (~{::body},'error')}">
-
+<html xmlns:th="https://www.thymeleaf.org">
 <body>
-  <img src="../static/images/pets.png" th:src="@{/images/pets.png}" />
-  <h2 th:text="#{somethingHappened}">Something happened...</h2>
-  <p th:text="${message}">Exception message</p>
+<div class="container mt-5">
+  <div class="text-center">
+    <img src="../static/images/pets.png" th:src="@{/images/pets.png}" class="mb-4" style="max-width: 300px;" />
+    <h2 th:text="#{somethingHappened}" class="text-danger mb-3">Something happened...</h2>
+    <p th:text="${message}" class="text-muted">Exception message</p>
+    <a th:href="@{/}" class="custom-btn custom-btn-primary mt-3">
+      <i class="bi bi-house me-1"></i> 홈으로
+    </a>
+  </div>
+</div>
 </body>
 
 </html>

@@ -339,8 +339,79 @@ public class CounselService {
 				}
 			}
 
+			// 첨부파일 삭제 처리 (deletedFileIds)
+			if (dto.getDeletedFileIds() != null && !dto.getDeletedFileIds().isBlank()) {
+				String[] deletedIds = dto.getDeletedFileIds().split(",");
+
+				for (String idStr : deletedIds) {
+					idStr = idStr.trim();
+					if (idStr.isEmpty()) continue;
+
+					try {
+						Integer attachmentId = Integer.parseInt(idStr);
+
+						// Attachment 조회
+						Attachment attachment = attachmentRepository.findById(attachmentId).orElse(null);
+						if (attachment == null) {
+							log.warn("Attachment not found for deletion: id={}", attachmentId);
+							continue;
+						}
+
+						// CounselPostAttachment 중간 테이블 삭제
+						entity.getAttachments().removeIf(postAttachment ->
+							postAttachment.getAttachment().getId().equals(attachmentId));
+
+						// Attachment Soft Delete (del_flag = true)
+						attachment.setDelFlag(true);
+						attachment.setDeletedAt(LocalDateTime.now());
+						attachmentRepository.save(attachment);
+
+						log.info("Attachment marked for deletion: id={}, fileName={}",
+							attachmentId, attachment.getOriginalFileName());
+					} catch (NumberFormatException e) {
+						log.error("Invalid attachment ID format: {}", idStr);
+					}
+				}
+			}
+
+			// 새 첨부파일 추가 처리 (Uppy 업로드된 파일 경로)
+			if (dto.getAttachmentPaths() != null && !dto.getAttachmentPaths().isBlank()) {
+				String[] filePaths = dto.getAttachmentPaths().split(",");
+
+				for (String filePath : filePaths) {
+					filePath = filePath.trim();
+					if (filePath.isEmpty()) continue;
+
+					try {
+						// Attachment 엔티티 생성 및 저장
+						Attachment attachment = new Attachment();
+						attachment.setFilePath(filePath);
+						attachment.setOriginalFileName(extractFileName(filePath));
+						attachment.setFileSize(0L); // 임시 업로드 시 크기 정보 없음
+						attachment.setMimeType("application/octet-stream");
+						attachment.setCreatedAt(LocalDateTime.now());
+						attachmentRepository.save(attachment);
+
+						// CounselPost와 Attachment 연결
+						CounselPostAttachment postAttachment = new CounselPostAttachment();
+						postAttachment.setCounselPost(entity);
+						postAttachment.setAttachment(attachment);
+						entity.addAttachment(postAttachment);
+
+						log.info("New attachment added to post: postId={}, path={}", postId, filePath);
+					} catch (Exception e) {
+						log.error("Failed to add attachment {}: {}", filePath, e.getMessage());
+						throw new RuntimeException("Error adding attachment.", e);
+					}
+				}
+			}
+
+			// 첨부파일 플래그 업데이트
+			entity.setAttachFlag(!entity.getAttachments().isEmpty());
+
 			repository.save(entity);
-			log.info("Successfully updated post with ID: {}", postId);
+			log.info("Successfully updated post with ID: {} (attachments: {})",
+				postId, entity.getAttachments().size());
 			return true;
 		} catch (Exception e) {
 			log.error("Error occurred while updating post ID {}: {}", postId, e.getMessage(), e);

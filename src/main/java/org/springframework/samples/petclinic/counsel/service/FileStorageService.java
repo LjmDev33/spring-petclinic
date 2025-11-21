@@ -32,8 +32,36 @@ public class FileStorageService {
     private static final Logger log = LoggerFactory.getLogger(FileStorageService.class);
     private final Path baseDir;
     private final Tika tika = new Tika();
-    private static final List<String> ALLOWED_MIME_TYPES = Arrays.asList("image/jpeg", "image/png", "image/gif");
-    private static final long MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+
+    /**
+     * 허용된 MIME 타입 목록
+     * - 이미지: JPEG, PNG, GIF, BMP, WebP
+     * - 문서: PDF, MS Word, MS Excel, HWP, 텍스트
+     * - 압축: ZIP, RAR
+     */
+    private static final List<String> ALLOWED_MIME_TYPES = Arrays.asList(
+        // 이미지 파일
+        "image/jpeg",
+        "image/png",
+        "image/gif",
+        "image/bmp",
+        "image/webp",
+        // 문서 파일
+        "application/pdf",
+        "application/msword", // .doc
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // .docx
+        "application/vnd.ms-excel", // .xls
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // .xlsx
+        "application/x-hwp", // .hwp
+        "application/haansofthwp", // .hwp (한글 2014 이상)
+        "text/plain", // .txt
+        // 압축 파일
+        "application/zip",
+        "application/x-zip-compressed",
+        "application/x-rar-compressed"
+    );
+
+    private static final long MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB (문서 파일을 위해 5MB → 10MB로 확대)
 
     public FileStorageService(@Value("${petclinic.counsel.upload-dir:C:/eGovFrameDev-3.9.0-64bit/petclinic/data/counsel/uploads}") String uploadDir) {
         this.baseDir = Paths.get(uploadDir);
@@ -105,13 +133,18 @@ public class FileStorageService {
         try (InputStream inputStream = file.getInputStream()) {
             String mimeType = tika.detect(inputStream);
             if (!ALLOWED_MIME_TYPES.contains(mimeType)) {
-                throw new IllegalArgumentException("Invalid MIME type: " + mimeType);
+                log.warn("MIME type validation failed: fileName={}, mimeType={}",
+                    file.getOriginalFilename(), mimeType);
+                throw new IllegalArgumentException("허용되지 않는 파일 형식입니다. (감지된 타입: " + mimeType + ")");
             }
         }
 
         // 파일 크기 검증
         if (file.getSize() > MAX_FILE_SIZE) {
-            throw new IllegalArgumentException("File size exceeds the limit of " + MAX_FILE_SIZE / (1024 * 1024) + "MB.");
+            log.warn("File size validation failed: fileName={}, size={}, maxSize={}",
+                file.getOriginalFilename(), file.getSize(), MAX_FILE_SIZE);
+            throw new IllegalArgumentException("파일 크기가 제한을 초과했습니다. (최대 " +
+                MAX_FILE_SIZE / (1024 * 1024) + "MB)");
         }
     }
 

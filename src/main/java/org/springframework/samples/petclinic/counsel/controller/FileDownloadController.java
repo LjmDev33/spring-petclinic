@@ -53,7 +53,7 @@ public class FileDownloadController {
 	private static final Logger log = LoggerFactory.getLogger(FileDownloadController.class);
 
 	// 세션 속성 키: 비밀번호 검증 완료된 게시글 ID 목록
-	private static final String UNLOCKED_POSTS_SESSION_KEY = "unlockedCounselPosts";
+	private static final String UNLOCKED_POSTS_SESSION_KEY = "counselUnlocked";
 
 	private final Path baseDir;
 	private final AttachmentRepository attachmentRepository;
@@ -153,7 +153,10 @@ public class FileDownloadController {
 	private CounselPost findPostByAttachment(Attachment attachment) {
 		return counselPostRepository.findAll().stream()
 			.filter(post -> post.getAttachments() != null &&
-				post.getAttachments().stream().anyMatch(att -> att.getId().equals(attachment.getId())))
+				post.getAttachments().stream()
+					.anyMatch(postAttachment ->
+						postAttachment.getAttachment() != null &&
+						postAttachment.getAttachment().getId().equals(attachment.getId())))
 			.findFirst()
 			.orElse(null);
 	}

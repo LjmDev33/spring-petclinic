@@ -1,5 +1,11 @@
 package org.springframework.samples.petclinic.user.controller;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.samples.petclinic.common.dto.PageResponse;
+import org.springframework.samples.petclinic.counsel.dto.CounselPostDto;
+import org.springframework.samples.petclinic.counsel.table.CounselComment;
 import org.springframework.samples.petclinic.user.service.UserService;
 import org.springframework.samples.petclinic.user.table.User;
 import org.springframework.security.core.Authentication;
@@ -130,6 +136,64 @@ public class MyPageController {
 		}
 
 		return "redirect:/mypage";
+	}
+
+	/**
+	 * 내가 작성한 온라인상담 게시글 목록
+	 *
+	 * @param authentication Spring Security 인증 정보
+	 * @param page 페이지 번호 (0부터 시작)
+	 * @param size 페이지 크기 (기본 10개)
+	 * @param model 뷰 모델
+	 * @return 내 게시글 목록 템플릿
+	 */
+	@GetMapping("/my-posts")
+	public String myPosts(
+		Authentication authentication,
+		@RequestParam(defaultValue = "0") int page,
+		@RequestParam(defaultValue = "10") int size,
+		Model model) {
+
+		String username = authentication.getName();
+		User user = userService.findByUsername(username);
+		String nickname = user.getNickname();
+
+		Pageable pageable = PageRequest.of(page, size);
+		PageResponse<CounselPostDto> posts = userService.getMyPosts(nickname, pageable);
+
+		model.addAttribute("posts", posts);
+		model.addAttribute("currentPage", page);
+		model.addAttribute("template", "user/my-posts");
+		return "fragments/layout";
+	}
+
+	/**
+	 * 내가 작성한 댓글 목록
+	 *
+	 * @param authentication Spring Security 인증 정보
+	 * @param page 페이지 번호 (0부터 시작)
+	 * @param size 페이지 크기 (기본 10개)
+	 * @param model 뷰 모델
+	 * @return 내 댓글 목록 템플릿
+	 */
+	@GetMapping("/my-comments")
+	public String myComments(
+		Authentication authentication,
+		@RequestParam(defaultValue = "0") int page,
+		@RequestParam(defaultValue = "10") int size,
+		Model model) {
+
+		String username = authentication.getName();
+		User user = userService.findByUsername(username);
+		String nickname = user.getNickname();
+
+		Pageable pageable = PageRequest.of(page, size);
+		Page<CounselComment> comments = userService.getMyComments(nickname, pageable);
+
+		model.addAttribute("comments", comments);
+		model.addAttribute("currentPage", page);
+		model.addAttribute("template", "user/my-comments");
+		return "fragments/layout";
 	}
 }
 

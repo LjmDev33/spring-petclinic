@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+  <title>내가 작성한 게시글 - Spring PetClinic</title>
+  <link rel="stylesheet" th:href="@{/css/custom-buttons.css}">
+</head>
+<body>
+<div class="container mt-4">
+  <!-- 헤더 -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">
+      <i class="bi bi-file-earmark-text"></i> 내가 작성한 온라인상담 게시글
+    </h2>
+    <a th:href="@{/mypage}" class="custom-btn custom-btn-secondary">
+      <i class="bi bi-person me-1"></i> 마이페이지
+    </a>
+  </div>
+
+  <!-- 게시글 목록 -->
+  <div th:if="${posts.content.isEmpty()}" class="alert alert-light text-center py-5">
+    <i class="bi bi-inbox fs-1 text-muted"></i>
+    <p class="mt-3 mb-0 text-muted">작성한 게시글이 없습니다.</p>
+  </div>
+
+  <div th:if="${!posts.content.isEmpty()}">
+    <div class="table-responsive">
+      <table class="table table-hover">
+        <thead class="table-light">
+          <tr>
+            <th style="width: 8%;">번호</th>
+            <th style="width: 45%;">제목</th>
+            <th style="width: 10%;">상태</th>
+            <th style="width: 10%;">공개여부</th>
+            <th style="width: 12%;">작성일</th>
+            <th style="width: 8%;">조회수</th>
+            <th style="width: 7%;">첨부</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr th:each="post : ${posts.content}">
+            <td class="text-center" th:text="${post.id}"></td>
+            <td>
+              <a th:href="@{/counsel/detail/{id}(id=${post.id})}"
+                 class="text-decoration-none"
+                 th:text="${post.title}"></a>
+            </td>
+            <td class="text-center">
+              <span th:if="${post.status.name() == 'WAIT'}" class="badge bg-warning text-dark">답변대기</span>
+              <span th:if="${post.status.name() == 'COMPLETE'}" class="badge bg-success">답변완료</span>
+              <span th:if="${post.status.name() == 'END'}" class="badge bg-secondary">상담종료</span>
+            </td>
+            <td class="text-center">
+              <span th:if="${post.secret}" class="badge bg-danger">비공개</span>
+              <span th:if="${!post.secret}" class="badge bg-info">공개</span>
+            </td>
+            <td class="text-center" th:text="${#temporals.format(post.createdAt, 'yyyy-MM-dd')}"></td>
+            <td class="text-center" th:text="${post.viewCount}"></td>
+            <td class="text-center">
+              <i th:if="${post.attachFlag}" class="bi bi-paperclip text-primary"></i>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 페이징 -->
+    <nav th:if="${posts.totalPages > 1}">
+      <ul class="pagination justify-content-center">
+        <!-- 이전 -->
+        <li class="page-item" th:classappend="${posts.currentPage == 0} ? 'disabled'">
+          <a class="page-link" th:href="@{/mypage/my-posts(page=${posts.currentPage - 1}, size=10)}">이전</a>
+        </li>
+
+        <!-- 페이지 번호 -->
+        <li class="page-item"
+            th:each="i : ${#numbers.sequence(0, posts.totalPages - 1)}"
+            th:classappend="${i == posts.currentPage} ? 'active'">
+          <a class="page-link" th:href="@{/mypage/my-posts(page=${i}, size=10)}" th:text="${i + 1}"></a>
+        </li>
+
+        <!-- 다음 -->
+        <li class="page-item" th:classappend="${posts.currentPage + 1 >= posts.totalPages} ? 'disabled'">
+          <a class="page-link" th:href="@{/mypage/my-posts(page=${posts.currentPage + 1}, size=10)}">다음</a>
+        </li>
+      </ul>
+    </nav>
+  </div>
+</div>
+</body>
+</html>
+

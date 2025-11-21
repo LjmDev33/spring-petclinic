@@ -29,7 +29,8 @@ public class AttachmentMapper {
         dto.setFileSize(attachment.getFileSize());
         dto.setMimeType(attachment.getMimeType());
         dto.setCreatedAt(attachment.getCreatedAt());
-        // 다운로드 URL은 서비스 레이어에서 설정
+        // 다운로드 URL 자동 생성 (/counsel/download/{fileId})
+        dto.setDownloadUrl("/counsel/download/" + attachment.getId());
         return dto;
     }
 }

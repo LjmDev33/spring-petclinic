@@ -3,6 +3,8 @@
 <head>
   <title>온라인 상담 상세 - Spring PetClinic</title>
   <link rel="stylesheet" th:href="@{/css/custom-buttons.css}">
+  <!-- 오류 알림 시스템 CSS -->
+  <link rel="stylesheet" th:href="@{/css/error-notification.css}">
 </head>
 <body>
 <div class="container mt-4">
@@ -95,19 +97,24 @@
           <!-- 일반 댓글 / 대댓글 구분 렌더링 -->
           <div th:each="c : ${comments}"
                class="comment-item mb-3"
-               th:classappend="${c.parentId != null ? 'ms-5' : ''}">
+               th:style="${c.parentId != null ? 'position: relative; margin-left: 3rem; padding-left: 1.5rem;' : ''}">
 
-            <!-- 대댓글인 경우 연결선 표시 -->
-            <div th:if="${c.parentId != null}" class="d-flex align-items-start mb-2">
-              <i class="bi bi-arrow-return-right text-info fs-4 me-2"></i>
-              <small class="text-muted">
-                <i class="bi bi-reply-fill"></i> 위 댓글에 대한 답변
+            <!-- 대댓글인 경우 세로 연결선 표시 -->
+            <div th:if="${c.parentId != null}"
+                 style="position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: linear-gradient(to bottom, #0dcaf0, #0dcaf080); border-radius: 2px;"></div>
+
+            <!-- 대댓글인 경우 화살표 아이콘 -->
+            <div th:if="${c.parentId != null}" class="d-flex align-items-center mb-2" style="color: #0dcaf0;">
+              <i class="bi bi-arrow-return-right fs-5 me-2"></i>
+              <small class="fw-bold">
+                <i class="bi bi-reply-fill"></i> 답글
               </small>
             </div>
 
             <!-- 댓글 카드 -->
             <div class="card border"
-                 th:classappend="${c.parentId != null ? 'border-info shadow-sm' : 'border-secondary'}">
+                 th:classappend="${c.parentId != null ? 'border-info bg-light bg-opacity-25' : 'border-secondary'}"
+                 th:style="${c.staffReply ? 'border-left: 4px solid #198754 !important;' : ''}">
               <div class="card-body">
                 <!-- 댓글 헤더 (작성자, 날짜) -->
                 <div class="d-flex justify-content-between align-items-start mb-2">
@@ -131,7 +138,9 @@
                 </div>
 
                 <!-- 댓글 내용 -->
-                <div class="comment-content py-2" th:text="${c.content}"></div>
+                <div class="comment-content py-2"
+                     th:text="${c.content}"
+                     style="word-break: break-word; white-space: pre-wrap;"></div>
 
                 <!-- 댓글 액션 버튼 -->
                 <div class="d-flex justify-content-end mt-2" style="gap: 8px;" th:if="${!c.staffReply}">
@@ -175,8 +184,8 @@
           <p>정말로 이 게시글을 삭제하시겠습니까?</p>
           <div class="mb-3" th:if="${post.secret}">
             <label for="deletePassword" class="form-label">비밀번호 확인</label>
-            <input type="password" id="deletePassword" name="password" class="form-control"
-                   placeholder="게시글 작성 시 설정한 비밀번호를 입력하세요" required>
+            <input type="password" id="deletePassword" name="password" class="form-control form-input-sm"
+                   placeholder="비밀번호 입력" required>
           </div>
         </div>
         <div class="modal-footer">
@@ -216,8 +225,8 @@
             <input type="text"
                    id="commentAuthor"
                    name="authorName"
-                   class="form-control"
-                   placeholder="이름을 입력하세요"
+                   class="form-control form-input-sm"
+                   placeholder="이름 입력"
                    th:value="${#authentication.principal.nickname}"
                    required>
           </div>
@@ -225,16 +234,16 @@
             <label for="commentPassword" class="form-label">
               <i class="bi bi-lock"></i> 비밀번호 (선택)
             </label>
-            <input type="password" id="commentPassword" name="password" class="form-control"
-                   placeholder="댓글 삭제 시 필요합니다">
+            <input type="password" id="commentPassword" name="password" class="form-control form-input-sm"
+                   placeholder="비밀번호 입력">
             <small class="form-text text-muted">비밀번호를 설정하면 삭제 시 본인 확인이 가능합니다.</small>
           </div>
           <div class="mb-3">
             <label for="commentContent" class="form-label">
               <i class="bi bi-chat-text"></i> 내용 <span class="text-danger">*</span>
             </label>
-            <textarea id="commentContent" name="content" class="form-control" rows="5"
-                      placeholder="댓글 내용을 입력하세요" required></textarea>
+            <textarea id="commentContent" name="content" class="form-control form-input-sm" rows="5"
+                      placeholder="내용 입력" required></textarea>
           </div>
         </div>
         <div class="modal-footer">
@@ -275,6 +284,9 @@
     </div>
   </div>
 </div>
+
+<!-- 오류 알림 시스템 JS -->
+<script th:src="@{/js/error-notification.js}"></script>
 
 <script th:inline="javascript">
   /**
@@ -336,6 +348,44 @@
     const openCommentModalBtn = document.getElementById('openCommentModalBtn');
     if (openCommentModalBtn) {
       openCommentModalBtn.addEventListener('click', resetCommentModal);
+    }
+
+    // 댓글 폼 제출 시 검증
+    const commentForm = document.getElementById('commentForm');
+    if (commentForm) {
+      commentForm.addEventListener('submit', function(e) {
+        const authorName = document.getElementById('commentAuthor').value.trim();
+        const content = document.getElementById('commentContent').value.trim();
+
+        if (!authorName) {
+          e.preventDefault();
+          ErrorNotification.showToast('입력 오류', '이름을 입력해주세요.', 'warning', 3000);
+          return false;
+        }
+
+        if (!content) {
+          e.preventDefault();
+          ErrorNotification.showToast('입력 오류', '댓글 내용을 입력해주세요.', 'warning', 3000);
+          return false;
+        }
+
+        // 정상 제출
+        return true;
+      });
+    }
+
+    // 댓글 삭제 폼 제출 시 검증
+    const deleteCommentForm = document.getElementById('deleteCommentForm');
+    if (deleteCommentForm) {
+      deleteCommentForm.addEventListener('submit', function(e) {
+        const passwordInput = document.getElementById('commentDeletePassword');
+        if (passwordInput && passwordInput.required && !passwordInput.value.trim()) {
+          e.preventDefault();
+          ErrorNotification.showToast('입력 오류', '비밀번호를 입력해주세요.', 'warning', 3000);
+          return false;
+        }
+        return true;
+      });
     }
   });
 </script>

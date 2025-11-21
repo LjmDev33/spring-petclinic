@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+  <title>내가 작성한 댓글 - Spring PetClinic</title>
+  <link rel="stylesheet" th:href="@{/css/custom-buttons.css}">
+</head>
+<body>
+<div class="container mt-4">
+  <!-- 헤더 -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">
+      <i class="bi bi-chat-dots"></i> 내가 작성한 댓글
+    </h2>
+    <a th:href="@{/mypage}" class="custom-btn custom-btn-secondary">
+      <i class="bi bi-person me-1"></i> 마이페이지
+    </a>
+  </div>
+
+  <!-- 댓글 목록 -->
+  <div th:if="${comments.content.isEmpty()}" class="alert alert-light text-center py-5">
+    <i class="bi bi-inbox fs-1 text-muted"></i>
+    <p class="mt-3 mb-0 text-muted">작성한 댓글이 없습니다.</p>
+  </div>
+
+  <div th:if="${!comments.content.isEmpty()}">
+    <div class="list-group">
+      <div th:each="comment : ${comments.content}" class="list-group-item list-group-item-action">
+        <div class="d-flex w-100 justify-content-between align-items-start mb-2">
+          <h6 class="mb-1">
+            <a th:href="@{/counsel/detail/{id}(id=${comment.post.id})}"
+               class="text-decoration-none">
+              <i class="bi bi-arrow-right-circle"></i>
+              <span th:text="${comment.post.title}"></span>
+            </a>
+          </h6>
+          <small class="text-muted">
+            <i class="bi bi-clock"></i>
+            <span th:text="${#temporals.format(comment.createdAt, 'yyyy-MM-dd HH:mm')}"></span>
+          </small>
+        </div>
+        <p class="mb-1" th:text="${comment.content}"></p>
+        <div class="d-flex justify-content-between align-items-center mt-2">
+          <div>
+            <span th:if="${comment.parentId != null}" class="badge bg-info me-2">
+              <i class="bi bi-reply"></i> 답글
+            </span>
+            <span th:if="${comment.staffReply}" class="badge bg-success">
+              <i class="bi bi-shield-check"></i> 운영자
+            </span>
+          </div>
+          <a th:href="@{/counsel/detail/{id}(id=${comment.post.id})}" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-box-arrow-up-right"></i> 원글 보기
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- 페이징 -->
+    <nav th:if="${comments.totalPages > 1}" class="mt-4">
+      <ul class="pagination justify-content-center">
+        <!-- 이전 -->
+        <li class="page-item" th:classappend="${comments.number == 0} ? 'disabled'">
+          <a class="page-link" th:href="@{/mypage/my-comments(page=${comments.number - 1}, size=10)}">이전</a>
+        </li>
+
+        <!-- 페이지 번호 -->
+        <li class="page-item"
+            th:each="i : ${#numbers.sequence(0, comments.totalPages - 1)}"
+            th:classappend="${i == comments.number} ? 'active'">
+          <a class="page-link" th:href="@{/mypage/my-comments(page=${i}, size=10)}" th:text="${i + 1}"></a>
+        </li>
+
+        <!-- 다음 -->
+        <li class="page-item" th:classappend="${comments.number + 1 >= comments.totalPages} ? 'disabled'">
+          <a class="page-link" th:href="@{/mypage/my-comments(page=${comments.number + 1}, size=10)}">다음</a>
+        </li>
+      </ul>
+    </nav>
+  </div>
+</div>
+</body>
+</html>
+

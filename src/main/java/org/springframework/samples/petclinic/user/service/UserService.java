@@ -2,6 +2,15 @@ package org.springframework.samples.petclinic.user.service;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.samples.petclinic.common.dto.PageResponse;
+import org.springframework.samples.petclinic.counsel.dto.CounselPostDto;
+import org.springframework.samples.petclinic.counsel.mapper.CounselPostMapper;
+import org.springframework.samples.petclinic.counsel.repository.CounselCommentRepository;
+import org.springframework.samples.petclinic.counsel.repository.CounselPostRepository;
+import org.springframework.samples.petclinic.counsel.table.CounselComment;
+import org.springframework.samples.petclinic.counsel.table.CounselPost;
 import org.springframework.samples.petclinic.user.dto.UserRegisterDto;
 import org.springframework.samples.petclinic.user.repository.UserRepository;
 import org.springframework.samples.petclinic.user.table.User;
@@ -31,10 +40,20 @@ public class UserService {
 	private static final Logger log = LoggerFactory.getLogger(UserService.class);
 	private final UserRepository userRepository;
 	private final PasswordEncoder passwordEncoder;
+	private final CounselPostRepository counselPostRepository;
+	private final CounselCommentRepository counselCommentRepository;
+	private final CounselPostMapper counselPostMapper;
 
-	public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+	public UserService(UserRepository userRepository,
+					   PasswordEncoder passwordEncoder,
+					   CounselPostRepository counselPostRepository,
+					   CounselCommentRepository counselCommentRepository,
+					   CounselPostMapper counselPostMapper) {
 		this.userRepository = userRepository;
 		this.passwordEncoder = passwordEncoder;
+		this.counselPostRepository = counselPostRepository;
+		this.counselCommentRepository = counselCommentRepository;
+		this.counselPostMapper = counselPostMapper;
 	}
 
 	/**
@@ -137,5 +156,31 @@ public class UserService {
 		user.setPassword(passwordEncoder.encode(newPassword));
 		userRepository.save(user);
 		log.info("User password changed: username={}", username);
+	}
+
+	/**
+	 * 내가 작성한 온라인상담 게시글 목록 조회
+	 *
+	 * @param nickname 작성자 닉네임
+	 * @param pageable 페이징 정보
+	 * @return 게시글 페이지
+	 */
+	@Transactional(readOnly = true)
+	public PageResponse<CounselPostDto> getMyPosts(String nickname, Pageable pageable) {
+		Page<CounselPost> entityPage = counselPostRepository.findByAuthorNameOrderByCreatedAtDesc(nickname, pageable);
+		Page<CounselPostDto> dtoPage = entityPage.map(counselPostMapper::toDto);
+		return new PageResponse<>(dtoPage);
+	}
+
+	/**
+	 * 내가 작성한 댓글 목록 조회
+	 *
+	 * @param nickname 작성자 닉네임
+	 * @param pageable 페이징 정보
+	 * @return 댓글 페이지
+	 */
+	@Transactional(readOnly = true)
+	public Page<CounselComment> getMyComments(String nickname, Pageable pageable) {
+		return counselCommentRepository.findByAuthorNameOrderByCreatedAtDesc(nickname, pageable);
 	}
 }

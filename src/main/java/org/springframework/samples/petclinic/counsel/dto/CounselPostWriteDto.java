@@ -20,6 +20,7 @@ public class CounselPostWriteDto {
     private List<MultipartFile> attachments;
     private List<Integer> attachmentIds = new java.util.ArrayList<>();
     private String attachmentPaths; // Uppy 업로드된 파일 경로 (쉼표 구분)
+    private String deletedFileIds; // 삭제할 첨부파일 ID 목록 (쉼표 구분, 수정 시만 사용)
 
     // Getters and Setters
 
@@ -85,5 +86,13 @@ public class CounselPostWriteDto {
 
     public void setAttachmentPaths(String attachmentPaths) {
         this.attachmentPaths = attachmentPaths;
+    }
+
+    public String getDeletedFileIds() {
+        return deletedFileIds;
+    }
+
+    public void setDeletedFileIds(String deletedFileIds) {
+        this.deletedFileIds = deletedFileIds;
     }
 }

@@ -86,14 +86,15 @@ public class CounselController {
 	/**
 	 * 게시글 상세 조회
 	 * - 비공개 글이고 아직 세션에서 unlock 되지 않았다면 비밀번호 입력 화면으로 리다이렉트한다.
-	 * - 세션과 클라이언트 IP 정보를 이용해 조회수 중복 증가를 방지한다.
+	 * - 세션, 클라이언트 IP, 쿠키(24시간 유지)를 이용해 조회수 중복 증가를 방지한다.
 	 * - 게시글 상세 및 댓글 목록을 모델에 담아 상세 화면 템플릿을 렌더링한다.
 	 */
 	@GetMapping("/detail/{id}")
 	public String detail(@PathVariable Long id, Model model,
 				   @SessionAttribute(value = "counselUnlocked", required = false) java.util.Set<Long> unlocked,
 				   jakarta.servlet.http.HttpSession session,
-				   jakarta.servlet.http.HttpServletRequest request) {
+				   jakarta.servlet.http.HttpServletRequest request,
+				   jakarta.servlet.http.HttpServletResponse response) {
 		CounselPostDto post;
 		try {
 			post = counselService.getDetail(id);
@@ -107,7 +108,7 @@ public class CounselController {
 			return "redirect:/counsel/detail/" + id + "/password";
 		}
 
-		// 조회수 중복 방지: 세션 + IP 기반
+		// 조회수 중복 방지: 세션 + IP + 쿠키(24시간) 기반
 		// 1. 세션 기반 중복 방지
 		@SuppressWarnings("unchecked")
 		java.util.Set<Long> viewedPosts = (java.util.Set<Long>) session.getAttribute("viewedCounselPosts");
@@ -125,15 +126,39 @@ public class CounselController {
 			viewedByIp = new java.util.HashSet<>();
 		}
 
-		// 3. 세션에도 없고 IP+게시글 조합으로도 조회하지 않았으면 조회수 증가
-		if (!viewedPosts.contains(id) && !viewedByIp.contains(viewKey)) {
+		// 3. 쿠키 기반 중복 방지 (24시간 유지, 세션 만료 후에도 유효)
+		String cookieName = "counsel_view_" + id;
+		boolean viewedByCookie = false;
+
+		jakarta.servlet.http.Cookie[] cookies = request.getCookies();
+		if (cookies != null) {
+			for (jakarta.servlet.http.Cookie cookie : cookies) {
+				if (cookieName.equals(cookie.getName())) {
+					viewedByCookie = true;
+					break;
+				}
+			}
+		}
+
+		// 4. 세션, IP, 쿠키 모두 확인하여 중복 조회 방지
+		if (!viewedPosts.contains(id) && !viewedByIp.contains(viewKey) && !viewedByCookie) {
 			counselService.incrementViewCount(id);
 			viewedPosts.add(id);
 			viewedByIp.add(viewKey);
 			session.setAttribute("viewedCounselPosts", viewedPosts);
 			session.setAttribute("viewedCounselPostsByIp", viewedByIp);
 
-			log.info("View count incremented: postId={}, clientIp={}", id, clientIp);
+			// 쿠키 생성 (24시간 유지)
+			jakarta.servlet.http.Cookie viewCookie = new jakarta.servlet.http.Cookie(cookieName, "viewed");
+			viewCookie.setMaxAge(24 * 60 * 60); // 24시간 (초 단위)
+			viewCookie.setPath("/"); // 전체 경로에서 유효
+			viewCookie.setHttpOnly(true); // XSS 방지
+			response.addCookie(viewCookie);
+
+			log.info("View count incremented: postId={}, clientIp={}, cookie created", id, clientIp);
+		} else {
+			log.debug("View count NOT incremented (already viewed): postId={}, session={}, ip={}, cookie={}",
+				id, viewedPosts.contains(id), viewedByIp.contains(viewKey), viewedByCookie);
 		}
 
 		java.util.List<CounselCommentDto> comments = counselService.getCommentsForPost(id);
