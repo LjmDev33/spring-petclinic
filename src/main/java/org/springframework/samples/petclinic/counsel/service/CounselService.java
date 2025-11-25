@@ -16,7 +16,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 import org.springframework.samples.petclinic.counsel.dto.CounselCommentDto;
 import org.springframework.samples.petclinic.counsel.mapper.CounselCommentMapper;
@@ -230,8 +230,58 @@ public class CounselService {
 	 * 게시글의 댓글 목록을 DTO로 반환합니다.
 	 */
 	public List<CounselCommentDto> getCommentsForPost(Long postId){
-		List<CounselComment> list = commentRepository.findByPost_IdOrderByCreatedAtAsc(postId);
-		return list.stream().map(CounselCommentMapper::toDto).collect(Collectors.toList());
+		List<CounselComment> allComments = commentRepository.findByPost_IdOrderByCreatedAtAsc(postId);
+
+		// Tree 구조로 변환
+		Map<Long, CounselCommentDto> commentMap = new HashMap<>();
+		List<CounselCommentDto> rootComments = new ArrayList<>();
+
+		// 1단계: 모든 댓글을 DTO로 변환하고 Map에 저장
+		for (CounselComment comment : allComments) {
+			CounselCommentDto dto = CounselCommentMapper.toDto(comment);
+
+			// 부모 댓글 작성자 이름 설정
+			if (comment.getParent() != null) {
+				dto.setParentAuthorName(comment.getParent().getAuthorName());
+				dto.setParentId(comment.getParent().getId());
+			}
+
+			commentMap.put(dto.getId(), dto);
+		}
+
+		// 2단계: Tree 구조 생성 (부모-자식 관계 설정)
+		for (CounselComment comment : allComments) {
+			CounselCommentDto dto = commentMap.get(comment.getId());
+
+			if (dto == null) {
+				// 예상치 못한 상황: Map에 없는 댓글
+				log.warn("Comment ID {} not found in commentMap", comment.getId());
+				continue;
+			}
+
+			if (comment.getParent() == null) {
+				// 최상위 댓글
+				dto.setDepth(0);
+				rootComments.add(dto);
+			} else {
+				// 대댓글: 부모의 children에 추가
+				CounselCommentDto parent = commentMap.get(comment.getParent().getId());
+				if (parent != null) {
+					parent.getChildren().add(dto);
+					dto.setDepth(parent.getDepth() + 1);
+				} else {
+					// 부모를 찾을 수 없는 경우 (orphaned comment) 최상위로 처리
+					log.warn("Orphaned comment detected: Comment ID {} has non-existent parent ID {}",
+							 comment.getId(), comment.getParent().getId());
+					dto.setDepth(0);
+					dto.setParentId(null); // orphaned이므로 parentId 제거
+					dto.setParentAuthorName(null);
+					rootComments.add(dto);
+				}
+			}
+		}
+
+		return rootComments;
 	}
 
 	/**
@@ -280,23 +330,33 @@ public class CounselService {
 			// 운영자 댓글은 삭제 불가 (추후 권한 관리 기능 추가 시 변경)
 			if (comment.isStaffReply()) {
 				log.warn("Attempt to delete a staff comment (ID: {}) by a user.", commentId);
-				return false; // 또는 예외 발생
+				throw new IllegalStateException("운영자 댓글은 삭제할 수 없습니다.");
 			}
 
 			// 비밀번호가 있는 댓글인 경우, 비밀번호 검증
 			if (comment.getPasswordHash() != null && !comment.getPasswordHash().isBlank()) {
 				if (!BCrypt.checkpw(password == null ? "" : password, comment.getPasswordHash())) {
 					log.warn("Failed password verification for deleting comment ID: {}", commentId);
-					return false; // 비밀번호 불일치
+					throw new IllegalArgumentException("비밀번호가 일치하지 않습니다.");
 				}
+			}
+
+			// 자식 댓글(답글)이 있는지 확인
+			List<CounselComment> children = commentRepository.findByParent_Id(commentId);
+			if (!children.isEmpty()) {
+				log.warn("Attempt to delete comment ID {} which has {} child comments", commentId, children.size());
+				throw new IllegalStateException("답글이 있는 댓글은 삭제할 수 없습니다. 먼저 답글을 삭제해주세요.");
 			}
 
 			commentRepository.delete(comment);
 			log.info("Successfully deleted comment with ID: {}", commentId);
 			return true;
+		} catch (IllegalStateException | IllegalArgumentException e) {
+			// 비즈니스 로직 예외는 그대로 던져서 Controller에서 처리
+			throw e;
 		} catch (Exception e) {
 			log.error("Error occurred while deleting comment ID {}: {}", commentId, e.getMessage(), e);
-			return false;
+			throw new RuntimeException("댓글 삭제 중 오류가 발생했습니다: " + e.getMessage());
 		}
 	}
 

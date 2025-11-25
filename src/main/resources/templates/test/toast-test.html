@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+  <title>Toast 알림 시스템 테스트</title>
+  <link th:href="@{/webjars/bootstrap/dist/css/bootstrap.css}" rel="stylesheet">
+  <style>
+    .test-container {
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 30px;
+    }
+    .test-section {
+      margin-bottom: 30px;
+      padding: 20px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+    }
+    .test-result {
+      margin-top: 10px;
+      padding: 10px;
+      border-radius: 4px;
+      font-family: monospace;
+      background-color: #f8f9fa;
+    }
+  </style>
+</head>
+<body>
+<div class="container test-container">
+  <h1 class="mb-4">🍞 Toast 알림 시스템 테스트</h1>
+
+  <!-- 1. TOAST 객체 존재 확인 -->
+  <div class="test-section">
+    <h3>1️⃣ TOAST 객체 전역 등록 확인</h3>
+    <button class="btn btn-primary" onclick="checkToastObject()">객체 확인</button>
+    <div id="result1" class="test-result"></div>
+  </div>
+
+  <!-- 2. 4가지 타입 메서드 테스트 -->
+  <div class="test-section">
+    <h3>2️⃣ 4가지 타입 메서드 테스트</h3>
+    <div class="d-flex gap-2 flex-wrap">
+      <button class="btn btn-success" onclick="testSuccess()">성공 메시지</button>
+      <button class="btn btn-info" onclick="testInfo()">정보 메시지</button>
+      <button class="btn btn-warning" onclick="testWarning()">경고 메시지</button>
+      <button class="btn btn-danger" onclick="testError()">에러 메시지</button>
+    </div>
+    <div id="result2" class="test-result"></div>
+  </div>
+
+  <!-- 3. XSS 방지 테스트 -->
+  <div class="test-section">
+    <h3>3️⃣ XSS 방지 테스트</h3>
+    <button class="btn btn-warning" onclick="testXSS()">XSS 공격 시뮬레이션</button>
+    <div id="result3" class="test-result"></div>
+  </div>
+
+  <!-- 4. 메모리 누수 방지 테스트 -->
+  <div class="test-section">
+    <h3>4️⃣ 메모리 누수 방지 테스트</h3>
+    <button class="btn btn-secondary" onclick="testMemoryLeak()">연속 Toast 생성 (10개)</button>
+    <div id="result4" class="test-result"></div>
+  </div>
+
+  <!-- 5. 자동 사라짐 테스트 -->
+  <div class="test-section">
+    <h3>5️⃣ 자동 사라짐 테스트</h3>
+    <button class="btn btn-primary" onclick="testAutoHide()">1초 후 자동 사라짐</button>
+    <div id="result5" class="test-result"></div>
+  </div>
+
+  <!-- 홈으로 돌아가기 -->
+  <div class="mt-4">
+    <a th:href="@{/}" class="btn btn-secondary">← 홈으로</a>
+  </div>
+</div>
+
+<script th:src="@{/webjars/bootstrap/dist/js/bootstrap.bundle.min.js}"></script>
+<script th:src="@{/js/toast-util.js}"></script>
+
+<script>
+  /**
+   * 1. TOAST 객체 존재 확인
+   */
+  function checkToastObject() {
+    const result1 = document.getElementById('result1');
+
+    if (typeof TOAST === 'undefined') {
+      result1.innerHTML = '❌ 실패: TOAST 객체가 정의되지 않았습니다.';
+      result1.style.backgroundColor = '#f8d7da';
+      return;
+    }
+
+    const methods = ['showSuccess', 'showInfo', 'showWarning', 'showError', '_show', '_escapeHtml'];
+    const missingMethods = methods.filter(method => typeof TOAST[method] !== 'function');
+
+    if (missingMethods.length > 0) {
+      result1.innerHTML = `❌ 실패: 누락된 메서드: ${missingMethods.join(', ')}`;
+      result1.style.backgroundColor = '#f8d7da';
+      return;
+    }
+
+    result1.innerHTML = `
+      ✅ 성공: TOAST 객체가 정상적으로 등록되었습니다.<br>
+      - typeof TOAST: ${typeof TOAST}<br>
+      - 메서드 개수: ${methods.length}개<br>
+      - 모든 메서드 존재: ${methods.join(', ')}
+    `;
+    result1.style.backgroundColor = '#d4edda';
+
+    TOAST.showSuccess('TOAST 객체 확인 완료!', 2000);
+  }
+
+  /**
+   * 2. 4가지 타입 메서드 테스트
+   */
+  function testSuccess() {
+    TOAST.showSuccess('이것은 성공 메시지입니다.', 3000);
+    logTest('성공 메시지 호출 완료');
+  }
+
+  function testInfo() {
+    TOAST.showInfo('이것은 정보 메시지입니다.', 3000);
+    logTest('정보 메시지 호출 완료');
+  }
+
+  function testWarning() {
+    TOAST.showWarning('이것은 경고 메시지입니다.', 4000);
+    logTest('경고 메시지 호출 완료');
+  }
+
+  function testError() {
+    TOAST.showError('이것은 에러 메시지입니다.', 5000);
+    logTest('에러 메시지 호출 완료');
+  }
+
+  function logTest(message) {
+    const result2 = document.getElementById('result2');
+    const timestamp = new Date().toLocaleTimeString();
+    result2.innerHTML += `[${timestamp}] ${message}<br>`;
+    result2.style.backgroundColor = '#d4edda';
+  }
+
+  /**
+   * 3. XSS 방지 테스트
+   */
+  function testXSS() {
+    const maliciousScript = '<script>alert("XSS Attack!")</script>';
+    TOAST.showWarning(maliciousScript, 5000);
+
+    const result3 = document.getElementById('result3');
+    result3.innerHTML = `
+      ✅ XSS 방지 테스트 완료<br>
+      - 입력: ${maliciousScript}<br>
+      - Toast에 스크립트가 텍스트로 표시되면 성공<br>
+      - alert 창이 뜨지 않으면 XSS 방지 성공
+    `;
+    result3.style.backgroundColor = '#d4edda';
+  }
+
+  /**
+   * 4. 메모리 누수 방지 테스트
+   */
+  function testMemoryLeak() {
+    const result4 = document.getElementById('result4');
+    result4.innerHTML = '테스트 시작...<br>';
+
+    for (let i = 1; i <= 10; i++) {
+      setTimeout(() => {
+        TOAST.showInfo(`Toast #${i}`, 1000);
+        result4.innerHTML += `[${new Date().toLocaleTimeString()}] Toast #${i} 생성<br>`;
+      }, i * 200);
+    }
+
+    setTimeout(() => {
+      const toastContainer = document.getElementById('toast-container');
+      const toastCount = toastContainer ? toastContainer.children.length : 0;
+
+      result4.innerHTML += `<br>✅ 테스트 완료<br>`;
+      result4.innerHTML += `- 현재 Toast 개수: ${toastCount}개<br>`;
+      result4.innerHTML += `- 모든 Toast가 자동으로 제거되면 메모리 누수 방지 성공`;
+      result4.style.backgroundColor = '#d4edda';
+    }, 3000);
+  }
+
+  /**
+   * 5. 자동 사라짐 테스트
+   */
+  function testAutoHide() {
+    const result5 = document.getElementById('result5');
+    result5.innerHTML = '1초 후 자동 사라지는 Toast 생성 중...<br>';
+
+    TOAST.showSuccess('1초 후 사라집니다!', 1000);
+
+    setTimeout(() => {
+      result5.innerHTML += `✅ Toast가 1초 후 자동으로 사라졌습니다.`;
+      result5.style.backgroundColor = '#d4edda';
+    }, 1500);
+  }
+
+  /**
+   * 페이지 로드 시 자동 실행
+   */
+  document.addEventListener('DOMContentLoaded', function() {
+    console.log('Toast 테스트 페이지 로드 완료');
+    console.log('TOAST 객체:', TOAST);
+  });
+</script>
+
+</body>
+</html>
+

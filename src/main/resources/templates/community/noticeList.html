@@ -62,9 +62,10 @@
     </tr>
     </tbody>
   </table>
-  <!-- 게시판 글쓰기 버튼 -->
-  <div class="d-flex justify-content-end mb-3">
-    <a th:href="@{/community/write}" class="custom-btn custom-btn-dark" style="height: 42px; min-width: 110px; display: flex; align-items: center; justify-content: center;">
+  <!-- 게시판 글쓰기 버튼 (관리자만 표시) -->
+  <div class="d-flex justify-content-end mb-3"
+       th:if="${#authentication != null && #authentication.principal != null && #authorization.expression('hasRole(''ROLE_ADMIN'')')}">
+    <a th:href="@{/community/write(subject='notice')}" class="custom-btn custom-btn-dark" style="height: 42px; min-width: 110px; display: flex; align-items: center; justify-content: center;">
       <i class="fa fa-pencil me-1"></i> 글쓰기
     </a>
   </div>

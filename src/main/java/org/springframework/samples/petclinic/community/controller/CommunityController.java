@@ -8,6 +8,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.samples.petclinic.common.dto.PageResponse;
 import org.springframework.samples.petclinic.community.dto.CommunityPostDto;
 import org.springframework.samples.petclinic.community.service.CommunityService;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -79,14 +80,39 @@ public class CommunityController {
 			model.addAttribute("template", "community/noticeDetail");
 		}
 
+		return "fragments/layout";
+	}
+
+	/**
+	 * 글쓰기 화면 표시
+	 * - 관리자만 접근 가능
+	 */
+	@PreAuthorize("hasRole('ROLE_ADMIN')")
+	@GetMapping("/write")
+	public String writeForm(@RequestParam(value = "subject", required = false, defaultValue = "notice") String subject,
+							Model model) {
+		log.info("### write form called: subject={}", subject);
+
+		model.addAttribute("subject", subject);
+		if (subject.equalsIgnoreCase("notice")) {
+			model.addAttribute("template", "community/noticeWrite");
+		}
 
 		return "fragments/layout";
 	}
 
-	@PostMapping
-	public String create(@ModelAttribute CommunityPostDto postDto) {
-		log.info("### create called");
+	/**
+	 * 글쓰기 저장 처리
+	 * - 관리자만 접근 가능
+	 */
+	@PreAuthorize("hasRole('ROLE_ADMIN')")
+	@PostMapping("/write")
+	public String create(@ModelAttribute CommunityPostDto postDto,
+						 @RequestParam(value = "subject", required = false, defaultValue = "notice") String subject) {
+		log.info("### create called: subject={}, title={}", subject, postDto.getTitle());
+
 		communityService.createPost(postDto);
-		return "redirect:/community";
+
+		return "redirect:/community/list?subject=" + subject;
 	}
 }

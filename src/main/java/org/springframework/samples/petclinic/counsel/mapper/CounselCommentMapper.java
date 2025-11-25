@@ -24,6 +24,17 @@ public class CounselCommentMapper {
 		d.setAuthorName(entity.getAuthorName());
 		d.setStaffReply(entity.isStaffReply());
 		d.setCreatedAt(entity.getCreatedAt());
+		d.setPasswordHash(entity.getPasswordHash());
+
+		// 부모 댓글 정보 설정
+		if (entity.getParent() != null) {
+			d.setParentId(entity.getParent().getId());
+			d.setParentAuthorName(entity.getParent().getAuthorName());
+		}
+
+		// depth 초기값 설정 (Service에서 재계산됨)
+		d.setDepth(0);
+
 		return d;
 	}
 }

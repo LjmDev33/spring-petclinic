@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+  <title>공지사항 작성</title>
+  <!-- Quill Editor CSS -->
+  <link rel="stylesheet" th:href="@{/css/quill/quill.snow.css}">
+  <link rel="stylesheet" th:href="@{/css/custom-buttons.css}">
+</head>
+<body>
+<div class="container mt-4">
+  <!-- 헤더: 제목 + 목록 버튼 -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">
+      <i class="bi bi-pencil-square"></i> 공지사항 작성
+    </h2>
+    <a th:href="@{/community/list(subject='notice')}" class="custom-btn custom-btn-secondary"
+       style="height: 42px; min-width: 110px; display: flex; align-items: center; justify-content: center;">
+      <i class="bi bi-list me-1"></i> 목록
+    </a>
+  </div>
+
+  <form id="communityForm" th:action="@{/community/write}" method="post">
+    <!-- 제목 입력 -->
+    <div class="mb-3">
+      <label class="form-label">
+        <i class="bi bi-chat-left-text"></i> 제목 <span class="text-danger">*</span>
+      </label>
+      <input type="text" name="title" class="form-control form-input-sm" placeholder="제목을 입력하세요" required>
+    </div>
+
+    <!-- 작성자 입력 -->
+    <div class="mb-3">
+      <label class="form-label">
+        <i class="bi bi-person"></i> 작성자 <span class="text-danger">*</span>
+      </label>
+      <input type="text" name="author" class="form-control form-input-sm"
+             th:value="${#authentication != null && #authentication.principal != null && #authentication.principal.nickname != null ? #authentication.principal.nickname : ''}"
+             placeholder="작성자명을 입력하세요" required>
+    </div>
+
+    <!-- 에디터 영역 -->
+    <div class="mb-3">
+      <label class="form-label">
+        <i class="bi bi-file-text"></i> 내용 <span class="text-danger">*</span>
+      </label>
+      <div id="editor" style="height: 400px;"></div>
+      <textarea name="content" id="content" hidden></textarea>
+    </div>
+
+    <!-- hidden subject -->
+    <input type="hidden" name="subject" value="notice"/>
+
+    <!-- 버튼 그룹 -->
+    <div class="d-flex justify-content-end gap-2 mt-4">
+      <a th:href="@{/community/list(subject='notice')}" class="custom-btn custom-btn-secondary">
+        <i class="bi bi-x-circle me-1"></i> 취소
+      </a>
+      <button type="submit" class="custom-btn custom-btn-primary" id="submitBtn">
+        <i class="bi bi-send me-1"></i> 작성완료
+      </button>
+    </div>
+  </form>
+</div>
+
+<!-- Quill Editor JS -->
+<script th:src="@{/js/quill/quill.min.js}"></script>
+
+<script>
+  // Quill 에디터 초기화
+  var quill = new Quill('#editor', {
+    theme: 'snow',
+    modules: {
+      toolbar: [
+        [{ 'header': [1, 2, 3, false] }],
+        ['bold', 'italic', 'underline', 'strike'],
+        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+        [{ 'color': [] }, { 'background': [] }],
+        ['link'],
+        ['clean']
+      ]
+    },
+    placeholder: '내용을 입력하세요...'
+  });
+
+  // 폼 제출 시 에디터 내용을 textarea에 동기화
+  document.getElementById('communityForm').addEventListener('submit', function(e) {
+    const title = document.querySelector('input[name="title"]').value.trim();
+    const author = document.querySelector('input[name="author"]').value.trim();
+    const contentTextarea = document.getElementById('content');
+
+    // 제목 검증
+    if (!title) {
+      e.preventDefault();
+      alert('제목을 입력해주세요.');
+      return false;
+    }
+
+    // 작성자 검증
+    if (!author) {
+      e.preventDefault();
+      alert('작성자를 입력해주세요.');
+      return false;
+    }
+
+    // 에디터 내용 검증
+    const editorContent = quill.root.innerHTML.trim();
+    if (editorContent === '<p><br></p>' || editorContent === '') {
+      e.preventDefault();
+      alert('내용을 입력해주세요.');
+      return false;
+    }
+
+    // 에디터 내용을 textarea에 동기화
+    contentTextarea.value = quill.root.innerHTML;
+
+    return true;
+  });
+</script>
+
+</body>
+</html>
+

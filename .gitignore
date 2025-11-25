@@ -60,3 +60,6 @@ data/
 ### Querydsl ###
 **/src/main/generated/
 **/build/generated/
+
+### Animal Images (루트는 무시, resources/static/animal은 포함) ###
+/animal/

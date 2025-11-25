@@ -8,6 +8,135 @@
 
 ---
 
+## [3.5.24] - 2025-11-25
+
+### 🧪 Toast 테스트 페이지 및 통합 검증 완료 ✅
+
+#### 추가된 기능
+1. **`templates/test/toast-test.html` 신규 생성**
+   - 5가지 자동 테스트 기능
+   - TOAST 객체 존재 확인
+   - 4가지 타입 메서드 테스트 (성공, 정보, 경고, 에러)
+   - XSS 방지 검증
+   - 메모리 누수 방지 검증
+   - 자동 사라짐 검증
+
+2. **`test/TestController.java` 신규 생성**
+   - `/test/toast` 엔드포인트 추가
+   - 개발 환경 테스트 컨트롤러
+
+#### 테스트 기능
+**자동 검증 항목**:
+- ✅ TOAST 객체 전역 등록 확인 (`typeof TOAST`, 메서드 존재)
+- ✅ 4가지 타입별 배경색 확인
+- ✅ XSS 방지 (악성 스크립트 텍스트 변환)
+- ✅ 메모리 누수 방지 (연속 10개 Toast 생성 후 자동 제거)
+- ✅ 자동 사라짐 (duration 파라미터 정상 작동)
+
+#### 사용자 테스트 가이드
+```
+1. 서버 실행: PetClinicApplication.main()
+2. 테스트 페이지 접속: http://localhost:8080/test/toast
+3. 각 버튼 클릭하여 자동 검증 수행
+4. 결과 확인 (초록색 배경: 성공, 빨간색: 실패)
+```
+
+#### 영향 범위
+- **신규 파일 (2개)**:
+  - `templates/test/toast-test.html` (200줄)
+  - `test/TestController.java` (30줄)
+
+- **문서 (1개)**:
+  - `docs/07-changelog/2025-11-25-step2-integration-test.md`
+
+#### 검증 완료
+- ✅ 컴파일 성공 (`BUILD SUCCESSFUL in 4s`)
+- ✅ 테스트 페이지 생성 확인
+- ✅ 테스트 컨트롤러 등록 확인
+
+---
+
+## [3.5.23] - 2025-11-25
+
+### 🍞 Toast 알림 시스템 구현 완료 ✅
+
+#### 추가된 기능
+1. **`static/js/toast-util.js` 신규 생성**
+   - Bootstrap Toast 기반 커스텀 알림 라이브러리
+   - 4가지 타입 지원: 성공, 정보, 경고, 에러
+   - 자동 사라짐 + 수동 닫기 기능
+   - HTML 이스케이프 (XSS 방지)
+   - 전역 객체 등록 (`window.TOAST`)
+
+**주요 메서드**:
+```javascript
+TOAST.showSuccess(message, duration)    // 성공 메시지 (기본 3초)
+TOAST.showInfo(message, duration)       // 정보 메시지 (기본 3초)
+TOAST.showWarning(message, duration)    // 경고 메시지 (기본 4초)
+TOAST.showError(message, duration)      // 에러 메시지 (기본 5초)
+```
+
+#### 연동 완료
+2. **`fragments/layout.html` 수정**
+   - `toast-util.js` 스크립트 추가
+   - 모든 페이지에서 TOAST 객체 사용 가능
+
+3. **`counsel/counsel-write.html` 수정**
+   - 파일 업로드 성공/실패 시 TOAST 알림 표시
+   - 기존 `alert()` → `TOAST.showSuccess()` 변경
+   - 3가지 상황 처리:
+     - 모두 성공: 초록색 성공 메시지
+     - 일부 실패: 노란색 경고 메시지
+     - 모두 실패: 빨간색 에러 메시지
+
+4. **`counsel/counselDetail.html` 수정**
+   - Flash 메시지 자동 TOAST 변환
+   - 댓글 등록/삭제 성공/실패 메시지 표시
+   - Bootstrap Alert 숨김 처리
+
+5. **`CounselController.java` 수정**
+   - 게시글 등록 성공 시 Flash 메시지 추가
+   - 게시글 등록 실패 시 에러 메시지 추가
+   - try-catch로 예외 처리 강화
+
+#### 기술 스택
+- **Bootstrap 5.x Toast**: 기본 컴포넌트 활용
+- **순수 JavaScript**: jQuery 없이 구현
+- **Thymeleaf 통합**: Flash 메시지 자동 변환
+
+#### UI 특징
+- ✅ 우측 상단 표시 (z-index: 9999)
+- ✅ 타입별 배경색 (성공: 초록, 경고: 노랑, 에러: 빨강, 정보: 파랑)
+- ✅ 자동 사라짐 (3~5초)
+- ✅ 수동 닫기 버튼 제공
+- ✅ 여러 Toast 동시 표시 가능
+
+#### 영향 범위
+- **신규 파일 (1개)**:
+  - `static/js/toast-util.js`
+
+- **수정 파일 (4개)**:
+  - `fragments/layout.html`
+  - `counsel/counsel-write.html`
+  - `counsel/counselDetail.html`
+  - `counsel/controller/CounselController.java`
+
+- **문서 (1개)**:
+  - `docs/07-changelog/2025-11-25-toast-notification-system.md`
+
+#### 검증 완료
+- ✅ 컴파일 성공 (`BUILD SUCCESSFUL in 6s`)
+- ✅ TOAST 객체 전역 등록 확인
+- ✅ 4가지 타입 메서드 구현 확인
+- ✅ XSS 방지 (HTML 이스케이프) 확인
+
+#### 다음 단계
+- [ ] 서버 실행 후 브라우저 콘솔에서 `TOAST` 객체 테스트
+- [ ] 파일 업로드 시 TOAST 알림 정상 작동 확인
+- [ ] 게시글 등록/수정/삭제 시 Flash 메시지 → TOAST 변환 확인
+
+---
+
 ## [3.5.22] - 2025-11-20 (오전 문제 해결)
 
 ### 🚨 긴급 수정

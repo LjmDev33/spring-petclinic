@@ -268,9 +268,16 @@ public class CounselController {
 	 * - 저장 완료 후 상세 화면으로 리다이렉트한다.
 	 */
 	@PostMapping
-	public String submit(@ModelAttribute CounselPostWriteDto form) throws IOException {
-		Long id = counselService.saveNew(form);
-		return "redirect:/counsel/detail/" + id;
+	public String submit(@ModelAttribute CounselPostWriteDto form, RedirectAttributes redirectAttributes) throws IOException {
+		try {
+			Long id = counselService.saveNew(form);
+			redirectAttributes.addFlashAttribute("message", "게시글이 등록되었습니다.");
+			return "redirect:/counsel/detail/" + id;
+		} catch (Exception e) {
+			log.error("Failed to create post: {}", e.getMessage(), e);
+			redirectAttributes.addFlashAttribute("error", "게시글 등록 중 오류가 발생했습니다: " + e.getMessage());
+			return "redirect:/counsel/write";
+		}
 	}
 
 	/**
@@ -306,12 +313,19 @@ public class CounselController {
 			boolean deleted = counselService.deleteComment(commentId, password);
 			if (deleted) {
 				redirectAttributes.addFlashAttribute("message", "댓글이 삭제되었습니다.");
-			} else {
-				redirectAttributes.addFlashAttribute("error", "댓글을 삭제할 수 없습니다. 비밀번호를 확인하거나 관리자 댓글인지 확인하세요.");
 			}
+		} catch (IllegalStateException e) {
+			// 비즈니스 로직 예외 (자식 댓글 존재, 운영자 댓글 등)
+			log.warn("Comment deletion denied: {}", e.getMessage());
+			redirectAttributes.addFlashAttribute("error", e.getMessage());
+		} catch (IllegalArgumentException e) {
+			// 비밀번호 불일치
+			log.warn("Comment deletion failed: {}", e.getMessage());
+			redirectAttributes.addFlashAttribute("error", e.getMessage());
 		} catch (Exception e) {
-			log.error("Error deleting comment: {}", e.getMessage());
-			redirectAttributes.addFlashAttribute("error", "댓글 삭제 중 오류가 발생했습니다.");
+			// 기타 예외
+			log.error("Error deleting comment: {}", e.getMessage(), e);
+			redirectAttributes.addFlashAttribute("error", "댓글 삭제 중 오류가 발생했습니다: " + e.getMessage());
 		}
 		return "redirect:/counsel/detail/" + postId;
 	}

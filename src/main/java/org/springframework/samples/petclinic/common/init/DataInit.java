@@ -282,22 +282,92 @@ public class DataInit {
 		// 게시글 먼저 저장 (ID 생성 필요)
 		postRepo.saveAll(posts);
 
-		// 2단계: COMPLETE(답변완료) 상태 게시글에만 댓글 생성
+		// 2단계: COMPLETE(답변완료) 상태 게시글에 트리 구조 댓글 생성
 		List<CounselComment> comments = new ArrayList<>();
 		for (CounselPost p : posts) {
 			if (p.getStatus() == CounselStatus.COMPLETE) {
-				CounselComment comment = buildStaffReply(p, p.getCreatedAt().toLocalDate());
-				comments.add(comment);
-				p.setCommentCount(1);
+				// 최상위 댓글 (운영자 답변)
+				CounselComment rootComment = buildStaffReply(p, p.getCreatedAt().toLocalDate());
+				comments.add(rootComment);
+
+				// 일부 게시글에 트리 구조 댓글 추가 (30% 확률)
+				if (ThreadLocalRandom.current().nextInt(100) < 30) {
+					// rootComment는 아직 ID가 없으므로 저장 후 처리해야 함
+					// 임시로 표시만 하고 나중에 처리
+					rootComment.setContent(rootComment.getContent() + " [TREE]");
+				}
+
+				p.setCommentCount(1); // 기본 1개, 대댓글은 나중에 추가
 			} else {
 				p.setCommentCount(0);
 			}
 		}
 
-		// 댓글 저장
+		// 댓글 저장 (1차: 최상위 댓글만)
 		if (!comments.isEmpty()) {
 			commentRepo.saveAll(comments);
 		}
+
+		// 3단계: 트리 구조 댓글 생성 (대댓글, 대대댓글)
+		List<CounselComment> treeComments = new ArrayList<>();
+		for (CounselComment rootComment : comments) {
+			if (rootComment.getContent().contains("[TREE]")) {
+				// [TREE] 마커 제거
+				rootComment.setContent(rootComment.getContent().replace(" [TREE]", ""));
+
+				CounselPost p = rootComment.getPost();
+				LocalDate commentDate = rootComment.getCreatedAt().toLocalDate();
+
+				// 대댓글 1: 사용자 질문
+				CounselComment reply1 = new CounselComment();
+				reply1.setPost(p);
+				reply1.setParent(rootComment);
+				reply1.setContent("추가 질문이 있습니다. 더 자세히 설명해주실 수 있나요?");
+				reply1.setAuthorName("사용자" + ThreadLocalRandom.current().nextInt(1, 100));
+				reply1.setPasswordHash(BCrypt.hashpw("1234", BCrypt.gensalt()));
+				reply1.setStaffReply(false);
+				reply1.setCreatedAt(commentDate.plusDays(1).atStartOfDay());
+				reply1.setUpdatedAt(reply1.getCreatedAt());
+				treeComments.add(reply1);
+
+				// 대대댓글 1-1: 운영자 재답변
+				CounselComment reply1_1 = new CounselComment();
+				reply1_1.setPost(p);
+				reply1_1.setParent(reply1);
+				reply1_1.setContent("네, 자세히 설명드리겠습니다. 추가 정보는 다음과 같습니다...");
+				reply1_1.setAuthorName(STAFF);
+				reply1_1.setPasswordHash(null);
+				reply1_1.setStaffReply(true);
+				reply1_1.setCreatedAt(commentDate.plusDays(2).atStartOfDay());
+				reply1_1.setUpdatedAt(reply1_1.getCreatedAt());
+				treeComments.add(reply1_1);
+
+				// 50% 확률로 대대대댓글 추가
+				if (ThreadLocalRandom.current().nextBoolean()) {
+					CounselComment reply1_1_1 = new CounselComment();
+					reply1_1_1.setPost(p);
+					reply1_1_1.setParent(reply1_1);
+					reply1_1_1.setContent("감사합니다! 이해가 잘 되었습니다.");
+					reply1_1_1.setAuthorName("사용자" + ThreadLocalRandom.current().nextInt(1, 100));
+					reply1_1_1.setPasswordHash(BCrypt.hashpw("1234", BCrypt.gensalt()));
+					reply1_1_1.setStaffReply(false);
+					reply1_1_1.setCreatedAt(commentDate.plusDays(3).atStartOfDay());
+					reply1_1_1.setUpdatedAt(reply1_1_1.getCreatedAt());
+					treeComments.add(reply1_1_1);
+				}
+
+				// commentCount 업데이트
+				p.setCommentCount(p.getCommentCount() + treeComments.size());
+			}
+		}
+
+		// 트리 댓글 저장
+		if (!treeComments.isEmpty()) {
+			commentRepo.saveAll(treeComments);
+		}
+
+		// rootComment 업데이트 (마커 제거)
+		commentRepo.saveAll(comments);
 
 		// commentCount 업데이트를 위해 게시글 다시 저장
 		postRepo.saveAll(posts);

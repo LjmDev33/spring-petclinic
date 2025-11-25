@@ -80,10 +80,28 @@
       </label>
       <!-- 실제 서버 전송용 hidden input (Uppy 업로드된 파일 경로, 쉼표 구분) -->
       <input type="hidden" id="attachmentPaths" name="attachmentPaths">
+
       <!-- Uppy Dashboard가 렌더링될 영역 -->
-      <div id="uppy-dashboard" class="border rounded p-2"></div>
-      <small class="form-text text-muted">
-        이미지, 문서(PDF, Word, Excel, 한글), 압축 파일을 업로드할 수 있으며, 파일당 최대 10MB, 최대 5개까지 업로드할 수 있습니다.
+      <div id="uppy-dashboard" class="border rounded p-3" style="min-height: 250px; background-color: #f8f9fa;">
+        <!-- Uppy가 여기에 파일 목록을 렌더링합니다 -->
+      </div>
+
+      <!-- 업로드된 파일 목록 (Uppy Dashboard 외부에 별도 표시) -->
+      <div id="uploaded-files-list" class="mt-3" style="display: none;">
+        <div class="alert alert-info">
+          <i class="bi bi-check-circle-fill me-2"></i>
+          <strong>업로드 완료된 파일:</strong>
+          <span id="uploaded-count">0</span>개
+        </div>
+        <div class="row g-2" id="uploaded-files-cards">
+          <!-- JavaScript로 동적 생성됩니다 -->
+        </div>
+      </div>
+
+      <small class="form-text text-muted d-block mt-2">
+        <i class="bi bi-info-circle"></i>
+        이미지, 문서(PDF, Word, Excel, 한글), 압축 파일을 업로드할 수 있으며,
+        <strong>파일당 최대 10MB</strong>, <strong>최대 5개</strong>까지 업로드할 수 있습니다.
       </small>
     </div>
 
@@ -457,9 +475,16 @@
       setTimeout(() => {
         uploadModal.style.display = 'none';
 
-        // 실패가 있으면 사용자에게 알림
-        if (failCount > 0) {
-          alert(`${failCount}개 파일 업로드에 실패했습니다. 콘솔 로그를 확인하거나 다시 시도해주세요.`);
+        // TOAST 알림 표시
+        if (failCount > 0 && successCount > 0) {
+          // 일부 성공, 일부 실패
+          TOAST.showWarning(`${successCount}개 파일 업로드 성공, ${failCount}개 실패`, 5000);
+        } else if (failCount > 0) {
+          // 모두 실패
+          TOAST.showError(`${failCount}개 파일 업로드에 실패했습니다.`, 5000);
+        } else if (successCount > 0) {
+          // 모두 성공
+          TOAST.showSuccess(`${successCount}개 파일이 업로드되었습니다.`, 3000);
         }
       }, 2000);
 

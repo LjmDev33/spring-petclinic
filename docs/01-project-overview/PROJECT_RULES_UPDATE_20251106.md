@@ -228,8 +228,249 @@ spring:
 
 ---
 
-**규칙 추가 완료**: 2025-11-06  
-**업데이트된 문서**: 5개  
-**적용 범위**: 모든 테이블 (기존 + 신규)  
+## 📝 규칙 11: 게시판 콘텐츠 에디터 사용 (추가: 2025-11-25)
+
+### 원칙
+- 모든 게시판의 글쓰기 및 수정 기능에서 **Quill Editor 사용 필수**
+- 단순 `<textarea>` 대신 풍부한 텍스트 편집 기능 제공
+- 향후 추가되는 모든 게시판도 동일하게 적용
+
+### 적용 대상
+1. ✅ 온라인상담 글쓰기 (`counsel-write.html`)
+2. ✅ 공지사항 글쓰기 (`noticeWrite.html`)
+3. ✅ 향후 추가되는 모든 게시판
+
+### Quill Editor 설정
+```html
+<!-- Quill Editor CSS -->
+<link rel="stylesheet" th:href="@{/css/quill/quill.snow.css}">
+
+<!-- Editor 영역 -->
+<div id="editor" style="height: 400px;"></div>
+<textarea name="content" id="content" hidden></textarea>
+
+<!-- Quill Editor JS -->
+<script th:src="@{/js/quill/quill.min.js}"></script>
+
+<script>
+  var quill = new Quill('#editor', {
+    theme: 'snow',
+    modules: {
+      toolbar: [
+        [{ 'header': [1, 2, 3, false] }],
+        ['bold', 'italic', 'underline', 'strike'],
+        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+        [{ 'color': [] }, { 'background': [] }],
+        ['link'],
+        ['clean']
+      ]
+    },
+    placeholder: '내용을 입력하세요...'
+  });
+  
+  // 폼 제출 시 에디터 내용을 textarea에 동기화
+  document.getElementById('form').addEventListener('submit', function(e) {
+    document.getElementById('content').value = quill.root.innerHTML;
+  });
+</script>
+```
+
+### 필수 검증
+- [ ] 에디터 정상 표시
+- [ ] 텍스트 서식 기능 작동 (Bold, Italic, 리스트 등)
+- [ ] 폼 제출 시 content에 HTML 저장
+- [ ] XSS 방지 (서버에서 Jsoup으로 sanitize)
+
+---
+
+## 🔒 규칙 12: 공지사항 권한 관리 (추가: 2025-11-25)
+
+### 원칙
+- **관리자만** 공지사항 작성/수정/삭제 가능
+- 일반 회원 및 게스트는 **읽기만** 가능
+
+### 권한 체크 방법
+
+#### 1. 컨트롤러 레벨
+```java
+@PreAuthorize("hasRole('ROLE_ADMIN')")
+@GetMapping("/write")
+public String writeForm(Model model) {
+    // ...
+}
+
+@PreAuthorize("hasRole('ROLE_ADMIN')")
+@PostMapping("/write")
+public String create(@ModelAttribute CommunityPostDto postDto) {
+    // ...
+}
+```
+
+#### 2. Thymeleaf 뷰 레벨
+```html
+<!-- 관리자만 버튼 표시 -->
+<div th:if="${#authentication != null && #authorization.expression('hasRole(\'ROLE_ADMIN\')')}">
+  <a th:href="@{/community/write}">글쓰기</a>
+</div>
+```
+
+### 권한 확인 체크리스트
+- [ ] 컨트롤러에 `@PreAuthorize` 추가
+- [ ] 뷰에서 버튼 표시 조건 체크
+- [ ] 비인가 접근 시 403 에러 또는 로그인 페이지 이동
+- [ ] 로그 기록 (접근 시도, 권한 부족 등)
+
+---
+
+---
+
+## 📝 규칙 13: 게시판 내용 작성 시 에디터 사용 (추가: 2025-11-25)
+
+### 원칙
+- 모든 게시판의 **글쓰기/수정** 화면에서 **Quill Editor 사용**
+- 댓글/대댓글은 **일반 textarea 사용** (에디터 사용 안 함)
+
+### 적용 대상
+- ✅ 온라인상담 게시판 (counsel)
+- ✅ 포토게시판 (photo)
+- ✅ 공지사항 (community)
+- ✅ 자주묻는질문 (FAQ)
+- 📋 향후 추가되는 모든 게시판
+
+### 적용 방법
+
+#### 1. HTML 템플릿
+```html
+<!-- Quill CSS -->
+<link rel="stylesheet" th:href="@{/css/quill/quill.snow.css}">
+
+<!-- 에디터 영역 -->
+<div id="editor" style="height: 400px;"></div>
+<textarea name="content" id="content" hidden></textarea>
+
+<!-- Quill JS -->
+<script th:src="@{/js/quill/quill.min.js}"></script>
+<script>
+  var quill = new Quill('#editor', {
+    theme: 'snow',
+    modules: {
+      toolbar: [
+        [{ 'header': [1, 2, 3, false] }],
+        ['bold', 'italic', 'underline', 'strike'],
+        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+        [{ 'color': [] }, { 'background': [] }],
+        ['link', 'image'],
+        ['clean']
+      ]
+    }
+  });
+  
+  // 폼 제출 시 에디터 내용 동기화
+  document.getElementById('myForm').addEventListener('submit', function() {
+    document.getElementById('content').value = quill.root.innerHTML;
+  });
+</script>
+```
+
+#### 2. 이미지 관련 규칙
+- 포토게시판: 썸네일이 없으면 본문의 첫 번째 이미지 자동 추출
+- animal 폴더의 이미지를 init 데이터 및 테스트용으로 사용
+- 이미지 URL은 `/animal/파일명` 형식 사용
+
+### 체크리스트
+- [ ] 글쓰기 화면에 Quill Editor 적용
+- [ ] 수정 화면에 Quill Editor 적용
+- [ ] 에디터 초기값 설정 (수정 시)
+- [ ] 폼 제출 시 content에 HTML 저장
+- [ ] XSS 방지 (서버에서 Jsoup으로 sanitize)
+- [ ] 댓글/대댓글은 일반 textarea 사용
+- [ ] 정적 리소스 경로 검증 (실제 파일 존재 확인)
+
+---
+
+## 🖼️ 규칙 14: 썸네일 처리 규칙 (추가: 2025-11-25)
+
+### 원칙
+- 포토게시판 등 이미지 중심 게시판에서는 **썸네일 설정 방식 2가지 제공**
+- 파일 첨부를 우선 노출, 이미지 URL도 선택 가능
+
+### 썸네일 처리 방식
+
+#### 1. 탭 UI 제공
+```html
+<ul class="nav nav-tabs">
+  <li class="nav-item">
+    <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#file-panel">
+      파일 첨부
+    </button>
+  </li>
+  <li class="nav-item">
+    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#url-panel">
+      이미지 URL
+    </button>
+  </li>
+</ul>
+```
+
+#### 2. 자동 추출 기능
+- 썸네일이 비어있으면 **본문의 첫 번째 이미지 자동 추출**
+- Service 계층에서 `extractFirstImageFromHtml()` 메서드로 처리
+
+#### 3. 파일 업로드 (TODO)
+- 현재는 이미지 URL만 지원
+- 추후 파일 업로드 기능 구현 예정
+
+### 체크리스트
+- [x] 탭 UI 제공 (파일 첨부 / 이미지 URL)
+- [x] 자동 추출 기능 구현
+- [ ] 실제 파일 업로드 기능 구현 (추후)
+
+---
+
+## ⚠️ 규칙 15: 정적 리소스 경로 검증 (추가: 2025-11-25)
+
+### 원칙
+- HTML/Thymeleaf에서 JS/CSS 파일을 참조할 때 **실제 파일 존재 확인 필수**
+- `quill.min.js` vs `quill.js` 같은 파일명 불일치 주의
+
+### 검증 방법
+
+#### 1. 개발 시 체크리스트
+```
+✅ src/main/resources/static/ 경로에 파일 존재 확인
+✅ 파일명 정확히 일치 (min.js, .js 등)
+✅ 브라우저 개발자 도구로 404 오류 확인
+✅ MIME type 오류 확인 (application/json 등)
+```
+
+#### 2. 오류 예시 및 해결
+```
+❌ 오류: GET /js/quill/quill.min.js 404 (Not Found)
+✅ 해결: /js/quill/quill.js (실제 파일명 확인)
+
+❌ 오류: MIME type 'application/json' is not executable
+✅ 해결: 정적 리소스 매핑 확인 (WebConfig)
+```
+
+#### 3. WebConfig 정적 리소스 매핑
+```java
+@Override
+public void addResourceHandlers(ResourceHandlerRegistry registry) {
+    registry.addResourceHandler("/animal/**")
+        .addResourceLocations("classpath:/static/animal/");
+}
+```
+
+### 체크리스트
+- [ ] HTML에서 참조하는 모든 JS/CSS 파일 존재 확인
+- [ ] 파일명 정확히 일치 (대소문자, 확장자)
+- [ ] 브라우저 개발자 도구에서 404 오류 없는지 확인
+- [ ] MIME type 오류 없는지 확인
+
+---
+
+**규칙 추가 완료**: 2025-11-06, 2025-11-25  
+**업데이트된 문서**: 8개  
+**적용 범위**: 모든 게시판 및 정적 리소스  
 **서버 재시작**: IDE에서 실행하세요!
 

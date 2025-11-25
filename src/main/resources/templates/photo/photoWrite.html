@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+  <title>사진 올리기</title>
+  <link rel="stylesheet" th:href="@{/css/custom-buttons.css}">
+  <link rel="stylesheet" th:href="@{/css/quill/quill.snow.css}">
+</head>
+<body>
+<div class="container mt-4">
+  <!-- 헤더 -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-pencil-square"></i> 사진 올리기</h2>
+    <a th:href="@{/photo/list}" class="custom-btn custom-btn-secondary">
+      <i class="bi bi-list me-1"></i> 목록
+    </a>
+  </div>
+
+  <form th:action="@{/photo/write}" method="post" id="photoForm">
+    <!-- 제목 -->
+    <div class="mb-3">
+      <label class="form-label">
+        <i class="bi bi-chat-left-text"></i> 제목 <span class="text-danger">*</span>
+      </label>
+      <input type="text" name="title" class="form-control form-input-sm" placeholder="제목을 입력하세요" required>
+    </div>
+
+    <!-- 작성자 -->
+    <div class="mb-3">
+      <label class="form-label">
+        <i class="bi bi-person"></i> 작성자 <span class="text-danger">*</span>
+      </label>
+      <input type="text" name="author" class="form-control form-input-sm"
+             th:value="${#authentication != null && #authentication.principal != null && #authentication.principal.nickname != null ? #authentication.principal.nickname : ''}"
+             placeholder="작성자명을 입력하세요" required>
+    </div>
+
+    <!-- 썸네일 설정 -->
+    <div class="mb-3">
+      <label class="form-label">
+        <i class="bi bi-image"></i> 썸네일 이미지 (선택)
+      </label>
+
+      <!-- 썸네일 선택 방식 탭 -->
+      <ul class="nav nav-tabs mb-3" id="thumbnailTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active" id="file-tab" data-bs-toggle="tab" data-bs-target="#file-panel"
+                  type="button" role="tab">파일 첨부</button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="url-tab" data-bs-toggle="tab" data-bs-target="#url-panel"
+                  type="button" role="tab">이미지 URL</button>
+        </li>
+      </ul>
+
+      <!-- 탭 내용 -->
+      <div class="tab-content" id="thumbnailTabContent">
+        <!-- 파일 첨부 패널 -->
+        <div class="tab-pane fade show active" id="file-panel" role="tabpanel">
+          <input type="file" class="form-control form-input-sm" id="thumbnailFile" accept="image/*">
+          <small class="text-muted">대표 이미지 파일을 선택하세요.</small>
+        </div>
+
+        <!-- 이미지 URL 패널 -->
+        <div class="tab-pane fade" id="url-panel" role="tabpanel">
+          <input type="text" name="thumbnailUrl" id="thumbnailUrl" class="form-control form-input-sm"
+                 placeholder="이미지 URL을 입력하세요">
+          <small class="text-muted">대표 이미지 URL을 입력하세요.</small>
+        </div>
+      </div>
+
+      <small class="text-muted d-block mt-2">
+        <strong>비워두면 본문의 첫 번째 이미지가 자동으로 썸네일이 됩니다.</strong>
+      </small>
+    </div>
+
+    <!-- 에디터 -->
+    <div class="mb-3">
+      <label class="form-label">
+        <i class="bi bi-file-text"></i> 내용 <span class="text-danger">*</span>
+      </label>
+      <div id="editor" style="height: 400px;"></div>
+      <textarea name="content" id="content" hidden></textarea>
+    </div>
+
+    <!-- 버튼 -->
+    <div class="d-flex justify-content-end gap-2 mt-4">
+      <a th:href="@{/photo/list}" class="custom-btn custom-btn-secondary">
+        <i class="bi bi-x-circle me-1"></i> 취소
+      </a>
+      <button type="submit" class="custom-btn custom-btn-primary">
+        <i class="bi bi-send me-1"></i> 등록
+      </button>
+    </div>
+  </form>
+</div>
+
+<!-- Quill Editor JS -->
+<script th:src="@{/js/quill/quill.js}"></script>
+<script>
+  // Quill 에디터 초기화
+  var quill = new Quill('#editor', {
+    theme: 'snow',
+    modules: {
+      toolbar: [
+        [{ 'header': [1, 2, 3, false] }],
+        ['bold', 'italic', 'underline', 'strike'],
+        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+        [{ 'color': [] }, { 'background': [] }],
+        ['link', 'image'],
+        ['clean']
+      ]
+    },
+    placeholder: '내용을 입력하세요...'
+  });
+
+  // 썸네일 파일 선택 시 처리 (TODO: 파일 업로드 기능 구현 필요)
+  document.getElementById('thumbnailFile').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+      // TODO: 실제 파일 업로드 로직은 추후 구현
+      // 현재는 파일명만 표시
+      console.log('선택된 파일:', file.name);
+
+      // 파일 업로드 기능이 구현되면 여기서 서버에 업로드하고
+      // 반환된 URL을 thumbnailUrl input에 설정
+      alert('파일 업로드 기능은 추후 구현 예정입니다.\n현재는 "이미지 URL" 탭을 사용해주세요.');
+    }
+  });
+
+  // 폼 제출 시 에디터 내용 동기화
+  document.getElementById('photoForm').addEventListener('submit', function(e) {
+    const title = document.querySelector('input[name="title"]').value.trim();
+    const author = document.querySelector('input[name="author"]').value.trim();
+    const contentTextarea = document.getElementById('content');
+
+    if (!title) {
+      e.preventDefault();
+      alert('제목을 입력해주세요.');
+      return false;
+    }
+
+    if (!author) {
+      e.preventDefault();
+      alert('작성자를 입력해주세요.');
+      return false;
+    }
+
+    const editorContent = quill.root.innerHTML.trim();
+    if (editorContent === '<p><br></p>' || editorContent === '') {
+      e.preventDefault();
+      alert('내용을 입력해주세요.');
+      return false;
+    }
+
+    contentTextarea.value = quill.root.innerHTML;
+    return true;
+  });
+</script>
+</body>
+</html>
+

@@ -93,7 +93,19 @@ public class FileDownloadController {
 	public ResponseEntity<Resource> downloadFile(@PathVariable Integer fileId, HttpSession session)
 		throws MalformedURLException {
 
-		log.info("File download request: fileId={}", fileId);
+		// NPE 방지: fileId null 체크
+		if (fileId == null || fileId <= 0) {
+			log.error("Invalid file ID: fileId={}", fileId);
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+		}
+
+		// NPE 방지: session null 체크
+		if (session == null) {
+			log.error("Session is null for file download: fileId={}", fileId);
+			return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+		}
+
+		log.info("File download request: fileId={}, sessionId={}", fileId, session.getId());
 
 		// 1. 첨부파일 조회
 		Attachment attachment = attachmentRepository.findById(fileId)
