@@ -7,14 +7,16 @@ import jakarta.persistence.MappedSuperclass;
 
 import java.io.Serializable;
 
-/*
+/**
  * Project : spring-petclinic
- * File    : CommunityPostDto.java
+ * File    : BaseEntity.java
  * Created : 2025-09-26
  * Author  : Jeongmin Lee
  *
  * Description :
- *   TODO: Add class description here.
+ *   모든 Entity의 공통 기본 클래스
+ *   - ID 자동 생성 전략 (GenerationType.IDENTITY)
+ *   - isNew() 메서드를 통한 신규 엔티티 판별 지원
  *
  * License :
  *   Copyright (c) 2025 AOF(AllForOne) / All rights reserved.

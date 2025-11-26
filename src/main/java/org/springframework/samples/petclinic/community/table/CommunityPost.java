@@ -4,21 +4,25 @@ import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
-import org.hibernate.annotations.Where;
+import org.hibernate.annotations.UpdateTimestamp;
 import org.springframework.samples.petclinic.common.entity.BaseEntity;
 
 import java.time.LocalDateTime;
 
-/*
+/**
  * Project : spring-petclinic
- * File    : CommunityPostDto.java
+ * File    : CommunityPost.java
  * Created : 2025-09-26
  * Author  : Jeongmin Lee
  *
  * Description :
- *   TODO: 커뮤니티 게시판 테이블
- *    	   @SQLDelete어노테이션에 @Where 어노테이션을 사용했었지만 6.3버전 이상부터는 deprecated되면서
- *         @SQLRestriction어노테이션으로 where조건 매핑해줌
+ *   커뮤니티 게시판 Entity (공지사항 등)
+ *   - Soft Delete 정책 (@SQLDelete + @SQLRestriction)
+ *   - 조회수, 좋아요 수 관리
+ *   - 첨부파일 지원 (attach_flag)
+ *
+ * Note:
+ *   Hibernate 6.3 이상에서 @Where는 deprecated되어 @SQLRestriction 사용
  *
  * License :
  *   Copyright (c) 2025 AOF(AllForOne) / All rights reserved.
@@ -42,6 +46,10 @@ public class CommunityPost extends BaseEntity {
 	@CreationTimestamp
 	@Column(name = "created_at", nullable = false, updatable = false)
 	private LocalDateTime createdAt;
+
+	@org.hibernate.annotations.UpdateTimestamp
+	@Column(name = "updated_at", nullable = false)
+	private LocalDateTime updatedAt;
 
 	@Column(name = "view_count", nullable = false , columnDefinition = "INT DEFAULT 0")
 	private int viewCount = 0;
@@ -92,6 +100,14 @@ public class CommunityPost extends BaseEntity {
 
 	public void setCreatedAt(LocalDateTime createdAt) {
 		this.createdAt = createdAt;
+	}
+
+	public LocalDateTime getUpdatedAt() {
+		return updatedAt;
+	}
+
+	public void setUpdatedAt(LocalDateTime updatedAt) {
+		this.updatedAt = updatedAt;
 	}
 
 	public int getViewCount() {
