@@ -8,6 +8,8 @@ import org.hibernate.annotations.UpdateTimestamp;
 import org.springframework.samples.petclinic.common.entity.BaseEntity;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Project : spring-petclinic
@@ -69,6 +71,10 @@ public class CommunityPost extends BaseEntity {
 	// VARCHAR(1) : 'Y' / 'N'
 	@Column(name = "attach_flag", nullable = false)
 	private boolean attachFlag = false;
+
+	/** 첨부파일 목록 (Phase 3) */
+	@OneToMany(mappedBy = "communityPost", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+	private List<CommunityPostAttachment> attachments = new ArrayList<>();
 
 	public String getTitle() {
 		return title;
@@ -156,5 +162,26 @@ public class CommunityPost extends BaseEntity {
 
 	public void setAttachFlag(boolean attachFlag) {
 		this.attachFlag = attachFlag;
+	}
+
+	/** Phase 3: 첨부파일 목록 조회 */
+	public List<CommunityPostAttachment> getAttachments() {
+		return attachments;
+	}
+
+	public void setAttachments(List<CommunityPostAttachment> attachments) {
+		this.attachments = attachments;
+	}
+
+	/** Phase 3: 첨부파일 추가 편의 메서드 */
+	public void addAttachment(CommunityPostAttachment attachment) {
+		this.attachments.add(attachment);
+		attachment.setCommunityPost(this);
+	}
+
+	/** Phase 3: 첨부파일 제거 편의 메서드 */
+	public void removeAttachment(CommunityPostAttachment attachment) {
+		this.attachments.remove(attachment);
+		attachment.setCommunityPost(null);
 	}
 }

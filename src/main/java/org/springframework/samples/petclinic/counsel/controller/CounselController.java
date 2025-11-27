@@ -58,19 +58,43 @@ public class CounselController {
 	 * - 검색(type, keyword) 및 페이징(Pageable)을 지원한다.
 	 * - 검색어가 있으면 QueryDSL 기반 검색, 없으면 단순 페이징 목록을 조회한다.
 	 */
+	/**
+	 * 온라인상담 게시글 목록 (Phase 7: 검색 기능 강화)
+	 * - 기본 검색: 제목, 내용, 작성자
+	 * - 고급 검색: 날짜 범위, 상태별 필터링
+	 *
+	 * @param pageable 페이징 정보
+	 * @param type 검색 타입 (title, content, author)
+	 * @param keyword 검색 키워드
+	 * @param status 상태 필터 (WAIT, COMPLETE, END)
+	 * @param startDate 시작 날짜 (yyyy-MM-dd)
+	 * @param endDate 종료 날짜 (yyyy-MM-dd)
+	 * @param model 뷰 모델
+	 * @return 목록 템플릿
+	 */
 	@GetMapping("/list")
 	public String list(@PageableDefault(size = 10, sort = "id", direction = Sort.Direction.ASC) Pageable pageable,
 			   @RequestParam(value = "type", required = false) String type,
 			   @RequestParam(value = "keyword", required = false) String keyword,
+			   @RequestParam(value = "status", required = false) String status,
+			   @RequestParam(value = "startDate", required = false) String startDate,
+			   @RequestParam(value = "endDate", required = false) String endDate,
 			   Model model) {
 
 		PageResponse<CounselPostDto> pageResponse;
 
 		type = (type == null || type.isBlank()) ? "" : type;
 
-		if(keyword != null && !keyword.isBlank()) {
-			pageResponse = counselService.search(type,keyword,pageable);
-		}else{
+		// Phase 7: 고급 검색 (날짜/상태 필터 포함)
+		boolean hasAdvancedFilter = (status != null && !status.isBlank()) ||
+									(startDate != null && !startDate.isBlank()) ||
+									(endDate != null && !endDate.isBlank());
+
+		if (hasAdvancedFilter || (keyword != null && !keyword.isBlank())) {
+			// 고급 검색 또는 일반 검색
+			pageResponse = counselService.advancedSearch(type, keyword, status, startDate, endDate, pageable);
+		} else {
+			// 전체 목록
 			pageResponse = counselService.getPagedPosts(pageable);
 		}
 
@@ -78,6 +102,9 @@ public class CounselController {
 		model.addAttribute("posts", pageResponse.getContent());
 		model.addAttribute("keyword", keyword);
 		model.addAttribute("type", type);
+		model.addAttribute("status", status);
+		model.addAttribute("startDate", startDate);
+		model.addAttribute("endDate", endDate);
 		model.addAttribute("template", "counsel/counselList");
 
 		return "fragments/layout";

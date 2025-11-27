@@ -113,12 +113,14 @@ public class CounselService {
 	private final AttachmentRepository attachmentRepository;
 	private final CounselPostAttachmentRepository postAttachmentRepository;
 	private final org.springframework.samples.petclinic.counsel.repository.CounselPostLikeRepository likeRepository;
+	private final org.springframework.samples.petclinic.user.repository.UserRepository userRepository;
 
 	public CounselService(CounselPostRepository repository, CounselContentStorage contentStorage,
 						  CounselCommentRepository commentRepository, CounselPostMapper postMapper,
 						  FileStorageService fileStorageService, AttachmentRepository attachmentRepository,
 						  CounselPostAttachmentRepository postAttachmentRepository,
-						  org.springframework.samples.petclinic.counsel.repository.CounselPostLikeRepository likeRepository) {
+						  org.springframework.samples.petclinic.counsel.repository.CounselPostLikeRepository likeRepository,
+						  org.springframework.samples.petclinic.user.repository.UserRepository userRepository) {
 		this.repository = repository;
 		this.contentStorage = contentStorage;
 		this.commentRepository = commentRepository;
@@ -127,6 +129,7 @@ public class CounselService {
 		this.fileStorageService = fileStorageService;
 		this.attachmentRepository = attachmentRepository;
 		this.postAttachmentRepository = postAttachmentRepository;
+		this.userRepository = userRepository;
 	}
 
 	/**
@@ -162,6 +165,64 @@ public class CounselService {
 				d.setLastCommentCreatedAt(c.getCreatedAt());
 			});
 		}
+		Page<CounselPostDto> dtoPage = new PageImpl<>(dtoList, pageable, entityResponse.getTotalElements());
+		return new PageResponse<>(dtoPage);
+	}
+
+	/**
+	 * 고급 검색 (Phase 7: 검색 기능 강화)
+	 * - 날짜 범위, 상태별 필터링 추가
+	 *
+	 * @param type 검색 타입 (title, content, author, 전체)
+	 * @param keyword 검색 키워드
+	 * @param status 상태 필터 (WAIT, COMPLETE, END, null=전체)
+	 * @param startDateStr 시작 날짜 문자열 (yyyy-MM-dd)
+	 * @param endDateStr 종료 날짜 문자열 (yyyy-MM-dd)
+	 * @param pageable 페이징 정보
+	 * @return 검색 결과 페이지
+	 */
+	public PageResponse<CounselPostDto> advancedSearch(
+		String type,
+		String keyword,
+		String status,
+		String startDateStr,
+		String endDateStr,
+		Pageable pageable) {
+
+		// 문자열 날짜를 LocalDateTime으로 변환
+		LocalDateTime startDate = null;
+		LocalDateTime endDate = null;
+
+		try {
+			if (startDateStr != null && !startDateStr.isBlank()) {
+				startDate = java.time.LocalDate.parse(startDateStr).atStartOfDay();
+			}
+			if (endDateStr != null && !endDateStr.isBlank()) {
+				endDate = java.time.LocalDate.parse(endDateStr).atStartOfDay();
+			}
+		} catch (java.time.format.DateTimeParseException e) {
+			log.error("Invalid date format: startDate={}, endDate={}", startDateStr, endDateStr);
+			// 날짜 파싱 실패 시 null로 유지
+		}
+
+		// Repository 호출
+		PageResponse<CounselPost> entityResponse = repository.advancedSearch(
+			type, keyword, status, startDate, endDate, pageable);
+
+		// Entity -> DTO 변환
+		List<CounselPostDto> dtoList = entityResponse.getContent().stream()
+			.map(postMapper::toDto)
+			.collect(Collectors.toList());
+
+		// 최근 댓글 요약 주입
+		for (CounselPostDto d : dtoList) {
+			commentRepository.findTopByPost_IdOrderByCreatedAtDesc(d.getId()).ifPresent(c -> {
+				d.setLastCommentTitle("댓글");
+				d.setLastCommentAuthor(c.getAuthorName());
+				d.setLastCommentCreatedAt(c.getCreatedAt());
+			});
+		}
+
 		Page<CounselPostDto> dtoPage = new PageImpl<>(dtoList, pageable, entityResponse.getTotalElements());
 		return new PageResponse<>(dtoPage);
 	}
@@ -672,6 +733,28 @@ public class CounselService {
 	 * @param authentication Spring Security 인증 객체 (null 가능)
 	 * @return 권한 여부 (true: 허용, false: 거부)
 	 */
+	/**
+	 * 게시글 수정/삭제 권한 검증
+	 *
+	 * <p>권한 검증 우선순위:</p>
+	 * <ol>
+	 *   <li>관리자(ROLE_ADMIN): 모든 게시글 수정/삭제 가능 (비밀번호 불필요)</li>
+	 *   <li>로그인 사용자 = 작성자: 본인 게시글 수정/삭제 가능 (비밀번호 불필요)</li>
+	 *   <li>비공개 게시글: 비밀번호 검증 필요</li>
+	 *   <li>공개 게시글: 비밀번호 없이 허용</li>
+	 * </ol>
+	 *
+	 * <p>Phase 4-2: 작성자 권한 검증 강화 (2025-11-27)</p>
+	 * <ul>
+	 *   <li>UserRepository 연동하여 User.nickname과 post.authorName 비교</li>
+	 *   <li>로그인 사용자가 작성자이면 비밀번호 입력 불필요</li>
+	 * </ul>
+	 *
+	 * @param post 게시글 엔티티
+	 * @param password 비밀번호 (비공개 게시글인 경우)
+	 * @param authentication Spring Security 인증 객체 (null 가능)
+	 * @return 권한 여부 (true: 수정/삭제 가능, false: 권한 없음)
+	 */
 	private boolean canModifyPost(CounselPost post, String password, Authentication authentication) {
 		// 1. 관리자는 무조건 허용
 		if (isAdmin(authentication)) {
@@ -679,16 +762,20 @@ public class CounselService {
 			return true;
 		}
 
-		// 2. 로그인 사용자가 작성자 본인인지 확인
-		// TODO: 추후 User 엔티티와 연관관계 추가 시 user_id로 직접 비교
-		// 현재는 닉네임 비교 (임시 방식)
+		// 2. 로그인 사용자가 작성자 본인인지 확인 (Phase 4-2: 강화)
 		if (authentication != null) {
 			String username = authentication.getName();
+
 			// User 정보 조회하여 닉네임 비교
-			// 현재는 작성자 이름(authorName)과 로그인 username을 비교
-			if (post.getAuthorName() != null && post.getAuthorName().equals(username)) {
-				log.info("Author authorized to modify post ID: {} (author={})", post.getId(), username);
-				return true;
+			try {
+				org.springframework.samples.petclinic.user.table.User user = userRepository.findByUsername(username).orElse(null);
+				if (user != null && post.getAuthorName() != null && post.getAuthorName().equals(user.getNickname())) {
+					log.info("Author authorized to modify post ID: {} (author nickname={}, username={})",
+						post.getId(), user.getNickname(), username);
+					return true; // 작성자는 비밀번호 불필요
+				}
+			} catch (Exception e) {
+				log.error("Error checking author for post ID: {}, error: {}", post.getId(), e.getMessage());
 			}
 		}
 
@@ -988,5 +1075,4 @@ public class CounselService {
 		}
 	}
 }
-
 

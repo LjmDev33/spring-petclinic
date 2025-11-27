@@ -68,6 +68,21 @@ public class PhotoPostMapper {
 		dto.setLikeCount(entity.getLikeCount());
 		dto.setCreatedAt(entity.getCreatedAt());
 		dto.setUpdatedAt(entity.getUpdatedAt());
+
+		// Phase 3: 첨부파일 목록 변환
+		if (entity.getAttachments() != null && !entity.getAttachments().isEmpty()) {
+			entity.getAttachments().forEach(postAttachment -> {
+				if (postAttachment.getAttachment() != null && !postAttachment.getAttachment().isDelFlag()) {
+					PhotoPostDto.AttachmentInfo info = new PhotoPostDto.AttachmentInfo(
+						postAttachment.getAttachment().getId(),
+						postAttachment.getAttachment().getOriginalFilename(),
+						postAttachment.getAttachment().getFileSize()
+					);
+					dto.getAttachments().add(info);
+				}
+			});
+		}
+
 		return dto;
 	}
 

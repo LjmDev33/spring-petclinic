@@ -1,6 +1,8 @@
 package org.springframework.samples.petclinic.photo.dto;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Project : spring-petclinic
@@ -65,6 +67,39 @@ public class PhotoPostDto {
 	private int likeCount;
 	private LocalDateTime createdAt;
 	private LocalDateTime updatedAt;
+
+	/** Phase 3: 첨부파일 목록 */
+	private List<AttachmentInfo> attachments = new ArrayList<>();
+
+	/** Phase 3: 삭제할 첨부파일 ID 목록 (쉼표 구분) */
+	private String deletedFileIds;
+
+	/** Phase 3: 새로 업로드된 첨부파일 경로 목록 (쉼표 구분) */
+	private String attachmentPaths;
+
+	/**
+	 * Phase 3: 첨부파일 정보 내부 클래스
+	 */
+	public static class AttachmentInfo {
+		private Long id;
+		private String originalFileName;
+		private Long fileSize;
+
+		public AttachmentInfo() {}
+
+		public AttachmentInfo(Long id, String originalFileName, Long fileSize) {
+			this.id = id;
+			this.originalFileName = originalFileName;
+			this.fileSize = fileSize;
+		}
+
+		public Long getId() { return id; }
+		public void setId(Long id) { this.id = id; }
+		public String getOriginalFileName() { return originalFileName; }
+		public void setOriginalFileName(String originalFileName) { this.originalFileName = originalFileName; }
+		public Long getFileSize() { return fileSize; }
+		public void setFileSize(Long fileSize) { this.fileSize = fileSize; }
+	}
 
 	// Getter & Setter
 
@@ -138,6 +173,31 @@ public class PhotoPostDto {
 
 	public void setUpdatedAt(LocalDateTime updatedAt) {
 		this.updatedAt = updatedAt;
+	}
+
+	/** Phase 3: 첨부파일 목록 */
+	public List<AttachmentInfo> getAttachments() {
+		return attachments;
+	}
+
+	public void setAttachments(List<AttachmentInfo> attachments) {
+		this.attachments = attachments;
+	}
+
+	public String getDeletedFileIds() {
+		return deletedFileIds;
+	}
+
+	public void setDeletedFileIds(String deletedFileIds) {
+		this.deletedFileIds = deletedFileIds;
+	}
+
+	public String getAttachmentPaths() {
+		return attachmentPaths;
+	}
+
+	public void setAttachmentPaths(String attachmentPaths) {
+		this.attachmentPaths = attachmentPaths;
 	}
 }
 

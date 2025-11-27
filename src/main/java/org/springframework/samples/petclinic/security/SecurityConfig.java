@@ -41,13 +41,16 @@ public class SecurityConfig {
 	private final CustomUserDetailsService userDetailsService;
 	private final CustomAuthenticationSuccessHandler successHandler;
 	private final DataSource dataSource;
+	private final org.springframework.samples.petclinic.system.service.SystemConfigService systemConfigService;
 
 	public SecurityConfig(CustomUserDetailsService userDetailsService,
 						  CustomAuthenticationSuccessHandler successHandler,
-						  DataSource dataSource) {
+						  DataSource dataSource,
+						  org.springframework.samples.petclinic.system.service.SystemConfigService systemConfigService) {
 		this.userDetailsService = userDetailsService;
 		this.successHandler = successHandler;
 		this.dataSource = dataSource;
+		this.systemConfigService = systemConfigService;
 	}
 
 	@Bean
@@ -96,10 +99,15 @@ public class SecurityConfig {
 				.rememberMeParameter("remember-me")
 				.rememberMeCookieName("remember-me")
 			)
-			.sessionManagement(session -> session
-				.maximumSessions(1) // 기본 단일 로그인 (추후 시스템 설정으로 제어)
-				.maxSessionsPreventsLogin(false) // false: 기존 세션 만료, true: 신규 로그인 차단
-			);
+			// Phase 4-3: 멀티 로그인 제어 (SystemConfig 기반 동적 설정)
+			.sessionManagement(session -> {
+				// 시스템 설정에서 멀티로그인 허용 여부 조회
+				boolean multiLoginEnabled = systemConfigService.isMultiLoginEnabled();
+				int maxSessions = multiLoginEnabled ? 5 : 1; // 멀티로그인: 최대 5개, 단일로그인: 1개
+
+				session.maximumSessions(maxSessions)
+					.maxSessionsPreventsLogin(false); // false: 기존 세션 만료, true: 신규 로그인 차단
+			});
 
 		return http.build();
 	}

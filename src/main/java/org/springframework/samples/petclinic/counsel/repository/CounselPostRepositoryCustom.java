@@ -38,5 +38,31 @@ import java.util.Optional;
  *   Copyright (c) 2025 AOF(AllForOne) / All rights reserved.
  */
 public interface CounselPostRepositoryCustom {
+	/**
+	 * 기본 검색 (제목, 내용, 작성자)
+	 * @param type 검색 타입 (title, content, author)
+	 * @param keyword 검색 키워드
+	 * @param pageable 페이징 정보
+	 * @return 검색 결과 페이지
+	 */
 	PageResponse<CounselPost> search(String type, String keyword, Pageable pageable);
+
+	/**
+	 * 고급 검색 (날짜 범위, 상태별 필터링 추가) - Phase 7
+	 * @param type 검색 타입 (title, content, author, 전체)
+	 * @param keyword 검색 키워드
+	 * @param status 상태 필터 (WAIT, COMPLETE, END, null=전체)
+	 * @param startDate 시작 날짜 (null 가능)
+	 * @param endDate 종료 날짜 (null 가능)
+	 * @param pageable 페이징 정보
+	 * @return 검색 결과 페이지
+	 */
+	PageResponse<CounselPost> advancedSearch(
+		String type,
+		String keyword,
+		String status,
+		java.time.LocalDateTime startDate,
+		java.time.LocalDateTime endDate,
+		Pageable pageable
+	);
 }

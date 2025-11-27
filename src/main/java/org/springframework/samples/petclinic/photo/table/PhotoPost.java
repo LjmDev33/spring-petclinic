@@ -8,6 +8,8 @@ import org.hibernate.annotations.UpdateTimestamp;
 import org.springframework.samples.petclinic.common.entity.BaseEntity;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Project : spring-petclinic
@@ -81,6 +83,10 @@ public class PhotoPost extends BaseEntity {
 	/** 삭제한 사용자 */
 	@Column(name = "deleted_by", length = 60)
 	private String deletedBy;
+
+	/** 첨부파일 목록 (Phase 3) */
+	@OneToMany(mappedBy = "photoPost", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+	private List<PhotoPostAttachment> attachments = new ArrayList<>();
 
 	// Getter & Setter
 
@@ -170,6 +176,27 @@ public class PhotoPost extends BaseEntity {
 
 	public void setDeletedBy(String deletedBy) {
 		this.deletedBy = deletedBy;
+	}
+
+	/** Phase 3: 첨부파일 목록 조회 */
+	public List<PhotoPostAttachment> getAttachments() {
+		return attachments;
+	}
+
+	public void setAttachments(List<PhotoPostAttachment> attachments) {
+		this.attachments = attachments;
+	}
+
+	/** Phase 3: 첨부파일 추가 편의 메서드 */
+	public void addAttachment(PhotoPostAttachment attachment) {
+		this.attachments.add(attachment);
+		attachment.setPhotoPost(this);
+	}
+
+	/** Phase 3: 첨부파일 제거 편의 메서드 */
+	public void removeAttachment(PhotoPostAttachment attachment) {
+		this.attachments.remove(attachment);
+		attachment.setPhotoPost(null);
 	}
 }
 

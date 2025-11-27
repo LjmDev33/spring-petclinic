@@ -456,9 +456,10 @@ public class CounselPost extends BaseEntity {
        ↓
 ┌──────────────────────────────────────────────────────────┐
 │ 4. MySQL Database                                        │
-│    INSERT INTO counsel_post (...) VALUES (...);          │
-│    INSERT INTO counsel_attachments (...);                │
-│    INSERT INTO counsel_post_attachments (...);           │
+│    INSERT INTO counsel_post                            │
+│    WHERE del_flag=0 AND title LIKE '%수술%'              │
+│    ORDER BY id ASC                                       │
+│    LIMIT 10 OFFSET 0;                                    │
 └──────┬───────────────────────────────────────────────────┘
        ↓
 ┌──────────────────────────────────────────────────────────┐
@@ -619,8 +620,43 @@ public class CounselPost extends BaseEntity {
 }
 ```
 
-#### **5-1. 테이블 변경 시 문서 즉각 반영** ⭐NEW (2025-11-12)
+#### **6. 토큰 절약 규칙** ⭐NEW (2025-11-27)
 
+**규칙**: AI 개발 시 토큰 사용량을 최소화하여 효율적으로 작업
+
+**적용 원칙**:
+1. **코드 검증 시 최소 범위만 읽기**
+   - 전체 파일 대신 변경 부분만 read
+   - grep/file_search로 필요 부분만 탐색
+
+2. **참조 코드 활용**
+   - 유사 기능은 기존 코드 참조 (예: CommunityService → PhotoService)
+   - 패턴 반복 시 "기존과 동일" 표현으로 간소화
+
+3. **문서 작업 최적화**
+   - 새 문서 생성 대신 기존 문서 업데이트
+   - 변경점만 간결하게 기록
+   - 상세 설명은 주석으로 코드에 작성
+
+4. **컴파일/테스트 최소화**
+   - 변경 후 1회만 검증
+   - 에러 발생 시에만 재컴파일
+
+5. **출력 최소화**
+   - 성공/실패 결과만 간략히 보고
+   - 상세 로그는 필요시에만 확인
+
+**예시**:
+```java
+// ❌ 잘못된 방법: 전체 파일 반복 읽기
+read_file(ServiceA) // 500줄
+read_file(ServiceB) // 500줄
+
+// ✅ 올바른 방법: 필요 부분만 grep
+grep_search("updatePost") // 핵심 메서드만 확인
+```
+
+#### **7. 테이블 변경 시 문서 즉각 반영**
 **규칙**: 테이블 추가/수정 시 `TABLE_DEFINITION.md`를 즉각 업데이트
 
 **적용 시점**:
@@ -1055,8 +1091,7 @@ function showConfirmModal() {
 </small>
 
 <!-- ✅ 올바른 예시: 이메일 형식 안내 -->
-<input type="email" 
-       placeholder="예: abc123@example.com"
+<input type="email" placeholder="예: abc123@example.com"
        pattern="[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}">
 <small class="form-text text-muted">
   <i class="bi bi-info-circle"></i> 
@@ -1065,65 +1100,6 @@ function showConfirmModal() {
 
 <!-- ❌ 잘못된 예시: placeholder에 모든 내용 포함 -->
 <input placeholder="게시글 작성 시 설정한 비밀번호를 입력하세요. 8자 이상 입력해야 합니다.">
-```
-
-**체크리스트: 새 페이지/기능 추가 시**:
-- [ ] 버튼 크기 통일 확인 (42px, 120px×42px)
-- [ ] 폰트 크기 통일 확인 (0.95rem, 1rem)
-- [ ] 간격 통일 확인 (px-2, px-1, gap-2)
-- [ ] placeholder 간소화 확인
-- [ ] 안내 문구 <small> 태그 사용 확인
-- [ ] 필수 필드 * 표시 확인
-- [ ] 실시간 검증 피드백 확인 (is-valid, is-invalid)
-- [ ] 아이콘 + 텍스트 함께 표시 확인
-- [ ] 버튼 배치 확인 (오른쪽 끝)
-  <button class="btn btn-warning">수정</button>
-  <button class="btn btn-danger">삭제</button>
-</div>
-```
-
-**색상 사용 규칙**:
-- 🔵 **Primary (파란색)**: 주요 액션 (저장, 등록, 확인)
-- 🟢 **Success (초록색)**: 성공 메시지, 운영자 표시
-- 🟡 **Warning (노란색)**: 경고, 수정
-- 🔴 **Danger (빨간색)**: 삭제, 오류
-- ⚫ **Secondary (회색)**: 보조 액션 (취소, 목록)
-
-**모달 사용 규칙**:
-```html
-<!-- ✅ 모달 제목에 아이콘 추가 -->
-<div class="modal-header">
-  <h5 class="modal-title">
-    <i class="bi bi-pencil-square"></i> 댓글 작성
-  </h5>
-  <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-</div>
-
-<!-- ✅ 모달 푸터에 버튼 순서: 취소 → 확인 -->
-<div class="modal-footer">
-  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
-  <button type="submit" class="btn btn-primary">등록</button>
-</div>
-```
-
-**폼 입력 필드 규칙**:
-```html
-<!-- ✅ 필수 필드는 * 표시 -->
-<label for="title" class="form-label">
-  제목 <span class="text-danger">*</span>
-</label>
-
-<!-- ✅ placeholder로 입력 예시 제공 -->
-<input type="email" placeholder="example@email.com">
-
-<!-- ✅ small 태그로 안내 메시지 제공 -->
-<small class="form-text text-muted">
-  이메일은 비밀번호 찾기 시 사용됩니다.
-</small>
-
-<!-- ✅ 입력 검증 후 시각적 피드백 -->
-<input type="text" class="form-control is-valid">  <!-- 성공: 초록색 테두리 -->
-<input type="text" class="form-control is-invalid">  <!-- 실패: 빨간색 테두리 -->
 ```
 
 **Flash 메시지 규칙**:
@@ -1139,580 +1115,6 @@ function showConfirmModal() {
   <i class="bi bi-exclamation-triangle-fill"></i> <span th:text="${error}"></span>
   <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
 </div>
-```
-
----
-
-#### **10. 로그 및 감사(Audit) 규칙** ⭐NEW
-
-**목적**: 모든 데이터 변경 이력을 추적하여 문제 발생 시 원인 파악 및 복구 지원
-
-**핵심 원칙**:
-1. ✅ **생성/수정/삭제 시 자동 기록**: `@CreationTimestamp`, `@UpdateTimestamp` 사용
-2. ✅ **중요 액션 로그 기록**: 게시글/댓글 삭제, 파일 삭제, 권한 변경 등
-3. ✅ **사용자 식별 정보 기록**: 누가(username), 언제(timestamp), 무엇을(action) 했는지
-
-**Entity에 감사 필드 추가**:
-```java
-@Entity
-@Table(name = "counsel_post")
-public class CounselPost extends BaseEntity {
-    // 생성 일시 (자동 설정, 수정 불가)
-    @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
-    
-    // 수정 일시 (자동 갱신)
-    @UpdateTimestamp
-    @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
-    
-    // 삭제 일시 (Soft Delete)
-    @Column(name = "deleted_at")
-    private LocalDateTime deletedAt;
-    
-    // 작성자 (게시글 생성 시 기록)
-    @Column(name = "author_name", nullable = false)
-    private String authorName;
-    
-    // Soft Delete 플래그
-    @Column(name = "del_flag", nullable = false)
-    private boolean delFlag = false;
-}
-```
-
-**Service 계층 로그 규칙**:
-```java
-@Service
-@Transactional
-public class CounselService {
-    private static final Logger log = LoggerFactory.getLogger(CounselService.class);
-    
-    // ✅ 올바른 예시: 생성 시 로그 기록
-    public Long createPost(CounselPostWriteDto dto, List<MultipartFile> files) {
-        CounselPost post = new CounselPost();
-        // ... 엔티티 설정
-        CounselPost saved = counselPostRepository.save(post);
-        
-        log.info("Counsel post created: id={}, title={}, author={}, secret={}", 
-                 saved.getId(), saved.getTitle(), saved.getAuthorName(), saved.isSecret());
-        
-        return saved.getId();
-    }
-    
-    // ✅ 올바른 예시: 수정 시 로그 기록
-    public boolean updatePost(Long postId, CounselPostWriteDto dto) {
-        CounselPost post = findById(postId);
-        String oldTitle = post.getTitle();
-        
-        post.setTitle(dto.getTitle());
-        post.setContent(dto.getContent());
-        // updatedAt은 @UpdateTimestamp로 자동 갱신
-        
-        counselPostRepository.save(post);
-        
-        log.info("Counsel post updated: id={}, oldTitle={}, newTitle={}, updatedAt={}", 
-                 postId, oldTitle, dto.getTitle(), post.getUpdatedAt());
-        
-        return true;
-    }
-    
-    // ✅ 올바른 예시: 삭제 시 로그 기록
-    public boolean deletePost(Long postId) {
-        CounselPost post = findById(postId);
-        String title = post.getTitle();
-        
-        counselPostRepository.delete(post);  // @SQLDelete 실행
-        
-        log.info("Counsel post soft-deleted: id={}, title={}, deletedAt={}", 
-                 postId, title, LocalDateTime.now());
-        
-        return true;
-    }
-    
-    // ✅ 올바른 예시: 오류 발생 시 로그 기록
-    public void processAttachment(MultipartFile file) {
-        try {
-            String fileName = file.getOriginalFilename();
-            // ... 파일 처리
-            log.info("Attachment processed: fileName={}, size={}", fileName, file.getSize());
-        } catch (IOException e) {
-            log.error("Attachment processing failed: fileName={}, error={}", 
-                      file.getOriginalFilename(), e.getMessage(), e);
-            throw new RuntimeException("파일 처리 중 오류가 발생했습니다.", e);
-        }
-    }
-}
-```
-
-**로그 레벨 사용 지침**:
-| 레벨 | 용도 | 예시 |
-|------|------|------|
-| **INFO** | 정상적인 비즈니스 액션 | 게시글 생성, 수정, 삭제 |
-| **WARN** | 경고성 이벤트 | 비밀번호 검증 실패, 권한 없는 접근 시도 |
-| **ERROR** | 오류 발생 | 파일 업로드 실패, DB 트랜잭션 실패 |
-| **DEBUG** | 개발 중 디버깅 | QueryDSL 쿼리 생성, DTO 변환 과정 |
-
-**로그 메시지 작성 규칙**:
-```java
-// ✅ 올바른 예시: 구조화된 로그
-log.info("User login: username={}, ip={}, timestamp={}", 
-         username, request.getRemoteAddr(), LocalDateTime.now());
-
-// ✅ 올바른 예시: 삭제 이력 명확히 기록
-log.info("File deleted: fileId={}, fileName={}, filePath={}, deletedBy={}", 
-         fileId, fileName, filePath, username);
-
-// ❌ 잘못된 예시: 불명확한 로그
-log.info("삭제 완료");
-
-// ❌ 잘못된 예시: 민감 정보 노출
-log.info("User login: username={}, password={}", username, password);  // 절대 금지!
-```
-
-**스케줄러 작업 로그**:
-```java
-@Scheduled(cron = "0 0 0 * * ?")  // 매일 자정
-public void cleanupDeletedFiles() {
-    LocalDateTime cutoffDate = LocalDateTime.now().minusDays(14);
-    
-    log.info("File cleanup scheduler started: cutoffDate={}", cutoffDate);
-    
-    List<Attachment> deletedFiles = attachmentRepository
-        .findByDelFlagTrueAndDeletedAtBefore(cutoffDate);
-    
-    int deletedCount = 0;
-    for (Attachment file : deletedFiles) {
-        try {
-            Files.deleteIfExists(Paths.get(file.getFilePath()));
-            attachmentRepository.delete(file);
-            deletedCount++;
-            
-            log.info("File physically deleted: fileId={}, fileName={}, deletedAt={}", 
-                     file.getId(), file.getOriginalFileName(), file.getDeletedAt());
-        } catch (IOException e) {
-            log.error("File deletion failed: fileId={}, fileName={}, error={}", 
-                      file.getId(), file.getOriginalFileName(), e.getMessage());
-        }
-    }
-    
-    log.info("File cleanup scheduler completed: total={}, deleted={}", 
-             deletedFiles.size(), deletedCount);
-}
-```
-
-**감사(Audit) 테이블 (선택사항)**:
-```java
-// 중요한 액션은 별도 audit_log 테이블에 기록 가능
-@Entity
-@Table(name = "audit_log")
-public class AuditLog {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-    
-    @Column(nullable = false)
-    private String username;  // 누가
-    
-    @Column(nullable = false)
-    private String action;  // 무엇을 (CREATE, UPDATE, DELETE)
-    
-    @Column(nullable = false)
-    private String entityType;  // 어디서 (CounselPost, User, etc.)
-    
-    @Column(nullable = false)
-    private Long entityId;  // 어떤 것을
-    
-    @Column(columnDefinition = "TEXT")
-    private String details;  // 상세 정보 (JSON 형식)
-    
-    @CreationTimestamp
-    @Column(nullable = false, updatable = false)
-    private LocalDateTime createdAt;  // 언제
-    
-    @Column(length = 50)
-    private String ipAddress;  // 어디서 (IP)
-}
-```
-
----
-
-#### **11. Hibernate DDL 및 스키마 관리 규칙** ⭐NEW
-
-**개발 환경 DDL 설정**:
-```yaml
-# application-dev.yml
-spring:
-  jpa:
-    hibernate:
-      ddl-auto: update  # ✅ 권장: 기존 데이터 유지, 스키마 자동 업데이트
-      # ddl-auto: create-drop  # ❌ 금지: DROP 오류 및 데이터 손실
-      # ddl-auto: create  # ⚠️ 주의: 매번 데이터 삭제
-```
-
-**ddl-auto 옵션 사용 지침**:
-
-| 옵션 | 사용 시점 | 데이터 유지 | DROP 오류 | 권장 여부 |
-|------|----------|------------|----------|----------|
-| **update** | 개발 환경 | ✅ | ❌ | ✅ **권장** |
-| create | 초기 개발 시작 | ❌ | ❌ | ⚠️ |
-| create-drop | 절대 사용 금지 | ❌ | ✅ | ❌ **금지** |
-| validate | 운영 환경 | ✅ | ❌ | ✅ |
-| none | 운영 환경 (수동 관리) | ✅ | ❌ | ✅ |
-
-**규칙**:
-1. ✅ **개발 환경**: 항상 `ddl-auto: update` 사용
-2. ❌ **create-drop 절대 금지**: 테이블 DROP 시 오류 발생 및 데이터 손실
-3. ✅ **초기화 필요 시**: `drop-all-tables.sql` 스크립트 수동 실행
-4. ✅ **새 Entity 추가 시**: `@Table(name = "테이블명")` 명시적으로 지정
-5. ✅ **외래키 제약조건**: 개발 환경에서는 생성하지 않음 (성능 및 유연성)
-
-**테이블 초기화 방법**:
-```sql
--- MySQL 클라이언트에서 실행
-SET FOREIGN_KEY_CHECKS = 0;
--- 테이블 삭제
-DROP TABLE IF EXISTS 테이블명;
-SET FOREIGN_KEY_CHECKS = 1;
-```
-
-또는:
-```bash
-# 전체 테이블 초기화
-mysql -u dev33 -p petclinic < src/main/resources/db/mysql/drop-all-tables.sql
-```
-
-**Entity 작성 시 주의사항**:
-```java
-// ✅ 올바른 예시
-@Entity
-@Table(name = "users")  // 테이블명 명시
-@SQLDelete(sql = "UPDATE users SET del_flag=1, deleted_at=NOW() WHERE id=?")
-@SQLRestriction("del_flag = 0")
-public class User extends BaseEntity {
-    // del_flag 필드 필수 (Soft Delete)
-    @Column(name = "del_flag", nullable = false)
-    private boolean delFlag = false;
-    
-    @Column(name = "deleted_at")
-    private LocalDateTime deletedAt;
-}
-
-// ❌ 잘못된 예시
-@Entity
-public class User {  // @Table 누락 - Hibernate가 자동으로 테이블명 생성
-    // del_flag 없음 - Soft Delete 불가
-}
-```
-
-**DROP 오류 발생 시 대응**:
-1. `ddl-auto: update`로 변경되어 있는지 확인
-2. `drop-all-tables.sql` 스크립트로 수동 초기화
-3. MySQL에서 직접 `DROP TABLE IF EXISTS` 실행
-4. 외래키 제약조건 확인: `SHOW CREATE TABLE 테이블명;`
-
-#### **10. 테스트 및 서버 실행 규칙** ⭐NEW
-
-**서버 실행 방법**:
-
-| 방법 | 명령어 | 권장 여부 | 사유 |
-|------|--------|----------|------|
-| **IDE 실행** | Run 버튼 | ✅ **권장** | 포트 관리 자동, 종료 쉬움 |
-| Gradle bootRun | `./gradlew bootRun` | ❌ **금지** | 백그라운드 실행 시 포트 점유 문제 |
-
-**규칙**:
-1. ✅ **서버 실행**: 항상 IDE(IntelliJ IDEA)에서 실행
-2. ❌ **터미널 bootRun 금지**: 포트가 살아있어 수동 종료 필요
-3. ✅ **컴파일 확인**: `./gradlew compileJava` 사용 가능
-4. ✅ **빌드 확인**: `./gradlew build -x test` 사용 가능
-5. ❌ **터미널에서 bootRun 실행 금지**: 프로세스 관리 어려움
-
-**IDE 실행 설정**:
-```
-1. IntelliJ IDEA에서 PetClinicApplication.java 열기
-2. main 메서드 옆 실행 버튼 클릭
-3. Edit Configurations...
-   - Active profiles: dev
-   - VM options: -Dspring.profiles.active=dev
-4. Run 또는 Debug 모드 실행
-```
-
-**포트 충돌 해결**:
-```bash
-# 포트 사용 중인 프로세스 확인 (Windows)
-netstat -ano | findstr :8080
-
-# 프로세스 강제 종료 (PID 확인 후)
-taskkill /F /PID [PID]
-
-# 또는 Java 프로세스 전체 종료
-taskkill /F /IM java.exe
-```
-
-**Gradle 명령어 사용 가이드**:
-```bash
-# ✅ 허용: 컴파일만
-./gradlew compileJava
-
-# ✅ 허용: 빌드 (테스트 제외)
-./gradlew build -x test
-
-# ✅ 허용: 의존성 확인
-./gradlew dependencies
-
-# ✅ 허용: Gradle Daemon 종료
-./gradlew --stop
-
-# ❌ 금지: 서버 실행
-./gradlew bootRun  # 포트 점유 문제 발생
-```
-
-**서버 종료 방법**:
-- **IDE**: Stop 버튼 클릭 (권장)
-- **터미널 (비상시만)**: Ctrl+C 후 프로세스 확인
-
-**테스트 코드 작성 규칙**:
-- 별도 요청이 없으면 테스트 코드 작성하지 않음
-- 빌드 시 테스트 스킵: `./gradlew build -x test`
-
-### 6.2 문서 관리 규칙 ⭐NEW
-
-#### **관리 대상 문서**
-
-| 문서명 | 경로 | 용도 | 업데이트 주기 |
-|--------|------|------|--------------|
-| **PROJECT_DOCUMENTATION.md** | `docs/01-project-overview/` | 프로젝트 전체 문서 | 주요 기능 추가 시 |
-| **CHANGELOG.md** | `docs/07-changelog/` | 변경 이력 관리 | 버전 배포 시 필수 |
-| **QUICK_REFERENCE.md** | `docs/09-quick-reference/` | 빠른 참조 가이드 | API/URL 변경 시 |
-| **TABLE_DEFINITION.md** | `docs/03-database/` | 테이블 정의서 | 테이블 구조 변경 시 필수 |
-| **UI_SCREEN_DEFINITION.md** | `docs/05-ui-screens/` | UI 화면 정의서 | 화면 추가/수정 시 필수 |
-| **README.md** | 루트 | 프로젝트 소개 | 주요 기능 추가 시 |
-| **SECURITY_IMPLEMENTATION.md** | `docs/06-security/` | 보안 구현 문서 | 보안 기능 추가 시 |
-| **DOCUMENTATION_MANAGEMENT_GUIDE.md** | `docs/` | 문서 관리 가이드 | 문서 규칙 변경 시 |
-
-#### **문서 업데이트 규칙**
-
-**1. 테이블 구조 변경 시** (필수):
-```markdown
-# TABLE_DEFINITION.md 업데이트
-1. 해당 테이블의 컬럼 정보 수정
-2. 변경 이력 섹션에 날짜와 변경 내용 기록
-3. Entity 클래스 경로 확인 및 업데이트
-
-# 예시
-### [3.5.3] - 2025-11-07
-#### 수정
-- **users** 테이블: `profile_image` 컬럼 추가 (VARCHAR(500), 프로필 이미지 경로)
-
-#### 영향 범위
-- Entity: `User.java` 필드 추가
-- Service: `UserService.java` 프로필 업데이트 메서드 추가
-```
-
-**2. 기능 추가 시** (필수):
-```markdown
-# CHANGELOG.md 업데이트
-## [버전] - 날짜
-### 추가된 기능
-- 기능명: 상세 설명
-- 관련 파일: 파일 목록
-- 영향 범위: 변경된 부분
-
-# PROJECT_DOCUMENTATION.md 업데이트
-- 섹션 7. 주요 기능 명세에 새 기능 추가
-- API 엔드포인트 테이블 업데이트
-
-# QUICK_REFERENCE.md 업데이트
-- 주요 URL 테이블 업데이트
-- 코드 예시 추가 (필요 시)
-```
-
-**3. API/URL 변경 시** (필수):
-```markdown
-# QUICK_REFERENCE.md 업데이트
-- 주요 URL 테이블에서 변경된 엔드포인트 수정
-- 삭제된 API는 취소선(~~strikethrough~~) 처리 후 "Deprecated" 표시
-
-# PROJECT_DOCUMENTATION.md 업데이트
-- 섹션 5. API 요청 흐름 다이어그램 수정
-**4. UI 화면 추가/수정 시** (필수) ⭐NEW:
-```markdown
-# UI_SCREEN_DEFINITION.md 업데이트
-- 화면별 레이아웃 다이어그램 작성 (ASCII Art)
-- 입력 필드 테이블 작성
-  | 필드명 | 타입 | 필수 | 검증 | 설명 |
-  |--------|------|------|------|------|
-- 화면 동작 명세 작성
-- 변경 이력 섹션에 날짜와 내용 기록
-
-# CHANGELOG.md 업데이트
-- UI 카테고리에 변경 내용 기록
-
-# 예시
-### [3.5.3] - 2025-11-06
-#### UI 화면 추가
-- **user/login.html**: 로그인 화면
-  - Remember-Me 기능
-  - Flash 메시지 표시
-  - 입력 필드: username, password, remember-me
-```
-
-**5. 보안 기능 추가 시** (필수):
-
-**4. 보안 기능 추가 시** (필수):
-```markdown
-# SECURITY_IMPLEMENTATION.md 업데이트
-- 새로운 보안 기능 섹션 추가
-- 설정 방법 및 코드 예시 포함
-
-# CHANGELOG.md 업데이트
-- 보안 카테고리에 변경 내용 기록
-```
-
-**5. 의존성 추가/변경 시** (필수):
-```markdown
-# CHANGELOG.md 업데이트
-### 의존성 변경
-- 라이브러리명: 버전 변경 (구버전 → 신버전)
-- 변경 사유: CVE 보안 패치 / 기능 추가 등
-
-# PROJECT_DOCUMENTATION.md 업데이트
-- 섹션 1.1 기술 스택 버전 업데이트
-```
-
-#### **문서 작성 시 준수 사항**
-
-**공통 규칙**:
-```markdown
-1. ✅ 날짜는 ISO 8601 형식 사용: YYYY-MM-DD
-2. ✅ 버전은 Semantic Versioning 사용: X.Y.Z
-3. ✅ 코드 블록은 언어 지정: ```java, ```sql, ```bash
-4. ✅ 테이블은 Markdown 표 형식 사용
-5. ✅ 이모지 사용으로 가독성 향상: ✅ ❌ ⭐ 🔴 🟡 🟢
-```
-
-**CHANGELOG.md 작성 규칙**:
-```markdown
-## [버전] - 날짜
-
-### 🎉 추가된 기능 (Added)
-- 새로운 기능 설명
-
-### 🔧 수정된 기능 (Changed)
-- 기존 기능 변경 사항
-
-### 🐛 수정된 버그 (Fixed)
-- 버그 수정 내역
-
-### 🗑️ 삭제된 기능 (Removed)
-- 제거된 기능 (Deprecated 처리 후 삭제)
-
-### 🔒 보안 업데이트 (Security)
-- 보안 취약점 패치
-
-### 📊 의존성 변경 (Dependencies)
-- 라이브러리 버전 변경
-```
-
-**TABLE_DEFINITION.md 작성 규칙**:
-```markdown
-1. ✅ 모든 컬럼에 한글명 필수 기입
-2. ✅ NULL 허용 여부 명확히 표시
-3. ✅ 기본값이 있으면 반드시 기재
-4. ✅ 외래키 관계는 REFERENCES로 명시
-5. ✅ Entity 클래스 경로 풀패스로 기재
-6. ✅ 변경 이력에 영향 범위 상세 기록
-```
-
-#### **문서 검토 프로세스**
-
-**월간 검토** (매월 1일):
-```markdown
-1. CHANGELOG.md 누락 항목 확인
-2. TABLE_DEFINITION.md와 실제 DB 스키마 일치 여부 확인
-3. API 문서와 실제 엔드포인트 일치 여부 확인
-4. 버전 번호 일관성 검토
-```
-
-**배포 전 필수 검토**:
-```markdown
-1. ✅ CHANGELOG.md에 모든 변경사항 기록되었는지 확인
-2. ✅ 버전 번호가 모든 문서에서 일치하는지 확인
-3. ✅ 새로운 API가 QUICK_REFERENCE.md에 추가되었는지 확인
-4. ✅ 테이블 변경사항이 TABLE_DEFINITION.md에 반영되었는지 확인
-```
-
-#### **문서 자동화 도구 (추후 도입 예정)**
-
-```bash
-# 테이블 정의서 자동 생성 (계획)
-./gradlew generateTableDoc
-
-# API 문서 자동 생성 (계획)
-./gradlew generateApiDoc
-
-# CHANGELOG 항목 추출 (계획)
-./gradlew extractChangelog --version=3.5.3
-```
-
-### 6.2 트랜잭션 관리
-
-```java
-@Service
-@Transactional // 클래스 레벨에 선언
-public class CounselService {
-    
-    // 조회 메서드는 readOnly 권장
-    @Transactional(readOnly = true)
-    public PageResponse<CounselPostDto> getPagedPosts(Pageable pageable) {
-        // ...
-    }
-    
-    // 수정/삭제는 기본 Transactional
-    public Long saveNew(CounselPostWriteDto dto) {
-        // 파일 저장 → DB 저장이 하나의 트랜잭션
-        // 실패 시 자동 롤백
-    }
-}
-```
-
-### 6.3 JavaDoc 및 주석 규칙
-
-```java
-/**
- * 온라인상담 게시글 저장
- * 
- * @param dto 작성 폼 DTO (제목, 내용, 첨부파일 포함)
- * @return 생성된 게시글 ID
- * @throws IOException 파일 저장 실패 시
- */
-public Long saveNew(CounselPostWriteDto dto) throws IOException {
-    // 1. 본문 파일 저장
-    String path = contentStorage.saveHtml(dto.getContent());
-    
-    // 2. Entity 생성
-    CounselPost entity = new CounselPost();
-    // ...
-}
-```
-
-### 6.4 Author 정보 규칙
-
-```java
-/*
- * Project : spring-petclinic
- * File    : CounselService.java
- * Created : 2025-10-24
- * Author  : Jeongmin Lee
- *
- * Description :
- *   사용목적: 온라인상담 게시판 비즈니스 로직 집약
- *   연관 기능: 댓글 CRUD, 파일 업로드/다운로드
- *   미구현: 관리자 권한 제어, 대댓글 트리 구조
- *
- * License :
- *   Copyright (c) 2025 AOF(AllForOne) / All rights reserved.
- */
 ```
 
 ---
@@ -2128,4 +1530,3 @@ gradlew.bat bootRun
 **문서 버전**: 1.0  
 **최종 수정**: 2025-11-05  
 **작성자**: Jeongmin Lee
-

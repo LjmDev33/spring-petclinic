@@ -137,18 +137,45 @@ public class PhotoController {
 	}
 
 	/**
+	 * Phase 3: 임시 파일 업로드 (Uppy용)
+	 */
+	@PostMapping("/upload-temp")
+	@ResponseBody
+	public org.springframework.http.ResponseEntity<?> uploadTemp(@RequestParam("files") org.springframework.web.multipart.MultipartFile[] files) {
+		try {
+			java.util.List<java.util.Map<String, String>> uploadedFiles = new java.util.ArrayList<>();
+			java.nio.file.Path tempDir = java.nio.file.Paths.get("uploads/temp");
+			if (!java.nio.file.Files.exists(tempDir)) {
+				java.nio.file.Files.createDirectories(tempDir);
+			}
+
+			for (org.springframework.web.multipart.MultipartFile file : files) {
+				String originalFilename = file.getOriginalFilename();
+				String extension = originalFilename != null && originalFilename.contains(".")
+					? originalFilename.substring(originalFilename.lastIndexOf("."))
+					: "";
+				String storedFilename = java.util.UUID.randomUUID().toString() + extension;
+				java.nio.file.Path filePath = tempDir.resolve(storedFilename);
+				file.transferTo(filePath.toFile());
+
+				java.util.Map<String, String> fileInfo = new java.util.HashMap<>();
+				fileInfo.put("path", "uploads/temp/" + storedFilename);
+				fileInfo.put("originalName", originalFilename);
+				uploadedFiles.add(fileInfo);
+
+				log.info("✅ Photo temp file uploaded: {}", storedFilename);
+			}
+
+			return org.springframework.http.ResponseEntity.ok(uploadedFiles);
+		} catch (Exception e) {
+			log.error("❌ Photo temp upload failed: {}", e.getMessage(), e);
+			return org.springframework.http.ResponseEntity.badRequest()
+				.body(java.util.Map.of("error", "파일 업로드 중 오류가 발생했습니다: " + e.getMessage()));
+		}
+	}
+
+	/**
 	 * 게시글 좋아요 토글 (AJAX API)
-	 *
-	 * <p>Phase 2-3: 포토게시판 좋아요 기능</p>
-	 *
-	 * Purpose:
-	 * - 로그인한 사용자만 좋아요를 누를 수 있다.
-	 * - 이미 좋아요를 눌렀으면 취소하고, 안 눌렀으면 추가한다.
-	 * - JSON 응답으로 좋아요 상태와 개수를 반환한다.
-	 *
-	 * @param id 게시글 ID
-	 * @param authentication Spring Security 인증 객체
-	 * @return JSON 응답 { success, liked, likeCount, message }
 	 */
 	@PostMapping("/detail/{id}/like")
 	@ResponseBody
@@ -188,4 +215,3 @@ public class PhotoController {
 		}
 	}
 }
-

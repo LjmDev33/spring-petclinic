@@ -11,9 +11,18 @@ import org.springframework.samples.petclinic.common.dto.PageResponse;
 import org.springframework.samples.petclinic.photo.dto.PhotoPostDto;
 import org.springframework.samples.petclinic.photo.mapper.PhotoPostMapper;
 import org.springframework.samples.petclinic.photo.repository.PhotoPostRepository;
+import org.springframework.samples.petclinic.photo.repository.PhotoPostAttachmentRepository;
 import org.springframework.samples.petclinic.photo.table.PhotoPost;
+import org.springframework.samples.petclinic.photo.table.PhotoPostAttachment;
+import org.springframework.samples.petclinic.common.table.Attachment;
+import org.springframework.samples.petclinic.counsel.repository.AttachmentRepository;
 import org.springframework.stereotype.Service;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -91,11 +100,17 @@ public class PhotoService {
 
 	private final PhotoPostRepository repository;
 	private final org.springframework.samples.petclinic.photo.repository.PhotoPostLikeRepository likeRepository;
+	private final AttachmentRepository attachmentRepository;
+	private final PhotoPostAttachmentRepository photoPostAttachmentRepository;
 
 	public PhotoService(PhotoPostRepository repository,
-						org.springframework.samples.petclinic.photo.repository.PhotoPostLikeRepository likeRepository) {
+						org.springframework.samples.petclinic.photo.repository.PhotoPostLikeRepository likeRepository,
+						AttachmentRepository attachmentRepository,
+						PhotoPostAttachmentRepository photoPostAttachmentRepository) {
 		this.repository = repository;
 		this.likeRepository = likeRepository;
+		this.attachmentRepository = attachmentRepository;
+		this.photoPostAttachmentRepository = photoPostAttachmentRepository;
 	}
 
 	/**
@@ -183,19 +198,73 @@ public class PhotoService {
 	}
 
 	/**
-	 * 게시글 수정
+	 * 게시글 수정 (Phase 3: 첨부파일 관리 포함)
 	 */
 	public PhotoPostDto updatePost(Long id, PhotoPostDto dto) {
-		PhotoPost entity = repository.findById(id)
-			.orElseThrow(() -> new IllegalArgumentException("게시글을 찾을 수 없습니다: " + id));
+		try {
+			PhotoPost entity = repository.findById(id)
+				.orElseThrow(() -> new IllegalArgumentException("게시글을 찾을 수 없습니다: " + id));
 
-		entity.setTitle(dto.getTitle());
-		entity.setContent(dto.getContent());
-		entity.setThumbnailUrl(dto.getThumbnailUrl());
+			// 1. 기본 필드 수정
+			entity.setTitle(dto.getTitle());
+			entity.setContent(dto.getContent());
+			entity.setThumbnailUrl(dto.getThumbnailUrl());
 
-		PhotoPost updated = repository.save(entity);
-		log.info("포토게시글 수정: ID={}", id);
-		return PhotoPostMapper.toDto(updated);
+			// 2. Phase 3: 기존 첨부파일 삭제 처리
+			if (dto.getDeletedFileIds() != null && !dto.getDeletedFileIds().isBlank()) {
+				String[] deletedIds = dto.getDeletedFileIds().split(",");
+				for (String idStr : deletedIds) {
+					idStr = idStr.trim();
+					if (idStr.isEmpty()) continue;
+					try {
+						Long attachmentId = Long.parseLong(idStr);
+						Attachment attachment = attachmentRepository.findById(attachmentId).orElse(null);
+						if (attachment == null) {
+							log.warn("Attachment not found: id={}", attachmentId);
+							continue;
+						}
+						entity.getAttachments().removeIf(pa -> pa.getAttachment().getId().equals(attachmentId));
+						attachment.setDelFlag(true);
+						attachment.setDeletedAt(LocalDateTime.now());
+						attachmentRepository.save(attachment);
+						log.info("✅ Photo attachment deleted: postId={}, attachmentId={}", id, attachmentId);
+					} catch (NumberFormatException e) {
+						log.error("Invalid attachment ID: {}", idStr);
+					}
+				}
+			}
+
+			// 3. Phase 3: 새 첨부파일 추가 처리
+			if (dto.getAttachmentPaths() != null && !dto.getAttachmentPaths().isBlank()) {
+				String[] filePaths = dto.getAttachmentPaths().split(",");
+				for (String filePath : filePaths) {
+					filePath = filePath.trim();
+					if (filePath.isEmpty()) continue;
+					try {
+						Attachment attachment = new Attachment();
+						attachment.setStoredFilename(filePath);
+						attachment.setOriginalFilename(extractFileName(filePath));
+						attachment.setFileSize(0L);
+						attachment.setContentType("application/octet-stream");
+						attachmentRepository.save(attachment);
+						PhotoPostAttachment postAttachment = new PhotoPostAttachment(entity, attachment);
+						photoPostAttachmentRepository.save(postAttachment);
+						entity.addAttachment(postAttachment);
+						log.info("✅ Photo attachment added: postId={}, path={}", id, filePath);
+					} catch (Exception e) {
+						log.error("❌ Failed to add attachment {}: {}", filePath, e.getMessage());
+					}
+				}
+			}
+
+			PhotoPost updated = repository.save(entity);
+			log.info("✅ 포토게시글 수정 완료: ID={}, 첨부파일 수={}", id, entity.getAttachments().size());
+			return PhotoPostMapper.toDto(updated);
+
+		} catch (Exception e) {
+			log.error("❌ 포토게시글 수정 실패: ID={}", id, e);
+			throw new RuntimeException("게시글 수정 중 오류가 발생했습니다.", e);
+		}
 	}
 
 	/**
@@ -207,6 +276,17 @@ public class PhotoService {
 
 		repository.delete(entity); // @SQLDelete로 Soft Delete
 		log.info("포토게시글 삭제: ID={}", id);
+	}
+
+	/**
+	 * 파일 경로에서 파일명 추출
+	 */
+	private String extractFileName(String filePath) {
+		if (filePath == null || filePath.isEmpty()) {
+			return "unknown";
+		}
+		int lastSlash = Math.max(filePath.lastIndexOf('/'), filePath.lastIndexOf('\\'));
+		return lastSlash >= 0 ? filePath.substring(lastSlash + 1) : filePath;
 	}
 
 	// ==================== 좋아요 기능 (ACID 트랜잭션 고도화) ====================
