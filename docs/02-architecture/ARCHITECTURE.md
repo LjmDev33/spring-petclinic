@@ -1,8 +1,8 @@
 # 🏛️ 시스템 아키텍처 (System Architecture)
 
 **프로젝트**: Spring PetClinic  
-**버전**: 3.5.3  
-**최종 수정일**: 2025-11-11  
+**버전**: 3.5.26  
+**최종 수정일**: 2025-11-26  
 **작성자**: Jeongmin Lee
 
 ---
@@ -99,7 +99,9 @@ Controller → View (Thymeleaf)
 
 **주요 클래스**:
 - `CounselController` - 온라인상담 요청 처리
-- `CommunityController` - 커뮤니티 요청 처리
+- `CommunityController` - 커뮤니티 게시판 요청 처리
+- `PhotoController` - 포토게시판 요청 처리
+- `FaqController` - FAQ 게시판 요청 처리 (관리자: FaqAdminController)
 - `AuthController` - 인증 요청 처리
 - `FileDownloadController` - 파일 다운로드 처리
 
@@ -124,7 +126,9 @@ Service (@Service) → Mapper → DTO
 
 **주요 클래스**:
 - `CounselService` - 온라인상담 비즈니스 로직
-- `CommunityService` - 커뮤니티 비즈니스 로직
+- `CommunityService` - 커뮤니티 게시판 비즈니스 로직
+- `PhotoService` - 포토게시판 비즈니스 로직
+- `FaqService` - FAQ 게시판 비즈니스 로직
 - `UserService` - 사용자 관리 비즈니스 로직
 - `FileStorageService` - 파일 저장 로직
 
@@ -150,8 +154,11 @@ Repository (JpaRepository) → QueryDSL (RepositoryImpl) → Entity
 
 **주요 인터페이스**:
 - `CounselPostRepository` - 온라인상담 게시글 저장소
-- `CounselCommentRepository` - 댓글 저장소
-- `AttachmentRepository` - 첨부파일 저장소
+- `CounselCommentRepository` - 온라인상담 댓글 저장소
+- `CommunityPostRepository` - 커뮤니티 게시글 저장소
+- `PhotoPostRepository` - 포토게시판 게시글 저장소 (QueryDSL 지원)
+- `FaqPostRepository` - FAQ 게시글 저장소
+- `AttachmentRepository` - 첨부파일 저장소 (공통)
 - `UserRepository` - 사용자 저장소
 
 **QueryDSL 구현**:
@@ -201,6 +208,20 @@ org.springframework.samples.petclinic
 │   ├── repository/
 │   ├── dto/
 │   ├── mapper/
+│   └── table/
+│
+├── photo/                   # 포토게시판 모듈
+│   ├── controller/
+│   ├── service/
+│   ├── repository/
+│   ├── dto/
+│   ├── mapper/
+│   └── table/
+│
+├── faq/                     # FAQ 게시판 모듈
+│   ├── controller/
+│   ├── service/
+│   ├── repository/
 │   └── table/
 │
 ├── user/                    # 사용자 모듈
@@ -526,6 +547,7 @@ data/
 | Thymeleaf | 3.1.3 | 서버 사이드 템플릿 엔진 |
 | Bootstrap | 5.3.x | CSS 프레임워크 |
 | Bootstrap Icons | 1.11.x | 아이콘 |
+| Quill | 2.0.x | 리치 텍스트 에디터 (로컬 내장) |
 | JavaScript | ES6+ | 클라이언트 스크립트 |
 
 ### DevOps
@@ -541,6 +563,31 @@ data/
 
 ## 변경 이력
 
+### [3.5.26] - 2025-11-26
+#### 추가
+- **포토게시판 모듈** 추가
+  - PhotoController, PhotoService, PhotoPostRepository
+  - 썸네일 이미지 지원 (fallback 처리)
+  - Quill 에디터 포맷 본문
+
+- **FAQ 게시판 모듈** 추가
+  - FaqController, FaqAdminController (관리자 전용)
+  - FaqService, FaqPostRepository
+  - 카테고리별 분류 (일반, 진료, 예약, 수술, 기타)
+  - Quill 에디터 로컬 내장 (CDN → 로컬 경로)
+
+- **초기 데이터 생성 개선**
+  - FAQ 게시판: 15개 데이터 (카테고리별 균등 분배)
+  - 포토게시판: 15개 데이터 (반려동물 주제)
+  - 커뮤니티: 더미 데이터 다양화 (50가지 조합)
+
+#### 변경
+- Quill 에디터 로컬 내장 방식 적용 (오프라인 지원)
+- 게시판별 Controller, Service, Repository 명시
+- 커뮤니티 더미 데이터 개선 (획일적 → 다양화)
+
+---
+
 ### [3.5.3] - 2025-11-11
 #### 추가
 - 최초 아키텍처 문서 작성
@@ -554,7 +601,7 @@ data/
 
 ---
 
-**문서 버전**: 1.0  
-**최종 검토**: 2025-11-11  
+**문서 버전**: 2.0  
+**최종 검토**: 2025-11-26  
 **담당자**: Jeongmin Lee
 

@@ -1,29 +1,101 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security" lang="ko">
 <head>
   <title>FAQ 상세 - Spring PetClinic</title>
   <link rel="stylesheet" th:href="@{/css/custom-buttons.css}">
 </head>
 <body>
 <div class="container mt-4">
-  <div class="mb-3">
-    <a th:href="@{/faq}" class="custom-btn custom-btn-secondary">
-      <i class="bi bi-list me-1"></i> 목록
-    </a>
+  <!-- 상단 버튼 영역 -->
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <a th:href="@{/faq}" class="custom-btn custom-btn-secondary">
+        <i class="bi bi-list me-1"></i> 목록
+      </a>
+    </div>
+    <!-- 관리자 전용 수정/삭제 버튼 -->
+    <div sec:authorize="hasRole('ADMIN')" class="d-flex" style="gap: 8px;">
+      <a th:href="@{/admin/faq/edit/{id}(id=${faq.id})}" class="custom-btn custom-btn-warning">
+        <i class="bi bi-pencil me-1"></i> 수정
+      </a>
+      <button type="button" class="custom-btn custom-btn-danger" onclick="confirmDelete()">
+        <i class="bi bi-trash me-1"></i> 삭제
+      </button>
+    </div>
   </div>
 
+  <!-- FAQ 카드 -->
   <div class="card shadow-sm">
     <div class="card-header bg-primary text-white">
-      <h5 class="mb-0">
-        <span class="badge bg-secondary me-2" th:text="${faq.category}"></span>
-        <span th:text="${faq.question}"></span>
-      </h5>
+      <div class="d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">
+          <span class="badge bg-secondary me-2" th:text="${faq.category}">카테고리</span>
+          <span class="fw-bold me-2">Q.</span>
+          <span th:text="${faq.question}">질문</span>
+        </h5>
+      </div>
     </div>
-    <div class="card-body">
-      <p th:utext="${faq.answer}"></p>
+    <div class="card-body bg-light">
+      <div class="mb-2">
+        <span class="badge bg-success">A.</span>
+      </div>
+      <div class="ql-editor" th:utext="${faq.answer}">답변</div>
+    </div>
+    <div class="card-footer text-muted">
+      <small>
+        <i class="bi bi-clock me-1"></i>
+        작성일: <span th:text="${#temporals.format(faq.createdAt, 'yyyy-MM-dd HH:mm')}">2025-11-26</span>
+        <span th:if="${faq.updatedAt != null}">
+          | 수정일: <span th:text="${#temporals.format(faq.updatedAt, 'yyyy-MM-dd HH:mm')}">2025-11-26</span>
+        </span>
+      </small>
     </div>
   </div>
 </div>
+
+<!-- 삭제 확인 모달 -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title" id="deleteModalLabel">
+          <i class="bi bi-exclamation-triangle me-2"></i>FAQ 삭제
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-warning">
+          <i class="bi bi-exclamation-triangle-fill me-2"></i>
+          <strong>경고:</strong> 이 FAQ를 삭제하시겠습니까?
+        </div>
+        <p>삭제된 FAQ는 복구할 수 없습니다.</p>
+        <p class="mb-0">
+          <strong>질문:</strong> <span th:text="${faq.question}">질문</span>
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="custom-btn custom-btn-secondary" data-bs-dismiss="modal">
+          <i class="bi bi-x-circle me-1"></i> 취소
+        </button>
+        <form th:action="@{/admin/faq/delete/{id}(id=${faq.id})}" method="post" style="display: inline;">
+          <button type="submit" class="custom-btn custom-btn-danger">
+            <i class="bi bi-trash me-1"></i> 삭제
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  /**
+   * 삭제 확인 모달 표시
+   */
+  function confirmDelete() {
+    const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    modal.show();
+  }
+</script>
 </body>
 </html>
 package org.springframework.samples.petclinic.faq.table;

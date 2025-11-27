@@ -19,12 +19,57 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * @author Jeongmin Lee
- * @description 파일 저장 및 관리를 담당하는 서비스 클래스.
- * 이 클래스는 파일 시스템에 파일을 저장하고, 경로를 생성하며, 파일 유효성을 검증합니다.
- * 아직 구현되지 않은 기능:
- * - 파일 삭제 (물리적 파일 삭제)
- * - 파일 다운로드 스트림 제공
+ * Project : spring-petclinic
+ * File    : FileStorageService.java
+ * Created : 2025-10-24
+ * Author  : Jeongmin Lee
+ *
+ * Description :
+ *   파일 저장 및 관리 서비스 (업로드, 삭제, 경로 생성, 유효성 검증)
+ *
+ * Purpose (만든 이유):
+ *   1. 파일 업로드 로직을 중앙 집중화
+ *   2. 파일 타입 검증 및 보안 강화 (Apache Tika 사용)
+ *   3. 파일명 중복 방지 (UUID 사용)
+ *   4. 체계적인 폴더 구조 (날짜별 분류)
+ *   5. 파일 크기 제한 및 허용 MIME 타입 관리
+ *
+ * Key Features (주요 기능):
+ *   - 파일 업로드 (MultipartFile → 디스크 저장)
+ *   - 파일 삭제 (Soft Delete와 연동하여 물리 삭제)
+ *   - 파일명 생성 (UUID + 원본 확장자)
+ *   - 디렉토리 자동 생성 (년/월/일 구조)
+ *   - MIME 타입 검증 (Apache Tika로 실제 파일 내용 검사)
+ *   - 허용 타입: 이미지(JPEG, PNG, GIF 등), 문서(PDF, Word, Excel, HWP 등), 압축(ZIP, RAR)
+ *
+ * Security (보안):
+ *   - Apache Tika로 파일 확장자 위조 방지
+ *   - MIME 타입 화이트리스트 방식
+ *   - 파일명에 UUID 사용하여 경로 추측 방지
+ *   - 업로드 디렉토리 외부 접근 차단
+ *
+ * File Structure (파일 저장 구조):
+ *   {base-dir}/yyyy/MM/dd/{UUID}_{originalFilename}
+ *   예: uploads/2025/11/26/a1b2c3d4-e5f6-7890-abcd-ef1234567890_report.pdf
+ *
+ * Usage Examples (사용 예시):
+ *   // 파일 업로드
+ *   String storedPath = fileStorageService.storeFile(multipartFile);
+ *   // 반환: "2025/11/26/uuid_filename.jpg"
+ *
+ *   // 파일 삭제
+ *   fileStorageService.deleteFile(storedPath);
+ *
+ * Configuration (설정):
+ *   - application-dev.yml:
+ *     petclinic.counsel.upload-dir: 업로드 디렉토리 경로
+ *
+ * Dependencies (의존성):
+ *   - Apache Tika: 파일 타입 검증
+ *   - MultipartFile: Spring 파일 업로드
+ *
+ * License :
+ *   Copyright (c) 2025 AOF(AllForOne) / All rights reserved.
  */
 @Service
 public class FileStorageService {

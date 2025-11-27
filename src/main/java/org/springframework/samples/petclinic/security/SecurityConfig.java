@@ -55,7 +55,7 @@ public class SecurityConfig {
 		http
 			.authorizeHttpRequests(auth -> auth
 				// 공개 리소스
-				.requestMatchers("/", "/welcome", "/css/**", "/fonts/**", "/images/**", "/webjars/**").permitAll()
+				.requestMatchers("/", "/welcome", "/css/**", "/fonts/**", "/images/**", "/webjars/**", "/js/**").permitAll()
 				// 회원가입, 로그인 페이지
 				.requestMatchers("/login", "/register", "/forgot-password", "/reset-password").permitAll()
 				// 커뮤니티 (공개)
@@ -63,6 +63,10 @@ public class SecurityConfig {
 				// 온라인상담 (공개, 단 비공개 글은 비밀번호 검증)
 				.requestMatchers("/counsel/list", "/counsel/detail/**", "/counsel/write", "/counsel").permitAll()
 				.requestMatchers("/counsel/download/**").permitAll()
+				// FAQ (공개)
+				.requestMatchers("/faq", "/faq/list", "/faq/detail/**").permitAll()
+				// 포토게시판 (공개)
+				.requestMatchers("/photo/list", "/photo/detail/**").permitAll()
 				// 관리자 전용
 				.requestMatchers("/admin/**").hasRole("ADMIN")
 				// 나머지는 인증 필요
@@ -81,11 +85,17 @@ public class SecurityConfig {
 				.logoutUrl("/logout")
 				.logoutSuccessUrl("/?logout=true")
 				.invalidateHttpSession(true)
-				.deleteCookies("JSESSIONID", "remember-me")
+				.deleteCookies("JSESSIONID", "remember-me", "savedUsername")
 				.permitAll()
 			)
-			// 개발 환경에서는 JDBC 기반 remember-me로 인한 persistent_logins 삭제 쿼리 오류를 피하기 위해
-			// rememberMe 설정을 비활성화한다. 운영 환경에서는 DB 스키마를 정비한 뒤 재활성화할 수 있다.
+			// Remember-Me (자동 로그인) 설정
+			.rememberMe(remember -> remember
+				.key("petclinic-remember-me-key")
+				.tokenValiditySeconds(7 * 24 * 60 * 60) // 7일
+				.userDetailsService(userDetailsService)
+				.rememberMeParameter("remember-me")
+				.rememberMeCookieName("remember-me")
+			)
 			.sessionManagement(session -> session
 				.maximumSessions(1) // 기본 단일 로그인 (추후 시스템 설정으로 제어)
 				.maxSessionsPreventsLogin(false) // false: 기존 세션 만료, true: 신규 로그인 차단

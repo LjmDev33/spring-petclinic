@@ -9,10 +9,11 @@ import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.samples.petclinic.counsel.model.Attachment;
+import org.springframework.samples.petclinic.common.table.Attachment;
 import org.springframework.samples.petclinic.counsel.repository.AttachmentRepository;
 import org.springframework.samples.petclinic.counsel.repository.CounselPostRepository;
 import org.springframework.samples.petclinic.counsel.table.CounselPost;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -31,17 +32,21 @@ import java.util.Set;
  * Author  : Jeongmin Lee
  *
  * Description :
- *   사용목적: 온라인상담 첨부파일 다운로드 처리
+ *   사용목적: 온라인상담 첨부파일 다운로드 처리 및 권한 검증
  *   연관 기능:
  *     - UTF-8 파일명 인코딩
  *     - MIME 타입 전송
- *     - 비공개 게시글 파일 다운로드 권한 검증 (세션 기반)
+ *     - 비공개 게시글 파일 다운로드 권한 검증 (세션 + 관리자 권한)
  *
  *   권한 검증 로직:
  *     1. 파일이 속한 게시글 조회
  *     2. 공개 게시글: 모든 사용자 다운로드 가능
- *     3. 비공개 게시글: 세션에 unlock된 게시글 ID가 있어야 다운로드 가능
- *     4. 권한 없으면 403 Forbidden 반환
+ *     3. 비공개 게시글 + 관리자(ROLE_ADMIN): 무조건 다운로드 가능
+ *     4. 비공개 게시글 + 일반 사용자: 세션에 unlock된 게시글 ID가 있어야 다운로드 가능
+ *     5. 권한 없으면 403 Forbidden 반환
+ *
+ *   개선 이력:
+ *     - 2025-11-26: 관리자 권한 검증 추가 (Phase 1: 보안 강화)
  *
  * License :
  *   Copyright (c) 2025 AOF(AllForOne) / All rights reserved.
@@ -80,17 +85,22 @@ public class FileDownloadController {
 	 * <p>권한 검증 로직:</p>
 	 * <ul>
 	 *   <li>공개 게시글: 모든 사용자 다운로드 가능</li>
-	 *   <li>비공개 게시글: 세션에 unlock된 게시글 ID가 있어야 다운로드 가능</li>
+	 *   <li>비공개 게시글 + 관리자(ROLE_ADMIN): 무조건 다운로드 가능</li>
+	 *   <li>비공개 게시글 + 일반 사용자: 세션에 unlock된 게시글 ID가 있어야 다운로드 가능</li>
 	 *   <li>권한 없음: 403 Forbidden 반환</li>
 	 * </ul>
 	 *
 	 * @param fileId 다운로드할 파일의 ID
 	 * @param session HTTP 세션 (권한 검증용)
+	 * @param authentication Spring Security 인증 객체 (관리자 권한 확인용, null 가능)
 	 * @return 다운로드할 파일의 ResponseEntity 또는 403 에러
 	 * @throws MalformedURLException 파일 경로가 잘못된 경우
 	 */
 	@GetMapping("/download/{fileId}")
-	public ResponseEntity<Resource> downloadFile(@PathVariable Integer fileId, HttpSession session)
+	public ResponseEntity<Resource> downloadFile(
+		@PathVariable Long fileId,
+		HttpSession session,
+		Authentication authentication)
 		throws MalformedURLException {
 
 		// NPE 방지: fileId null 체크
@@ -105,7 +115,8 @@ public class FileDownloadController {
 			return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
 		}
 
-		log.info("File download request: fileId={}, sessionId={}", fileId, session.getId());
+		log.info("File download request: fileId={}, sessionId={}, authenticated={}",
+			fileId, session.getId(), authentication != null);
 
 		// 1. 첨부파일 조회
 		Attachment attachment = attachmentRepository.findById(fileId)
@@ -121,15 +132,23 @@ public class FileDownloadController {
 			return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
 		}
 
-		// 3. 권한 검증: 비공개 게시글인 경우 세션 확인
-		if (post.isSecret() && !isPostUnlocked(session, post.getId())) {
-			log.warn("Unauthorized file download attempt: fileId={}, postId={}, secret=true", fileId, post.getId());
-			return ResponseEntity.status(HttpStatus.FORBIDDEN)
-				.body(null); // 권한 없음
+		// 3. 권한 검증: 비공개 게시글인 경우
+		if (post.isSecret()) {
+			// 3-1. 관리자인 경우 무조건 허용
+			if (isAdmin(authentication)) {
+				log.info("Admin file download granted: fileId={}, postId={}, admin=true", fileId, post.getId());
+			}
+			// 3-2. 일반 사용자는 세션에 unlock된 게시글인지 확인
+			else if (!isPostUnlocked(session, post.getId())) {
+				log.warn("Unauthorized file download attempt: fileId={}, postId={}, secret=true, unlocked=false",
+					fileId, post.getId());
+				return ResponseEntity.status(HttpStatus.FORBIDDEN)
+					.body(null); // 권한 없음
+			}
 		}
 
 		// 4. 파일 리소스 로드
-		Path filePath = baseDir.resolve(attachment.getFilePath()).normalize();
+		Path filePath = baseDir.resolve(attachment.getStoredFilename()).normalize();
 		Resource resource = new UrlResource(filePath.toUri());
 
 		if (!resource.exists() || !resource.isReadable()) {
@@ -139,16 +158,16 @@ public class FileDownloadController {
 
 		// 5. 원본 파일명을 UTF-8로 인코딩하여 Content-Disposition 헤더에 설정
 		String contentDisposition = "attachment; filename*=UTF-8''" +
-			java.net.URLEncoder.encode(attachment.getOriginalFileName(), java.nio.charset.StandardCharsets.UTF_8)
+			java.net.URLEncoder.encode(attachment.getOriginalFilename(), java.nio.charset.StandardCharsets.UTF_8)
 				.replace("+", "%20");
 
 		log.info("File download success: fileId={}, fileName={}, postId={}", fileId,
-			attachment.getOriginalFileName(), post.getId());
+			attachment.getOriginalFilename(), post.getId());
 
 		// 6. 파일 다운로드 응답
 		return ResponseEntity.ok()
 			.header(HttpHeaders.CONTENT_DISPOSITION, contentDisposition)
-			.header(HttpHeaders.CONTENT_TYPE, attachment.getMimeType())
+			.header(HttpHeaders.CONTENT_TYPE, attachment.getContentType())
 			.header(HttpHeaders.CONTENT_LENGTH, String.valueOf(attachment.getFileSize()))
 			.body(resource);
 	}
@@ -196,6 +215,24 @@ public class FileDownloadController {
 
 		// 게시글 ID가 unlock 목록에 있는지 확인
 		return unlockedPosts.contains(postId);
+	}
+
+	/**
+	 * 사용자가 관리자 권한을 가지고 있는지 확인
+	 *
+	 * <p>Spring Security의 Authentication 객체에서 권한(GrantedAuthority)을 조회하여,
+	 * ROLE_ADMIN 권한이 있는지 확인합니다.</p>
+	 *
+	 * @param authentication Spring Security 인증 객체 (null 가능)
+	 * @return 관리자 여부 (true: 관리자, false: 일반 사용자 또는 비로그인)
+	 */
+	private boolean isAdmin(Authentication authentication) {
+		if (authentication == null) {
+			return false;
+		}
+
+		return authentication.getAuthorities().stream()
+			.anyMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN"));
 	}
 
 }

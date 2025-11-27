@@ -61,7 +61,7 @@ public class FaqController {
     /**
      * FAQ 상세 조회
      */
-    @GetMapping("/{id}")
+    @GetMapping("/detail/{id}")
     public String detail(@PathVariable Long id, Model model) {
         model.addAttribute("faq", faqService.getFaq(id));
         model.addAttribute("template", "faq/faqDetail");
@@ -104,7 +104,39 @@ class FaqAdminController {
     }
 
     /**
-     * FAQ 삭제 (Soft Delete)
+     * FAQ 수정 화면
+     */
+    @GetMapping("/edit/{id}")
+    public String editForm(@PathVariable Long id, Model model) {
+        model.addAttribute("faq", faqService.getFaq(id));
+        model.addAttribute("template", "faq/faqEdit");
+        return "fragments/layout";
+    }
+
+    /**
+     * FAQ 수정 처리
+     */
+    @PostMapping("/edit/{id}")
+    public String edit(@PathVariable Long id,
+                       @RequestParam String question,
+                       @RequestParam String answer,
+                       @RequestParam String category,
+                       @RequestParam(defaultValue = "0") Integer displayOrder) {
+        faqService.updateFaq(id, question, answer, category, displayOrder);
+        return "redirect:/faq/detail/" + id;
+    }
+
+    /**
+     * FAQ 삭제 (Soft Delete) - 상세 페이지에서 단일 삭제
+     */
+    @PostMapping("/delete/{id}")
+    public String deleteSingle(@PathVariable Long id) {
+        faqService.softDeleteFaq(id);
+        return "redirect:/faq";
+    }
+
+    /**
+     * FAQ 삭제 (Soft Delete) - 목록에서 다중 삭제
      */
     @PostMapping("/delete")
     @ResponseBody

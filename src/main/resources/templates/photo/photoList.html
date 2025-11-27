@@ -72,13 +72,18 @@
   <div th:if="${!#lists.isEmpty(posts)}" class="photo-gallery">
     <div th:each="post : ${posts}" class="photo-card">
       <a th:href="@{/photo/detail/{id}(id=${post.id})}" style="text-decoration: none; color: inherit;">
-        <!-- 썸네일 -->
-        <img th:if="${post.thumbnailUrl != null}"
+        <!-- 썸네일 (에러 시 기본 이미지로 fallback) -->
+        <img th:if="${post.thumbnailUrl != null && !post.thumbnailUrl.isEmpty()}"
              th:src="${post.thumbnailUrl}"
              th:alt="${post.title}"
-             class="photo-thumbnail">
-        <div th:if="${post.thumbnailUrl == null}" class="photo-thumbnail d-flex align-items-center justify-content-center">
-          <i class="bi bi-image text-muted" style="font-size: 3rem;"></i>
+             class="photo-thumbnail"
+             onerror="this.onerror=null; this.src='/images/default-photo.png'; this.style.objectFit='contain';">
+
+        <!-- 썸네일이 없는 경우 기본 아이콘 표시 -->
+        <div th:if="${post.thumbnailUrl == null || post.thumbnailUrl.isEmpty()}"
+             class="photo-thumbnail d-flex align-items-center justify-content-center"
+             style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+          <i class="bi bi-camera text-white" style="font-size: 3rem; opacity: 0.8;"></i>
         </div>
 
         <!-- 내용 -->

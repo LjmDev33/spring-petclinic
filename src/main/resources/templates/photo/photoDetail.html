@@ -1,14 +1,28 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      lang="ko">
 <head>
   <title>포토 상세</title>
   <link rel="stylesheet" th:href="@{/css/custom-buttons.css}">
+  <!-- Quill 에디터 스타일 (본문 표시용) -->
+  <link rel="stylesheet" th:href="@{/css/quill/quill.snow.css}">
+  <style>
+    .thumbnail-preview {
+      width: 100%;
+      max-height: 400px;
+      object-fit: contain;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      margin-bottom: 1.5rem;
+    }
+  </style>
 </head>
 <body>
 <div class="container mt-4">
   <!-- 버튼 그룹 -->
   <div class="d-flex justify-content-between mb-3">
-    <div class="d-flex gap-2">
+    <div class="d-flex" style="gap: 8px;">
       <a th:href="@{/photo/edit/{id}(id=${post.id})}" class="custom-btn custom-btn-warning">
         <i class="bi bi-pencil me-1"></i> 수정
       </a>
@@ -21,6 +35,7 @@
     </a>
   </div>
 
+  <!-- 제목 및 메타 정보 -->
   <div class="row">
     <hr class="mt-2 border-2 opacity-25"/>
     <h1><span th:text="${post.title}"></span></h1>
@@ -33,12 +48,177 @@
     </div>
   </div>
 
+  <!-- 썸네일 이미지 (있는 경우만 표시) -->
+  <div th:if="${post.thumbnailUrl != null && !post.thumbnailUrl.isEmpty()}" class="row mt-3">
+    <div class="col-12 text-center">
+      <img th:src="${post.thumbnailUrl}"
+           th:alt="${post.title}"
+           class="thumbnail-preview"
+           onerror="this.style.display='none';">
+    </div>
+  </div>
+
+  <!-- 본문 내용 (Quill 에디터 스타일 적용) -->
   <div class="row mt-3">
     <div class="table table-bordered">
-      <div class="p-3" th:utext="${post.content}"></div>
+      <div class="p-3 ql-editor" th:utext="${post.content}"></div>
+    </div>
+  </div>
+
+  <!-- 좋아요/답변 탭 영역 -->
+  <div class="row mt-5">
+    <div class="col-12">
+      <!-- 탭 네비게이션 -->
+      <ul class="nav nav-tabs" id="postTabs" role="tablist">
+        <!-- 좋아요 탭 -->
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active" id="like-tab" data-bs-toggle="tab" data-bs-target="#like-panel"
+                  type="button" role="tab" aria-controls="like-panel" aria-selected="true">
+            <i class="fa fa-heart"></i> 좋아요 (<span id="likeCountTab" th:text="${likeCount}">0</span>)
+          </button>
+        </li>
+        <!-- 답변 탭 -->
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="reply-tab" data-bs-toggle="tab" data-bs-target="#reply-panel"
+                  type="button" role="tab" aria-controls="reply-panel" aria-selected="false">
+            <i class="fa fa-comments"></i> 답변 (<span id="replyCountTab">0</span>)
+          </button>
+        </li>
+      </ul>
+
+      <!-- 탭 콘텐츠 -->
+      <div class="tab-content border border-top-0 rounded-bottom" id="postTabContent">
+        <!-- 좋아요 탭 패널 -->
+        <div class="tab-pane fade show active" id="like-panel" role="tabpanel" aria-labelledby="like-tab">
+          <div class="p-5 text-center">
+            <!-- 좋아요 버튼 (큰 하트) -->
+            <div class="mb-4">
+              <button type="button" id="likeButton" class="btn btn-link text-decoration-none p-0"
+                      style="font-size: 5rem; cursor: pointer;"
+                      data-post-id th:attr="data-post-id=${post.id}"
+                      th:onclick="'toggleLike(' + ${post.id} + ')'">
+                <i id="likeIcon" th:class="${isLiked} ? 'fa fa-heart text-danger' : 'fa fa-heart-o text-secondary'"></i>
+              </button>
+            </div>
+            <!-- 좋아요 개수 -->
+            <h4 class="mb-3 fw-bold">
+              <span id="likeCountDisplay" th:text="${likeCount}">0</span>명이 좋아합니다
+            </h4>
+            <!-- 비로그인 사용자 안내 -->
+            <div sec:authorize="!isAuthenticated()" class="alert alert-info mt-3 d-inline-block">
+              <i class="fa fa-info-circle me-2"></i>좋아요를 누르려면 로그인이 필요합니다.
+            </div>
+          </div>
+        </div>
+
+        <!-- 답변 탭 패널 -->
+        <div class="tab-pane fade" id="reply-panel" role="tabpanel" aria-labelledby="reply-tab">
+          <div class="p-4">
+            <!-- 답변 토글 버튼 -->
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h5 class="mb-0 fw-bold">답변 목록</h5>
+              <button class="btn btn-sm btn-outline-secondary" type="button"
+                      data-bs-toggle="collapse" data-bs-target="#replyListCollapse"
+                      aria-expanded="false" aria-controls="replyListCollapse">
+                <i class="fa fa-chevron-down"></i> 답변 보기/숨기기
+              </button>
+            </div>
+
+            <!-- 답변 목록 (접을 수 있는 영역) -->
+            <div class="collapse" id="replyListCollapse">
+              <div class="alert alert-secondary text-center py-5">
+                <i class="fa fa-comments" style="font-size: 3rem; display: block; margin-bottom: 1rem;"></i>
+                <p class="mb-0 text-muted">포토게시판에는 답변 기능이 제공되지 않습니다.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
+
+<script th:inline="javascript">
+  /**
+   * 좋아요 토글 (AJAX)
+   * - 로그인한 사용자만 가능
+   * - 하트 아이콘 및 개수 업데이트
+   *
+   * @param postId 게시글 ID (Thymeleaf inline으로 전달)
+   */
+  function toggleLike(postId) {
+    // CSRF 토큰 가져오기
+    const csrfToken = document.querySelector('meta[name="_csrf"]')?.getAttribute('content');
+    const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content');
+
+    // CSRF 토큰이 없으면 에러 처리
+    if (!csrfToken || !csrfHeader) {
+      console.error('CSRF token not found');
+      if (typeof TOAST !== 'undefined') {
+        TOAST.showError('보안 토큰을 찾을 수 없습니다. 페이지를 새로고침해주세요.', 3000);
+      } else {
+        alert('보안 토큰을 찾을 수 없습니다. 페이지를 새로고침해주세요.');
+      }
+      return;
+    }
+
+    // 좋아요 토글 AJAX 요청
+    fetch('/photo/detail/' + postId + '/like', {
+      method: 'POST',
+      headers: {
+        [csrfHeader]: csrfToken,
+        'Content-Type': 'application/json'
+      }
+    })
+    .then(response => {
+      if (response.status === 401) {
+        // 비로그인 사용자
+        throw new Error('로그인이 필요합니다.');
+      }
+      if (!response.ok) {
+        throw new Error('서버 오류가 발생했습니다.');
+      }
+      return response.json();
+    })
+    .then(data => {
+      if (data.success) {
+        // 하트 아이콘 업데이트
+        const likeIcon = document.getElementById('likeIcon');
+        if (data.liked) {
+          // 좋아요 추가됨 (빨간 하트)
+          likeIcon.className = 'fa fa-heart text-danger';
+        } else {
+          // 좋아요 취소됨 (회색 빈 하트)
+          likeIcon.className = 'fa fa-heart-o text-secondary';
+        }
+
+        // 좋아요 개수 업데이트
+        document.getElementById('likeCountDisplay').textContent = data.likeCount;
+        document.getElementById('likeCountTab').textContent = data.likeCount;
+
+        // 성공 메시지 표시
+        if (typeof TOAST !== 'undefined') {
+          TOAST.showSuccess(data.message, 2000);
+        } else {
+          console.log(data.message);
+        }
+      } else {
+        // 서버에서 success: false 응답
+        throw new Error(data.error || '좋아요 처리에 실패했습니다.');
+      }
+    })
+    .catch(error => {
+      console.error('Like toggle error:', error);
+      const errorMessage = error.message || '좋아요 처리 중 오류가 발생했습니다.';
+
+      if (typeof TOAST !== 'undefined') {
+        TOAST.showError(errorMessage, 3000);
+      } else {
+        alert(errorMessage);
+      }
+    });
+  }
+</script>
 
 <!-- 삭제 모달 -->
 <div class="modal fade" id="deleteModal" tabindex="-1">

@@ -1,11 +1,20 @@
 package org.springframework.samples.petclinic.counsel.table;
 
 import jakarta.persistence.*;
-import org.springframework.samples.petclinic.counsel.model.Attachment;
+import org.springframework.samples.petclinic.common.table.Attachment;
 
 /**
- * @author Jeongmin Lee
- * @description 온라인 상담 게시글과 첨부파일의 관계를 정의하는 엔티티 클래스.
+ * Project : spring-petclinic
+ * File    : CounselPostAttachment.java
+ * Created : 2025-11-26 (마이그레이션)
+ * Author  : Jeongmin Lee
+ *
+ * Description :
+ *   온라인 상담 게시글과 첨부파일의 N:M 관계 중간 테이블
+ *   - common.table.Attachment 사용 (통합)
+ *
+ * License :
+ *   Copyright (c) 2025 AOF(AllForOne) / All rights reserved.
  */
 @Entity
 @Table(name = "counsel_post_attachments")

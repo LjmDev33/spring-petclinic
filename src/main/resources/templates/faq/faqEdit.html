@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+  <title>FAQ 수정 - Spring PetClinic</title>
+  <link rel="stylesheet" th:href="@{/css/custom-buttons.css}">
+  <!-- Quill 에디터 CSS (로컬 내장) -->
+  <link rel="stylesheet" th:href="@{/css/quill/quill.snow.css}">
+</head>
+<body>
+<div class="container mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">
+      <i class="bi bi-pencil-square"></i> FAQ 수정
+    </h2>
+    <a th:href="@{/faq/detail/{id}(id=${faq.id})}" class="custom-btn custom-btn-secondary">
+      <i class="bi bi-arrow-left me-1"></i> 취소
+    </a>
+  </div>
+
+  <form th:action="@{/admin/faq/edit/{id}(id=${faq.id})}" method="post" id="faqEditForm">
+    <!-- 카테고리 -->
+    <div class="mb-3">
+      <label for="category" class="form-label">
+        <i class="bi bi-tag"></i> 카테고리 <span class="text-danger">*</span>
+      </label>
+      <select id="category" name="category" class="form-control" required th:field="${faq.category}">
+        <option value="">카테고리 선택</option>
+        <option value="일반">일반</option>
+        <option value="진료">진료</option>
+        <option value="예약">예약</option>
+        <option value="수술">수술</option>
+        <option value="기타">기타</option>
+      </select>
+    </div>
+
+    <!-- 질문 -->
+    <div class="mb-3">
+      <label for="question" class="form-label">
+        <i class="bi bi-question-circle"></i> 질문 <span class="text-danger">*</span>
+      </label>
+      <input type="text" id="question" name="question" class="form-control" required
+             th:value="${faq.question}" placeholder="자주 묻는 질문을 입력하세요">
+    </div>
+
+    <!-- 답변 (Quill 에디터) -->
+    <div class="mb-3">
+      <label class="form-label">
+        <i class="bi bi-chat-left-text"></i> 답변 <span class="text-danger">*</span>
+      </label>
+      <div id="quillEditor" style="min-height: 300px; background-color: white;"></div>
+      <textarea id="answer" name="answer" style="display: none;" required th:text="${faq.answer}"></textarea>
+      <small class="text-muted">에디터를 사용하여 답변을 수정하세요.</small>
+    </div>
+
+    <!-- 노출 순서 -->
+    <div class="mb-3">
+      <label for="displayOrder" class="form-label">
+        <i class="bi bi-sort-numeric-down"></i> 노출 순서
+      </label>
+      <input type="number" id="displayOrder" name="displayOrder" class="form-control"
+             th:value="${faq.displayOrder}" min="0">
+      <small class="text-muted">숫자가 낮을수록 먼저 표시됩니다.</small>
+    </div>
+
+    <!-- 버튼 -->
+    <div class="d-flex justify-content-end" style="gap: 8px;">
+      <a th:href="@{/faq/detail/{id}(id=${faq.id})}" class="custom-btn custom-btn-secondary">
+        <i class="bi bi-x-circle me-1"></i> 취소
+      </a>
+      <button type="submit" class="custom-btn custom-btn-primary">
+        <i class="bi bi-check-circle me-1"></i> 수정 완료
+      </button>
+    </div>
+  </form>
+</div>
+
+<!-- Quill 에디터 JS (로컬 내장) -->
+<script th:src="@{/js/quill/quill.js}"></script>
+<script th:inline="javascript">
+  /**
+   * Quill 에디터 초기화 및 기존 내용 로드
+   */
+  document.addEventListener('DOMContentLoaded', function() {
+    // Quill 에디터 초기화
+    const quill = new Quill('#quillEditor', {
+      theme: 'snow',
+      modules: {
+        toolbar: [
+          [{ 'header': [1, 2, 3, false] }],
+          ['bold', 'italic', 'underline', 'strike'],
+          [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+          [{ 'color': [] }, { 'background': [] }],
+          [{ 'align': [] }],
+          ['link'],
+          ['clean']
+        ]
+      },
+      placeholder: '답변 내용을 입력하세요...'
+    });
+
+    // 기존 내용 로드
+    const existingAnswer = document.getElementById('answer').value;
+    if (existingAnswer) {
+      quill.root.innerHTML = existingAnswer;
+    }
+
+    /**
+     * 폼 제출 시 Quill 내용을 textarea에 저장
+     */
+    const form = document.getElementById('faqEditForm');
+    form.addEventListener('submit', function(e) {
+      const answerField = document.getElementById('answer');
+      answerField.value = quill.root.innerHTML;
+
+      // 내용이 비어있으면 제출 방지
+      if (quill.getText().trim().length === 0) {
+        e.preventDefault();
+        if (typeof TOAST !== 'undefined') {
+          TOAST.showError('답변 내용을 입력해주세요.');
+        } else {
+          alert('답변 내용을 입력해주세요.');
+        }
+        return false;
+      }
+    });
+  });
+</script>
+</body>
+</html>
+

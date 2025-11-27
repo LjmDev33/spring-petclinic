@@ -28,7 +28,60 @@ import java.util.Set;
  * Author  : Jeongmin Lee
  *
  * Description :
- *   사용목적: 사용자 관리 서비스
+ *   사용자 관리 Service (회원가입, 로그인, 프로필 관리, 내 글/댓글 조회)
+ *
+ * Purpose (만든 이유):
+ *   1. 회원가입 및 사용자 정보 관리 중앙 집중화
+ *   2. 아이디/이메일/닉네임 중복 검증
+ *   3. 비밀번호 BCrypt 암호화 처리
+ *   4. 사용자 권한 관리 (ROLE_USER, ROLE_ADMIN)
+ *   5. 마이페이지 기능 (내 글/댓글 조회)
+ *
+ * Key Features (주요 기능):
+ *   - 회원가입 (아이디/이메일/닉네임 중복 검증)
+ *   - 사용자 정보 조회 (username 기준)
+ *   - 프로필 수정 (이메일, 이름, 닉네임, 전화번호)
+ *   - 비밀번호 변경 (BCrypt 재암호화)
+ *   - 내가 작성한 게시글 조회 (닉네임 기준)
+ *   - 내가 작성한 댓글 조회 (닉네임 기준)
+ *
+ * Business Rules (비즈니스 규칙):
+ *   - 아이디, 이메일, 닉네임은 모두 중복 불가
+ *   - 비밀번호는 BCrypt로 암호화 저장
+ *   - 회원가입 시 기본 권한 ROLE_USER 부여
+ *   - 프로필 수정 시 본인 것 제외하고 중복 검증
+ *   - 닉네임은 게시글/댓글 작성자 이름으로 사용
+ *
+ * Security (보안):
+ *   - 비밀번호 평문 저장 금지 (BCrypt만 사용)
+ *   - 중복 검증으로 동일 정보 재사용 방지
+ *   - 프로필 수정 시 본인 확인 (username 기준)
+ *
+ * Usage Examples (사용 예시):
+ *   // 회원가입
+ *   userService.register(registerDto);
+ *
+ *   // 사용자 조회
+ *   User user = userService.findByUsername("user01");
+ *
+ *   // 프로필 수정
+ *   userService.updateProfile(username, email, name, nickname, phone);
+ *
+ *   // 비밀번호 변경
+ *   userService.changePassword(username, newPassword);
+ *
+ *   // 내 게시글 조회
+ *   PageResponse<CounselPostDto> myPosts = userService.getMyPosts(nickname, pageable);
+ *
+ * Transaction Management (트랜잭션 관리):
+ *   - @Transactional 클래스 레벨 적용
+ *   - 조회 메서드는 @Transactional(readOnly = true)
+ *
+ * Dependencies (의존 관계):
+ *   - UserRepository: 사용자 DB 접근
+ *   - PasswordEncoder: BCrypt 암호화
+ *   - CounselPostRepository: 내 게시글 조회
+ *   - CounselCommentRepository: 내 댓글 조회
  *
  * License :
  *   Copyright (c) 2025 AOF(AllForOne) / All rights reserved.

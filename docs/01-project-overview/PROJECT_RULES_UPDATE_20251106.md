@@ -1,4 +1,281 @@
-# ✅ 프로젝트 규칙 추가 완료 (2025-11-14 업데이트)
+# ✅ 프로젝트 규칙 추가 완료 (2025-11-26 업데이트)
+
+## 최근 추가된 규칙 (2025-11-27)
+
+### 📋 규칙 14: ACID 트랜잭션 속성 보장 규칙 ⭐NEW
+
+#### 핵심 내용
+**목적**: 모든 비즈니스 로직에서 데이터 일관성과 무결성을 보장하기 위해 ACID 속성을 철저히 준수
+
+**ACID 속성**:
+1. **Atomicity (원자성)**
+   - 트랜잭션의 모든 작업이 전부 성공하거나 전부 실패해야 함
+   - 일부만 성공하는 상황 방지 (All or Nothing)
+
+2. **Consistency (일관성)**
+   - 트랜잭션 전후로 데이터베이스가 일관된 상태를 유지
+   - 무결성 제약조건이 항상 만족되어야 함
+
+3. **Isolation (격리성)**
+   - 동시에 실행되는 트랜잭션들이 서로 간섭하지 않음
+   - 격리 수준에 따라 데드락, 더티리드 등을 방지
+
+4. **Durability (지속성)**
+   - 커밋된 트랜잭션은 시스템 장애가 발생해도 영구적으로 보존
+
+**필수 적용 사항**:
+
+```java
+// 1. Service 계층에 @Transactional 적용
+@Service
+@Transactional  // 클래스 레벨에 적용 (모든 public 메서드가 트랜잭션 내에서 실행)
+public class CounselService {
+    
+    // 2. 읽기 전용 메서드는 readOnly = true 설정 (성능 최적화)
+    @Transactional(readOnly = true)
+    public CounselPostDto getPost(Long id) {
+        // 조회 로직
+    }
+    
+    // 3. 여러 DB 작업이 하나의 트랜잭션으로 묶여야 함
+    @Transactional
+    public void createPostWithComments(CounselPostDto postDto, List<CommentDto> comments) {
+        // 게시글 저장
+        CounselPost post = savePost(postDto);
+        
+        // 댓글들 저장 (하나의 트랜잭션)
+        for (CommentDto comment : comments) {
+            saveComment(post.getId(), comment);
+        }
+        
+        // 둘 중 하나라도 실패하면 전체 롤백
+    }
+    
+    // 4. 예외 발생 시 자동 롤백 (RuntimeException)
+    @Transactional
+    public void updatePost(Long id, CounselPostDto dto) {
+        CounselPost post = repository.findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("게시글을 찾을 수 없습니다")); // 롤백 발생
+        
+        post.setTitle(dto.getTitle());
+        repository.save(post);
+    }
+    
+    // 5. 체크 예외는 rollbackFor 명시 필요
+    @Transactional(rollbackFor = Exception.class)
+    public void processPayment() throws PaymentException {
+        // 체크 예외도 롤백되도록 설정
+    }
+}
+```
+
+**격리 수준 설정**:
+```java
+// 격리 수준이 필요한 경우 명시
+@Transactional(isolation = Isolation.READ_COMMITTED)
+public void transferMoney(Long fromId, Long toId, BigDecimal amount) {
+    // 동시성 제어가 필요한 로직
+}
+```
+
+**전파 속성 설정**:
+```java
+// 기존 트랜잭션이 있으면 참여, 없으면 새로 생성 (기본값)
+@Transactional(propagation = Propagation.REQUIRED)
+public void methodA() { }
+
+// 항상 새로운 트랜잭션 생성
+@Transactional(propagation = Propagation.REQUIRES_NEW)
+public void independentOperation() { }
+
+// 트랜잭션 없이 실행 (필요한 경우에만)
+@Transactional(propagation = Propagation.NOT_SUPPORTED)
+public void readOnlyNoTransaction() { }
+```
+
+**주의사항**:
+1. ❌ **Controller에는 @Transactional 사용 금지**
+   - 트랜잭션은 Service 계층에서만 관리
+   - Controller는 요청/응답 처리만 담당
+
+2. ❌ **private 메서드에 @Transactional 사용 불가**
+   - Spring AOP는 public 메서드만 프록시 생성
+   - private 메서드는 트랜잭션이 적용되지 않음
+
+3. ✅ **try-catch로 예외를 잡으면 롤백이 안 될 수 있음**
+   - 예외를 잡고 처리한 후 다시 던져야 롤백 발생
+   ```java
+   @Transactional
+   public void processData() {
+       try {
+           // 작업 수행
+       } catch (Exception e) {
+           log.error("Error: {}", e.getMessage());
+           throw e; // 다시 던져야 롤백 발생!
+       }
+   }
+   ```
+
+4. ✅ **긴 트랜잭션 방지**
+   - 트랜잭션 내에서 외부 API 호출, 파일 I/O 등 시간이 오래 걸리는 작업 지양
+   - 필요하다면 트랜잭션을 분리하거나 @Async 사용
+
+**적용 대상**:
+- ✅ 모든 Service 클래스
+- ✅ 데이터 생성/수정/삭제 로직
+- ✅ 여러 테이블을 동시에 조작하는 로직
+- ✅ 좋아요, 조회수 증가 등 동시성 이슈가 있는 로직
+
+**테스트 검증**:
+```java
+@Test
+public void testTransactionRollback() {
+    // given
+    CounselPostDto dto = new CounselPostDto();
+    
+    // when
+    assertThrows(RuntimeException.class, () -> {
+        service.createPost(dto); // 예외 발생
+    });
+    
+    // then
+    assertEquals(0, repository.count()); // 롤백으로 데이터 저장 안됨
+}
+```
+
+**적용 위치**: 모든 Service 클래스의 비즈니스 로직 메서드
+
+---
+
+## 최근 추가된 규칙 (2025-11-26)
+
+### 📋 규칙 13: 클래스/인터페이스/Enum 주석 작성 규칙 ⭐NEW
+
+#### 핵심 내용
+**목적**: 모든 클래스에 상세한 JavaDoc 주석을 추가하여 협업 및 유지보수 편의성 향상
+
+**필수 작성 항목**:
+```java
+/**
+ * Project : spring-petclinic
+ * File    : ClassName.java
+ * Created : 2025-11-26
+ * Author  : Jeongmin Lee
+ *
+ * Description :
+ *   클래스에 대한 한 줄 설명
+ *
+ * Purpose (만든 이유):
+ *   1. 왜 이 클래스가 필요한지
+ *   2. 어떤 문제를 해결하는지
+ *   3. 다른 방식 대신 이 방식을 선택한 이유
+ *
+ * Key Features (주요 기능):
+ *   - 핵심 기능 1
+ *   - 핵심 기능 2
+ *   - 핵심 기능 3
+ *
+ * When to Use (사용 시점):
+ *   - 언제 사용해야 하는지
+ *   - 어떤 상황에서 필요한지
+ *
+ * Usage Examples (사용 예시):
+ *   // 실제 코드 예시
+ *   SomeClass obj = new SomeClass();
+ *   obj.doSomething();
+ *
+ * How It Works (작동 방식):
+ *   1. 단계별 동작 설명
+ *   2. 데이터 흐름 설명
+ *
+ * Performance/Security (성능/보안):
+ *   - 성능 최적화 내용
+ *   - 보안 고려사항
+ *
+ * vs 비교 (다른 방식과 비교):
+ *   - A방식 vs B방식 차이점
+ *
+ * License :
+ *   Copyright (c) 2025 AOF(AllForOne) / All rights reserved.
+ */
+```
+
+**작성 원칙**:
+1. ✅ **Purpose는 필수**: 왜 만들었는지 반드시 명시
+2. ✅ **실제 코드 예시 포함**: Usage Examples에 동작하는 코드
+3. ✅ **Key Features는 구체적으로**: "기능 제공" 같은 모호한 표현 금지
+4. ✅ **How It Works는 복잡한 클래스에만**: 간단한 클래스는 생략 가능
+5. ✅ **vs 비교는 선택적**: 다른 방식과 비교가 필요할 때만 작성
+
+**적용 대상**:
+- ✅ Config 클래스 (WebConfig, QuerydslConfig 등)
+- ✅ Service 클래스 (모든 비즈니스 로직)
+- ✅ Repository Custom 구현체
+- ✅ Exception 클래스 (BaseException, BusinessException 등)
+- ✅ DTO 클래스 (PageResponse, ErrorResponse 등)
+- ✅ Entity 클래스
+- ✅ Controller 클래스
+- ✅ Mapper 클래스
+- ✅ Enum 클래스
+
+**예시 (GlobalExceptionHandler)**:
+```java
+/**
+ * Purpose (만든 이유):
+ *   1. 모든 Controller의 예외를 중앙에서 통합 처리
+ *   2. 중복 코드 제거 (각 Controller마다 try-catch 불필요)
+ *
+ * How It Works (작동 방식):
+ *   1. Controller에서 예외 발생
+ *   2. @RestControllerAdvice가 예외를 자동 감지
+ *   3. 예외 타입에 맞는 @ExceptionHandler 메서드 실행
+ */
+```
+
+**적용 위치**: 모든 .java 파일의 클래스 선언 직전
+
+---
+
+### 📋 규칙 12: ErrorCode 작성 규칙 (사용자 친화적 메시지) ⭐NEW
+
+#### 핵심 내용
+**목적**: 사용자가 오류 발생 시 전산팀에 명확하게 보고할 수 있도록 일목요연한 메시지 제공
+
+**필수 형식**:
+```java
+ERROR_CODE(HTTP_STATUS, "CODE", "[카테고리] 상세 설명 (에러코드: CODE)")
+```
+
+**작성 원칙**:
+1. ✅ **카테고리 명시**: `[파일 업로드 실패]`, `[비밀번호 불일치]` 등 대괄호로 분류
+2. ✅ **상세 설명**: 무엇이 잘못되었는지 명확히 설명
+3. ✅ **해결 방법 제시**: 사용자가 할 수 있는 조치 또는 전산팀 문의 안내
+4. ✅ **에러코드 표기**: `(에러코드: A002)` 형식으로 코드 명시
+5. ✅ **존댓말 사용**: "~해주세요" 형식으로 친절한 안내
+
+**예시**:
+```java
+// ❌ 나쁜 예
+ATTACHMENT_UPLOAD_FAILED(500, "A002", "첨부파일 업로드에 실패했습니다.")
+
+// ✅ 좋은 예
+ATTACHMENT_UPLOAD_FAILED(500, "A002", 
+    "[파일 업로드 실패] 파일 업로드 중 오류가 발생했습니다. " +
+    "파일 크기와 형식을 확인하거나 전산팀에 문의해주세요. (에러코드: A002)")
+```
+
+**카테고리 분류**:
+- Common (1000~1999): `[입력 오류]`, `[타입 오류]`, `[조회 실패]`, `[서버 오류]`
+- User (2000~2999): `[사용자 조회 실패]`, `[이메일 중복]`, `[비밀번호 오류]`
+- Post (3000~3999): `[게시글 조회 실패]`, `[게시글 삭제 불가]`, `[비밀번호 불일치]`
+- Comment (4000~4999): `[댓글 조회 실패]`, `[댓글 삭제 불가]`
+- Attachment (5000~5999): `[파일 업로드 실패]`, `[파일 다운로드 실패]`
+- System (6000~6999): `[시스템 설정 조회 실패]`
+- I/O (7000~7999): `[파일 읽기 오류]`, `[파일 쓰기 오류]`
+
+**적용 위치**: `common/exception/ErrorCode.java`
+
+---
 
 ## 최근 추가된 규칙 (2025-11-14)
 

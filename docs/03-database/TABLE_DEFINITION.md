@@ -1,8 +1,8 @@
 # 📊 테이블 정의서 (Table Definition Document)
 
 **프로젝트**: Spring PetClinic  
-**버전**: 3.5.2  
-**최종 수정일**: 2025-11-06  
+**버전**: 3.5.3  
+**최종 수정일**: 2025-11-27  
 **작성자**: Jeongmin Lee
 
 ---
@@ -13,8 +13,9 @@
 2. [시스템 설정 테이블](#2-시스템-설정-테이블)
 3. [온라인상담 테이블](#3-온라인상담-테이블)
 4. [커뮤니티 테이블](#4-커뮤니티-테이블)
-5. [공통 테이블](#5-공통-테이블)
-6. [변경 이력](#6-변경-이력)
+5. [포토게시판 테이블](#5-포토게시판-테이블)
+6. [공통 테이블](#6-공통-테이블)
+7. [변경 이력](#7-변경-이력)
 
 ---
 
@@ -286,7 +287,91 @@
 
 ---
 
-## 5. 공통 테이블
+### 4.3 community_post_likes (커뮤니티 게시글 좋아요) ✨ NEW (2025-11-27)
+
+**테이블 설명**: 커뮤니티 게시글 좋아요 기능 (Phase 2-2)
+
+| 컬럼명 | 한글명 | 데이터 타입 | NULL | 기본값 | 키 | 설명 |
+|--------|--------|------------|------|--------|-----|------|
+| id | ID | BIGINT | NO | AUTO_INCREMENT | PK | 좋아요 고유 ID |
+| post_id | 게시글 ID | BIGINT | NO | - | FK | community_post.id 참조 |
+| username | 사용자 아이디 | VARCHAR(50) | NO | - | - | 로그인 사용자 ID |
+| created_at | 생성 일시 | DATETIME | NO | NOW() | - | 좋아요 누른 시간 |
+
+**인덱스**:
+- PRIMARY KEY: `id`
+- UNIQUE KEY: `(post_id, username)` - 중복 좋아요 방지
+- FOREIGN KEY: `post_id` REFERENCES `community_post(id)` ON DELETE CASCADE
+
+**Entity 클래스**: `org.springframework.samples.petclinic.community.table.CommunityPostLike`
+
+**비즈니스 규칙**:
+- 로그인 사용자만 좋아요 가능
+- 한 사용자는 한 게시글에 1개의 좋아요만 가능 (UNIQUE 제약)
+- 좋아요 취소 시 레코드 삭제 (토글 방식)
+- 게시글 삭제 시 연관된 좋아요도 함께 삭제 (CASCADE)
+
+---
+
+## 5. 포토게시판 테이블
+
+### 5.1 photo_post (포토게시글)
+
+**테이블 설명**: 이미지 중심의 갤러리형 게시판
+
+| 컬럼명 | 한글명 | 데이터 타입 | NULL | 기본값 | 키 | 설명 |
+|--------|--------|------------|------|--------|-----|------|
+| id | ID | BIGINT | NO | AUTO_INCREMENT | PK | 게시글 고유 ID |
+| title | 제목 | VARCHAR(200) | NO | - | - | 게시글 제목 |
+| content | 내용 | TEXT | YES | NULL | - | 게시글 내용 (Quill 에디터 HTML) |
+| author | 작성자 | VARCHAR(100) | NO | - | - | 작성자 이름 |
+| thumbnail_url | 썸네일 URL | VARCHAR(500) | YES | NULL | - | 대표 이미지 URL |
+| view_count | 조회수 | INT | NO | 0 | - | 조회수 |
+| like_count | 좋아요 수 | INT | NO | 0 | - | 좋아요 개수 |
+| created_at | 생성 일시 | DATETIME | NO | NOW() | - | 게시글 작성 시간 |
+| updated_at | 수정 일시 | DATETIME | NO | NOW() | - | 게시글 수정 시간 |
+| del_flag | 삭제 플래그 | BOOLEAN | NO | FALSE | - | Soft Delete 플래그 |
+| deleted_at | 삭제 일시 | DATETIME | YES | NULL | - | 삭제 시간 |
+| deleted_by | 삭제자 | VARCHAR(60) | YES | NULL | - | 삭제한 사용자 |
+
+**인덱스**:
+- PRIMARY KEY: `id`
+- INDEX: `idx_photo_created` (created_at DESC)
+- INDEX: `idx_photo_author` (author)
+
+**Entity 클래스**: `org.springframework.samples.petclinic.photo.table.PhotoPost`
+
+---
+
+### 5.2 photo_post_likes (포토게시글 좋아요) ✨ NEW (2025-11-27)
+
+**테이블 설명**: 포토게시판 게시글 좋아요 기능 (Phase 2-3)
+
+| 컬럼명 | 한글명 | 데이터 타입 | NULL | 기본값 | 키 | 설명 |
+|--------|--------|------------|------|--------|-----|------|
+| id | ID | BIGINT | NO | AUTO_INCREMENT | PK | 좋아요 고유 ID |
+| post_id | 게시글 ID | BIGINT | NO | - | FK | photo_post.id 참조 |
+| username | 사용자 아이디 | VARCHAR(50) | NO | - | - | 로그인 사용자 ID |
+| created_at | 생성 일시 | DATETIME | NO | NOW() | - | 좋아요 누른 시간 |
+
+**인덱스**:
+- PRIMARY KEY: `id`
+- UNIQUE KEY: `uk_photo_post_likes_post_username` (post_id, username) - 중복 좋아요 방지
+- INDEX: `idx_photo_post_likes_post` (post_id)
+- INDEX: `idx_photo_post_likes_username` (username)
+- FOREIGN KEY: `fk_photo_post_likes_post` REFERENCES `photo_post(id)` ON DELETE CASCADE
+
+**Entity 클래스**: `org.springframework.samples.petclinic.photo.table.PhotoPostLike`
+
+**비즈니스 규칙**:
+- 로그인 사용자만 좋아요 가능
+- 한 사용자는 한 게시글에 1개의 좋아요만 가능 (UNIQUE 제약)
+- 좋아요 취소 시 레코드 삭제 (토글 방식)
+- 게시글 삭제 시 연관된 좋아요도 함께 삭제 (CASCADE)
+
+---
+
+## 6. 공통 테이블
 
 ### 5.1 attachment (공용 첨부파일)
 
@@ -310,7 +395,34 @@
 
 ---
 
-## 6. 변경 이력
+## 7. 변경 이력
+
+### [3.5.3] - 2025-11-27 ✨ NEW
+
+#### 추가
+- **community_post_likes** 테이블 추가 (커뮤니티 좋아요 기능, Phase 2-2)
+  - 로그인 사용자만 좋아요 가능
+  - UNIQUE 제약으로 중복 좋아요 방지
+  - CASCADE 삭제로 게시글 삭제 시 연관 데이터 자동 삭제
+  
+- **photo_post** 테이블 추가 (포토게시판)
+  - 이미지 중심 갤러리형 게시판
+  - 썸네일 자동 추출 기능 지원
+  - Soft Delete 정책 적용
+
+- **photo_post_likes** 테이블 추가 (포토게시판 좋아요 기능, Phase 2-3)
+  - 로그인 사용자만 좋아요 가능
+  - UNIQUE 제약으로 중복 좋아요 방지
+  - CASCADE 삭제로 게시글 삭제 시 연관 데이터 자동 삭제
+
+#### 수정
+- 없음
+
+#### 관련 문서
+- [2025-11-27 Community 좋아요 기능 완료](../07-changelog/2025-11-27-community-like-feature.md)
+- [2025-11-27 Photo 좋아요 기능 완료](../07-changelog/2025-11-27-photo-like-feature.md)
+
+---
 
 ### [3.5.2] - 2025-11-06
 

@@ -1,25 +1,75 @@
 package org.springframework.samples.petclinic.community.repository;
 
-/*
+/**
  * Project : spring-petclinic
  * File    : CommunityPostRepositoryImpl.java
  * Created : 2025-09-30
  * Author  : Jeongmin Lee
  *
  * Description :
- *   TODO:
- *    본 클래스는 Spring Data JPA Repository의 확장 구현체로,
- *     단순 CRUD로 처리할 수 없는 복잡한 검색/정렬/페이징 쿼리를
- *     QueryDSL을 사용해 구현하기 위해 분리된 커스텀 레이어입니다.
- *     Service 레이어에서는 비즈니스 로직만 담당하도록 하고,
- *     쿼리 작성 및 데이터 접근 로직은 RepositoryImpl에서 수행함으로써
- *     역할을 명확히 분리하고 유지보수성을 높였습니다.
- *     즉, Repository 인터페이스는 Custom 인터페이스를 상속받아
- *     기본 CRUD와 커스텀 동적 쿼리를 함께 제공하도록 설계되었습니다.
- *     - 주요 장점:
- *       1) Service 로직 단순화 (비즈니스 흐름만 담당)
- *       2) 복잡한 QueryDSL 로직의 재사용 및 테스트 용이
- *       3) Controller → Service → Repository 간의 책임 분리 명확화
+ *   공지사항 QueryDSL Custom Repository 구현체
+ *
+ * Purpose (만든 이유):
+ *   1. Spring Data JPA의 단순 CRUD를 넘어선 동적 검색 구현
+ *   2. 이전글/다음글 조회 기능 (공지사항 특화 기능)
+ *   3. QueryDSL로 Type-safe한 쿼리 작성
+ *   4. Service 계층의 비즈니스 로직과 쿼리 로직 분리
+ *   5. 복잡한 쿼리의 재사용 및 테스트 용이성 향상
+ *
+ * Key Features (주요 기능):
+ *   - 동적 검색 (제목, 내용, 작성자, 전체)
+ *   - 이전글 조회 (getPrevPost): 현재 글보다 작은 ID 중 가장 큰 값
+ *   - 다음글 조회 (getNextPost): 현재 글보다 큰 ID 중 가장 작은 값
+ *   - 페이징 처리 (offset, limit)
+ *   - COUNT 쿼리 최적화 (coalesce로 null 방지)
+ *
+ * Why Custom Repository (Custom Repository를 만든 이유):
+ *   1. 책임 분리: Service는 비즈니스 로직, Repository는 쿼리 로직
+ *   2. 재사용: 동일한 쿼리를 여러 Service에서 사용 가능
+ *   3. 테스트: 쿼리 로직만 독립적으로 테스트 가능
+ *   4. 유지보수: 쿼리 변경 시 Repository만 수정
+ *
+ * Search Types (검색 타입):
+ *   - "title": 제목만 검색
+ *   - "content": 내용만 검색
+ *   - "author": 작성자만 검색
+ *   - 기본값: 제목 + 내용 + 작성자 전체 검색
+ *
+ * Navigation Logic (이전글/다음글 로직):
+ *   - 이전글: WHERE id < 현재ID ORDER BY id DESC LIMIT 1
+ *   - 다음글: WHERE id > 현재ID ORDER BY id ASC LIMIT 1
+ *   - Optional 반환: 없으면 Optional.empty()
+ *
+ * Performance (성능 최적화):
+ *   - BooleanBuilder로 동적 조건만 WHERE에 추가
+ *   - COUNT 쿼리에 coalesce(0L) 사용 (null 방지)
+ *   - LIMIT 1로 이전글/다음글 1건만 조회
+ *   - Optional 패턴으로 null 안전성 확보
+ *
+ * Usage Examples (사용 예시):
+ *   // 제목 검색
+ *   PageResponse<CommunityPost> results = repository.search("title", "공지", pageable);
+ *
+ *   // 이전글 조회
+ *   Optional<CommunityPost> prev = repository.getPrevPost(10L);
+ *
+ *   // 다음글 조회
+ *   Optional<CommunityPost> next = repository.getNextPost(10L);
+ *
+ * How It Works (작동 방식):
+ *   1. search(): BooleanBuilder로 동적 조건 생성 → 페이징 조회 → COUNT
+ *   2. getPrevPost(): id < currentId → ORDER BY DESC → LIMIT 1
+ *   3. getNextPost(): id > currentId → ORDER BY ASC → LIMIT 1
+ *
+ * Architecture (아키텍처):
+ *   Controller → Service (비즈니스 로직) → Repository (쿼리 로직) → DB
+ *   - Repository: Custom 인터페이스 + Impl 구현체
+ *   - Service: Custom 메서드 호출만 (쿼리 작성 X)
+ *
+ * Dependencies (의존 관계):
+ *   - JPAQueryFactory: QueryDSL 쿼리 생성
+ *   - QCommunityPost: QueryDSL Q-Type
+ *   - BooleanBuilder: 동적 조건 조합
  *
  * License :
  *   Copyright (c) 2025 AOF(AllForOne) / All rights reserved.

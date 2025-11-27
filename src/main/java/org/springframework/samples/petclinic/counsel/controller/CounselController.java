@@ -95,14 +95,9 @@ public class CounselController {
 				   jakarta.servlet.http.HttpSession session,
 				   jakarta.servlet.http.HttpServletRequest request,
 				   jakarta.servlet.http.HttpServletResponse response) {
-		CounselPostDto post;
-		try {
-			post = counselService.getDetail(id);
-		} catch (Exception e) {
-			log.error("Failed to load post detail: id={}", id, e);
-			model.addAttribute("error", "게시글을 불러오는 중 오류가 발생했습니다.");
-			return "error";
-		}
+		// GlobalExceptionHandler 적용: try-catch 제거
+		CounselPostDto post = counselService.getDetail(id);
+
 		boolean unlockedOk = unlocked != null && unlocked.contains(id);
 		if (post.isSecret() && !unlockedOk) {
 			return "redirect:/counsel/detail/" + id + "/password";
@@ -162,8 +157,17 @@ public class CounselController {
 		}
 
 		java.util.List<CounselCommentDto> comments = counselService.getCommentsForPost(id);
+
+		// 좋아요 정보 추가
+		long likeCount = counselService.getLikeCount(id);
+		org.springframework.security.core.Authentication authentication =
+			org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+		boolean isLiked = counselService.isLikedByUser(id, authentication);
+
 		model.addAttribute("post", post);
 		model.addAttribute("comments", comments);
+		model.addAttribute("likeCount", likeCount);
+		model.addAttribute("isLiked", isLiked);
 		model.addAttribute("template", "counsel/counselDetail");
 		return "fragments/layout";
 	}
@@ -350,19 +354,20 @@ public class CounselController {
 
 	/**
 	 * 게시글 수정 처리
-	 * - 비공개 게시글의 경우 비밀번호 검증 후 수정 가능하며, 공개 게시글은 비밀번호 없이 수정 가능하도록 Service에 위임한다.
+	 * - 권한 검증 후 수정 가능 (관리자/작성자 본인/비밀번호 검증)
 	 * - 수정 성공/실패 여부에 따라 플래시 메시지를 설정하고 상세 화면으로 리다이렉트한다.
 	 */
 	@PostMapping("/edit/{id}")
 	public String updatePost(@PathVariable Long id, @ModelAttribute CounselPostWriteDto form,
 					   @RequestParam(value = "password", required = false) String password,
+					   org.springframework.security.core.Authentication authentication,
 					   RedirectAttributes redirectAttributes) {
 		try {
-			boolean updated = counselService.updatePost(id, form, password);
+			boolean updated = counselService.updatePost(id, form, password, authentication);
 			if (updated) {
 				redirectAttributes.addFlashAttribute("message", "게시글이 수정되었습니다.");
 			} else {
-				redirectAttributes.addFlashAttribute("error", "게시글을 수정할 수 없습니다. 비밀번호를 확인하세요.");
+				redirectAttributes.addFlashAttribute("error", "게시글을 수정할 수 없습니다. 권한을 확인하세요.");
 			}
 		} catch (Exception e) {
 			log.error("Error updating post: {}", e.getMessage());
@@ -373,26 +378,102 @@ public class CounselController {
 
 	/**
 	 * 게시글 삭제 처리
+	 * - 권한 검증 후 삭제 가능 (관리자/작성자 본인/비밀번호 검증)
 	 * - Service 레벨에서 Soft Delete 정책을 적용하여 del_flag를 설정하고, 실제 물리 삭제는 스케줄러가 담당한다.
-	 * - 비공개 게시글의 경우 비밀번호 검증 후 삭제 가능하며, 결과에 따라 플래시 메시지를 설정한다.
+	 * - 결과에 따라 플래시 메시지를 설정한다.
 	 */
 	@PostMapping("/delete/{id}")
 	public String deletePost(@PathVariable Long id,
 					   @RequestParam(value = "password", required = false) String password,
+					   org.springframework.security.core.Authentication authentication,
 					   RedirectAttributes redirectAttributes) {
 		try {
-			boolean deleted = counselService.deletePost(id, password);
+			boolean deleted = counselService.deletePost(id, password, authentication);
 			if (deleted) {
 				redirectAttributes.addFlashAttribute("message", "게시글이 삭제되었습니다.");
 				return "redirect:/counsel/list";
 			} else {
-				redirectAttributes.addFlashAttribute("error", "게시글을 삭제할 수 없습니다. 비밀번호를 확인하세요.");
+				redirectAttributes.addFlashAttribute("error", "게시글을 삭제할 수 없습니다. 권한을 확인하세요.");
 			}
 		} catch (Exception e) {
 			log.error("Error deleting post: {}", e.getMessage());
 			redirectAttributes.addFlashAttribute("error", "게시글 삭제 중 오류가 발생했습니다.");
 		}
 		return "redirect:/counsel/detail/" + id;
+	}
+
+	/**
+	 * 게시글 상태 변경 (관리자 전용)
+	 * - 관리자만 게시글의 상태(WAIT/COMPLETE/END)를 변경할 수 있다.
+	 * - 권한이 없거나 잘못된 상태값인 경우 에러 메시지를 반환한다.
+	 */
+	@PostMapping("/detail/{id}/status")
+	public String updateStatus(@PathVariable Long id,
+							   @RequestParam("status") String status,
+							   org.springframework.security.core.Authentication authentication,
+							   RedirectAttributes redirectAttributes) {
+		try {
+			boolean updated = counselService.updatePostStatus(id, status, authentication);
+			if (updated) {
+				redirectAttributes.addFlashAttribute("message", "게시글 상태가 변경되었습니다.");
+			} else {
+				redirectAttributes.addFlashAttribute("error", "상태 변경에 실패했습니다.");
+			}
+		} catch (IllegalStateException e) {
+			// 권한 없음
+			log.warn("Unauthorized status change attempt: {}", e.getMessage());
+			redirectAttributes.addFlashAttribute("error", e.getMessage());
+		} catch (IllegalArgumentException e) {
+			// 잘못된 상태값
+			log.warn("Invalid status value: {}", e.getMessage());
+			redirectAttributes.addFlashAttribute("error", e.getMessage());
+		} catch (Exception e) {
+			log.error("Error updating status: {}", e.getMessage(), e);
+			redirectAttributes.addFlashAttribute("error", "상태 변경 중 오류가 발생했습니다.");
+		}
+		return "redirect:/counsel/detail/" + id;
+	}
+
+	/**
+	 * 게시글 좋아요 토글 (AJAX)
+	 * - 로그인한 사용자만 좋아요를 누를 수 있다.
+	 * - 이미 좋아요를 눌렀으면 취소하고, 안 눌렀으면 추가한다.
+	 * - JSON 응답으로 좋아요 상태와 개수를 반환한다.
+	 */
+	@PostMapping("/detail/{id}/like")
+	@ResponseBody
+	public ResponseEntity<Map<String, Object>> toggleLike(@PathVariable Long id,
+														   org.springframework.security.core.Authentication authentication) {
+		Map<String, Object> response = new HashMap<>();
+
+		try {
+			// 좋아요 토글
+			boolean liked = counselService.toggleLike(id, authentication);
+
+			// 좋아요 개수 조회
+			long likeCount = counselService.getLikeCount(id);
+
+			response.put("success", true);
+			response.put("liked", liked);
+			response.put("likeCount", likeCount);
+			response.put("message", liked ? "좋아요를 눌렀습니다." : "좋아요를 취소했습니다.");
+
+			log.info("Like toggled: postId={}, username={}, liked={}",
+				id, authentication != null ? authentication.getName() : "anonymous", liked);
+
+			return ResponseEntity.ok(response);
+		} catch (IllegalStateException e) {
+			// 비로그인 사용자
+			log.warn("Unauthorized like attempt: postId={}", id);
+			response.put("success", false);
+			response.put("error", e.getMessage());
+			return ResponseEntity.status(401).body(response);
+		} catch (Exception e) {
+			log.error("Error toggling like: postId={}, error={}", id, e.getMessage(), e);
+			response.put("success", false);
+			response.put("error", "좋아요 처리 중 오류가 발생했습니다.");
+			return ResponseEntity.badRequest().body(response);
+		}
 	}
 
 	/**

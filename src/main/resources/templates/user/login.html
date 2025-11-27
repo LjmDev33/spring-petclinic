@@ -22,7 +22,7 @@
           </div>
 
           <!-- 로그인 폼 -->
-          <form th:action="@{/login}" method="post">
+          <form th:action="@{/login}" method="post" id="loginForm">
             <div class="mb-3">
               <label for="username" class="form-label">
                 <i class="bi bi-person"></i> 아이디
@@ -50,6 +50,16 @@
 
             <div class="mb-3 form-check">
               <input type="checkbox"
+                     id="save-username"
+                     name="save-username"
+                     class="form-check-input">
+              <label for="save-username" class="form-check-label">
+                <i class="bi bi-bookmark"></i> 아이디 저장
+              </label>
+            </div>
+
+            <div class="mb-3 form-check">
+              <input type="checkbox"
                      id="remember-me"
                      name="remember-me"
                      class="form-check-input">
@@ -64,6 +74,56 @@
               </button>
             </div>
           </form>
+
+          <script>
+            // 페이지 로드 시 저장된 아이디 불러오기
+            document.addEventListener('DOMContentLoaded', function() {
+              const savedUsername = getCookie('savedUsername');
+              if (savedUsername) {
+                document.getElementById('username').value = savedUsername;
+                document.getElementById('save-username').checked = true;
+              }
+            });
+
+            // 폼 제출 시 아이디 저장 처리
+            document.getElementById('loginForm').addEventListener('submit', function(e) {
+              const username = document.getElementById('username').value;
+              const saveUsername = document.getElementById('save-username').checked;
+
+              if (saveUsername) {
+                // 아이디 저장 (30일)
+                setCookie('savedUsername', username, 30);
+              } else {
+                // 아이디 삭제
+                deleteCookie('savedUsername');
+              }
+            });
+
+            // 쿠키 설정 함수
+            function setCookie(name, value, days) {
+              const date = new Date();
+              date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+              const expires = "expires=" + date.toUTCString();
+              document.cookie = name + "=" + value + ";" + expires + ";path=/";
+            }
+
+            // 쿠키 읽기 함수
+            function getCookie(name) {
+              const nameEQ = name + "=";
+              const ca = document.cookie.split(';');
+              for (let i = 0; i < ca.length; i++) {
+                let c = ca[i];
+                while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+                if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+              }
+              return null;
+            }
+
+            // 쿠키 삭제 함수
+            function deleteCookie(name) {
+              document.cookie = name + "=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+            }
+          </script>
 
           <hr class="my-4">
 
@@ -87,8 +147,9 @@
             <strong>회원 로그인 안내</strong>
             <ul class="mb-0 mt-2 small">
               <li>회원가입 후 로그인하시면 더 많은 서비스를 이용하실 수 있습니다.</li>
-              <li>자동 로그인 체크 시 7일간 로그인 상태가 유지됩니다.</li>
-              <li>공용 PC에서는 자동 로그인을 사용하지 마세요.</li>
+              <li><strong>아이디 저장</strong>: 체크 시 30일간 아이디가 저장됩니다.</li>
+              <li><strong>자동 로그인</strong>: 체크 시 7일간 로그인 상태가 유지됩니다.</li>
+              <li>공용 PC에서는 아이디 저장 및 자동 로그인을 사용하지 마세요.</li>
             </ul>
           </div>
         </div>

@@ -1,6 +1,7 @@
 package org.springframework.samples.petclinic.counsel.service;
 
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -10,6 +11,7 @@ import org.springframework.samples.petclinic.counsel.dto.CounselPostWriteDto;
 import org.springframework.samples.petclinic.counsel.mapper.CounselPostMapper;
 import org.springframework.samples.petclinic.counsel.repository.CounselPostRepository;
 import org.springframework.samples.petclinic.counsel.table.CounselPost;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.stereotype.Service;
 
@@ -22,7 +24,7 @@ import org.springframework.samples.petclinic.counsel.dto.CounselCommentDto;
 import org.springframework.samples.petclinic.counsel.mapper.CounselCommentMapper;
 import org.springframework.samples.petclinic.counsel.repository.CounselCommentRepository;
 import org.springframework.samples.petclinic.counsel.table.CounselComment;
-import org.springframework.samples.petclinic.counsel.model.Attachment;
+import org.springframework.samples.petclinic.common.table.Attachment;
 import org.springframework.samples.petclinic.counsel.table.CounselPostAttachment;
 import org.springframework.samples.petclinic.counsel.repository.AttachmentRepository;
 import org.springframework.samples.petclinic.counsel.repository.CounselPostAttachmentRepository;
@@ -30,17 +32,73 @@ import org.springframework.web.multipart.MultipartFile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/*
+/**
  * Project : spring-petclinic
  * File    : CounselService.java
  * Created : 2025-10-24
  * Author  : Jeongmin Lee
  *
  * Description :
- *   사용목적: 온라인상담 게시판 비즈니스 로직 집약(Service 계층)
- *   - 규칙: Entity 직접 노출 금지 → DTO 매핑 후 반환
- *   - QueryDSL 검색은 RepositoryImpl에서 수행, Service는 흐름/검증/트랜잭션 담당
- *   미구현(후속): 비공개글 비밀번호 검증 API, 댓글 CRUD/트리, 파일 첨부 업로드/서빙
+ *   온라인상담 게시판 비즈니스 로직 Service
+ *
+ * Purpose (만든 이유):
+ *   1. 온라인상담 게시판의 모든 비즈니스 로직을 중앙 집중화
+ *   2. Entity를 직접 노출하지 않고 DTO 변환하여 Controller와 연동
+ *   3. 트랜잭션 관리 및 데이터 검증 담당
+ *   4. 비공개글 비밀번호 보안 처리 (BCrypt)
+ *   5. 댓글 트리 구조 생성 및 관리 (무제한 depth)
+ *   6. 첨부파일 업로드/삭제 관리 (Uppy 연동)
+ *
+ * Key Features (주요 기능):
+ *   - 게시글 CRUD (생성, 조회, 수정, 삭제 - Soft Delete)
+ *   - 댓글 CRUD (생성, 조회, 삭제 - 트리 구조 지원)
+ *   - 비공개글 비밀번호 검증 (BCrypt)
+ *   - QueryDSL 기반 동적 검색 (제목, 제목+내용)
+ *   - 페이징 처리 (PageResponse 반환)
+ *   - 첨부파일 업로드/삭제 (Uppy, MultipartFile 모두 지원)
+ *   - 본문 HTML 파일 저장 (CounselContentStorage 연동)
+ *   - 조회수 증가 (중복 방지는 Controller에서 처리)
+ *   - 댓글 트리 구조 생성 (무제한 depth, 부모-자식 관계)
+ *
+ * Business Rules (비즈니스 규칙):
+ *   - Entity는 절대 직접 노출하지 않음 (DTO 변환 필수)
+ *   - 비공개글은 BCrypt로 비밀번호 해싱
+ *   - 게시글 삭제는 Soft Delete (@SQLDelete)
+ *   - 첨부파일도 Soft Delete (del_flag = true, 2주 후 물리 삭제)
+ *   - 댓글 삭제 시 자식 댓글이 있으면 삭제 불가
+ *   - 운영자 댓글은 사용자가 삭제 불가
+ *
+ * Transaction Management (트랜잭션 관리):
+ *   - @Transactional 클래스 레벨 적용 (모든 public 메서드)
+ *   - 조회 메서드도 트랜잭션 내에서 실행 (지연 로딩 지원)
+ *   - 예외 발생 시 자동 롤백
+ *
+ * Usage Examples (사용 예시):
+ *   // 게시글 목록 조회
+ *   PageResponse<CounselPostDto> page = counselService.getPagedPosts(pageable);
+ *
+ *   // 게시글 상세 조회 (파일에서 본문 로드)
+ *   CounselPostDto post = counselService.getDetail(postId);
+ *
+ *   // 게시글 작성 (파일 업로드 포함)
+ *   Long postId = counselService.saveNew(writeDto);
+ *
+ *   // 비밀번호 검증
+ *   boolean valid = counselService.verifyPassword(postId, password);
+ *
+ *   // 댓글 트리 조회 (부모-자식 관계)
+ *   List<CounselCommentDto> comments = counselService.getCommentsForPost(postId);
+ *
+ * Dependencies (의존 관계):
+ *   - CounselPostRepository: 게시글 DB 접근
+ *   - CounselCommentRepository: 댓글 DB 접근
+ *   - AttachmentRepository: 첨부파일 DB 접근
+ *   - CounselContentStorage: HTML 본문 파일 I/O
+ *   - FileStorageService: 첨부파일 저장/삭제
+ *   - BCrypt: 비밀번호 해싱
+ *
+ * License :
+ *   Copyright (c) 2025 AOF(AllForOne) / All rights reserved.
  */
 @Service
 @Transactional
@@ -54,14 +112,17 @@ public class CounselService {
 	private final FileStorageService fileStorageService;
 	private final AttachmentRepository attachmentRepository;
 	private final CounselPostAttachmentRepository postAttachmentRepository;
+	private final org.springframework.samples.petclinic.counsel.repository.CounselPostLikeRepository likeRepository;
 
 	public CounselService(CounselPostRepository repository, CounselContentStorage contentStorage,
 						  CounselCommentRepository commentRepository, CounselPostMapper postMapper,
 						  FileStorageService fileStorageService, AttachmentRepository attachmentRepository,
-						  CounselPostAttachmentRepository postAttachmentRepository) {
+						  CounselPostAttachmentRepository postAttachmentRepository,
+						  org.springframework.samples.petclinic.counsel.repository.CounselPostLikeRepository likeRepository) {
 		this.repository = repository;
 		this.contentStorage = contentStorage;
 		this.commentRepository = commentRepository;
+		this.likeRepository = likeRepository;
 		this.postMapper = postMapper;
 		this.fileStorageService = fileStorageService;
 		this.attachmentRepository = attachmentRepository;
@@ -107,29 +168,42 @@ public class CounselService {
 
 	/**
 	 * 상세 조회 시 contentPath가 존재하면 파일에서 본문을 로드하여 DTO.content에 채웁니다.
+	 * GlobalExceptionHandler 적용: Custom Exception 사용
 	 */
-	public CounselPostDto getDetail(Long id) throws IOException {
-		CounselPost entity = repository.findById(id).orElseThrow();
+	public CounselPostDto getDetail(Long id) {
+		// EntityNotFoundException 적용
+		CounselPost entity = repository.findById(id)
+			.orElseThrow(() -> org.springframework.samples.petclinic.common.exception.EntityNotFoundException.of("CounselPost", id));
+
 		CounselPostDto dto = postMapper.toDto(entity);
+
+		// FileException 적용
 		if (dto.getContentPath() != null && !dto.getContentPath().isBlank()) {
-			String html = contentStorage.loadHtml(dto.getContentPath());
-			dto.setContent(html);
+			try {
+				String html = contentStorage.loadHtml(dto.getContentPath());
+				dto.setContent(html);
+			} catch (IOException e) {
+				throw new org.springframework.samples.petclinic.common.exception.FileException(
+					org.springframework.samples.petclinic.common.exception.ErrorCode.FILE_READ_ERROR, e);
+			}
 		}
 		return dto;
 	}
 
 	/**
 	 * 신규 글 저장: 본문 파일 저장 → 경로 세팅 → DTO 비밀번호는 BCrypt로 해싱하여 엔티티에 저장합니다.
+	 * GlobalExceptionHandler 적용: FileException 사용
 	 * @return 생성된 게시글 ID
 	 */
 	public Long saveNew(CounselPostWriteDto dto) {
-		// 1. 본문 저장
-		String path = "";
+		// 1. 본문 저장 (FileException 적용)
+		String path;
 		try {
 			path = contentStorage.saveHtml(dto.getContent());
 		} catch (IOException e) {
 			log.error("Failed to save content HTML for new post: {}", dto.getTitle(), e);
-			throw new RuntimeException("Error saving post content.", e);
+			throw new org.springframework.samples.petclinic.common.exception.FileException(
+				org.springframework.samples.petclinic.common.exception.ErrorCode.FILE_WRITE_ERROR, e);
 		}
 
 		// 2. 엔티티 생성 및 기본 정보 설정
@@ -154,13 +228,12 @@ public class CounselService {
 				if (filePath.isEmpty()) continue;
 
 				try {
-					// Attachment 엔티티 생성 및 저장
+					// Attachment 엔티티 생성 및 저장 (common.table.Attachment)
 					Attachment attachment = new Attachment();
-					attachment.setFilePath(filePath);
-					attachment.setOriginalFileName(extractFileName(filePath)); // 경로에서 파일명 추출
-					attachment.setFileSize(0L); // 임시 업로드 시 크기 정보 없음 (추후 개선 가능)
-					attachment.setMimeType("application/octet-stream"); // 임시 업로드 시 MIME 타입 정보 없음
-					attachment.setCreatedAt(LocalDateTime.now());
+					attachment.setStoredFilename(filePath); // 저장된 파일명
+					attachment.setOriginalFilename(extractFileName(filePath)); // 원본 파일명
+					attachment.setFileSize(0L); // 임시 업로드 시 크기 정보 없음
+					attachment.setContentType("application/octet-stream"); // MIME 타입
 					attachmentRepository.save(attachment);
 
 					// CounselPost와 Attachment 연결
@@ -188,13 +261,12 @@ public class CounselService {
 					// 파일 저장
 					String storedFilePath = fileStorageService.storeFile(file);
 
-					// Attachment 엔티티 생성 및 저장
+					// Attachment 엔티티 생성 및 저장 (common.table.Attachment)
 					Attachment attachment = new Attachment();
-					attachment.setFilePath(storedFilePath);
-					attachment.setOriginalFileName(file.getOriginalFilename());
+					attachment.setStoredFilename(storedFilePath); // 저장된 파일명
+					attachment.setOriginalFilename(file.getOriginalFilename()); // 원본 파일명
 					attachment.setFileSize(file.getSize());
-					attachment.setMimeType(file.getContentType());
-					attachment.setCreatedAt(LocalDateTime.now());
+					attachment.setContentType(file.getContentType()); // MIME 타입
 					attachmentRepository.save(attachment);
 
 					// CounselPost와 Attachment 연결
@@ -361,20 +433,30 @@ public class CounselService {
 	}
 
 	/**
-	 * 게시글을 수정합니다. 비밀번호 검증 후 진행합니다.
+	 * 게시글을 수정합니다. 권한 검증 후 진행합니다.
+	 *
+	 * <p>권한 검증 우선순위:</p>
+	 * <ol>
+	 *   <li>관리자(ROLE_ADMIN): 무조건 허용</li>
+	 *   <li>작성자 본인(로그인 사용자): 비밀번호 없이 허용</li>
+	 *   <li>비공개 게시글 + 타인: 비밀번호 필요</li>
+	 *   <li>공개 게시글: 비밀번호 없이 허용</li>
+	 * </ol>
+	 *
 	 * @param postId 게시글 ID
 	 * @param dto 수정할 내용
 	 * @param password 비밀번호 (비공개글인 경우)
+	 * @param authentication Spring Security 인증 객체 (작성자 확인용, null 가능)
 	 * @return 수정 성공 여부
 	 */
-	public boolean updatePost(Long postId, CounselPostWriteDto dto, String password) {
+	public boolean updatePost(Long postId, CounselPostWriteDto dto, String password, Authentication authentication) {
 		try {
 			CounselPost entity = repository.findById(postId)
 				.orElseThrow(() -> new IllegalArgumentException("Invalid post ID: " + postId));
 
-			// 비밀번호 검증 (비공개글인 경우)
-			if (entity.isSecret() && !verifyPassword(postId, password)) {
-				log.warn("Failed password verification for updating post ID: {}", postId);
+			// 권한 검증
+			if (!canModifyPost(entity, password, authentication)) {
+				log.warn("Unauthorized attempt to update post ID: {}", postId);
 				return false;
 			}
 
@@ -408,7 +490,7 @@ public class CounselService {
 					if (idStr.isEmpty()) continue;
 
 					try {
-						Integer attachmentId = Integer.parseInt(idStr);
+						Long attachmentId = Long.parseLong(idStr);
 
 						// Attachment 조회
 						Attachment attachment = attachmentRepository.findById(attachmentId).orElse(null);
@@ -427,7 +509,7 @@ public class CounselService {
 						attachmentRepository.save(attachment);
 
 						log.info("Attachment marked for deletion: id={}, fileName={}",
-							attachmentId, attachment.getOriginalFileName());
+							attachmentId, attachment.getOriginalFilename());
 					} catch (NumberFormatException e) {
 						log.error("Invalid attachment ID format: {}", idStr);
 					}
@@ -443,13 +525,12 @@ public class CounselService {
 					if (filePath.isEmpty()) continue;
 
 					try {
-						// Attachment 엔티티 생성 및 저장
+						// Attachment 엔티티 생성 및 저장 (common.table.Attachment)
 						Attachment attachment = new Attachment();
-						attachment.setFilePath(filePath);
-						attachment.setOriginalFileName(extractFileName(filePath));
+						attachment.setStoredFilename(filePath); // 저장된 파일명
+						attachment.setOriginalFilename(extractFileName(filePath)); // 원본 파일명
 						attachment.setFileSize(0L); // 임시 업로드 시 크기 정보 없음
-						attachment.setMimeType("application/octet-stream");
-						attachment.setCreatedAt(LocalDateTime.now());
+						attachment.setContentType("application/octet-stream"); // MIME 타입
 						attachmentRepository.save(attachment);
 
 						// CounselPost와 Attachment 연결
@@ -480,19 +561,29 @@ public class CounselService {
 	}
 
 	/**
-	 * 게시글을 삭제합니다 (Soft Delete). 비밀번호 검증 후 진행합니다.
+	 * 게시글을 삭제합니다 (Soft Delete). 권한 검증 후 진행합니다.
+	 *
+	 * <p>권한 검증 우선순위는 updatePost와 동일합니다:</p>
+	 * <ol>
+	 *   <li>관리자(ROLE_ADMIN): 무조건 허용</li>
+	 *   <li>작성자 본인(로그인 사용자): 비밀번호 없이 허용</li>
+	 *   <li>비공개 게시글 + 타인: 비밀번호 필요</li>
+	 *   <li>공개 게시글: 비밀번호 없이 허용</li>
+	 * </ol>
+	 *
 	 * @param postId 게시글 ID
 	 * @param password 비밀번호 (비공개글인 경우)
+	 * @param authentication Spring Security 인증 객체 (작성자 확인용, null 가능)
 	 * @return 삭제 성공 여부
 	 */
-	public boolean deletePost(Long postId, String password) {
+	public boolean deletePost(Long postId, String password, Authentication authentication) {
 		try {
 			CounselPost entity = repository.findById(postId)
 				.orElseThrow(() -> new IllegalArgumentException("Invalid post ID: " + postId));
 
-			// 비밀번호 검증 (비공개글인 경우)
-			if (entity.isSecret() && !verifyPassword(postId, password)) {
-				log.warn("Failed password verification for deleting post ID: {}", postId);
+			// 권한 검증
+			if (!canModifyPost(entity, password, authentication)) {
+				log.warn("Unauthorized attempt to delete post ID: {}", postId);
 				return false;
 			}
 
@@ -564,4 +655,338 @@ public class CounselService {
 
 		return lastSlash >= 0 ? normalizedPath.substring(lastSlash + 1) : normalizedPath;
 	}
+
+	/**
+	 * 게시글 수정/삭제 권한 확인
+	 *
+	 * <p>권한 체크 우선순위:</p>
+	 * <ol>
+	 *   <li>관리자(ROLE_ADMIN): 무조건 허용</li>
+	 *   <li>작성자 본인(로그인 사용자 닉네임 = 게시글 작성자): 비밀번호 없이 허용</li>
+	 *   <li>비공개 게시글: 비밀번호 검증 필요</li>
+	 *   <li>공개 게시글: 비밀번호 없이 허용</li>
+	 * </ol>
+	 *
+	 * @param post 게시글 엔티티
+	 * @param password 비밀번호 (null 가능)
+	 * @param authentication Spring Security 인증 객체 (null 가능)
+	 * @return 권한 여부 (true: 허용, false: 거부)
+	 */
+	private boolean canModifyPost(CounselPost post, String password, Authentication authentication) {
+		// 1. 관리자는 무조건 허용
+		if (isAdmin(authentication)) {
+			log.info("Admin authorized to modify post ID: {}", post.getId());
+			return true;
+		}
+
+		// 2. 로그인 사용자가 작성자 본인인지 확인
+		// TODO: 추후 User 엔티티와 연관관계 추가 시 user_id로 직접 비교
+		// 현재는 닉네임 비교 (임시 방식)
+		if (authentication != null) {
+			String username = authentication.getName();
+			// User 정보 조회하여 닉네임 비교
+			// 현재는 작성자 이름(authorName)과 로그인 username을 비교
+			if (post.getAuthorName() != null && post.getAuthorName().equals(username)) {
+				log.info("Author authorized to modify post ID: {} (author={})", post.getId(), username);
+				return true;
+			}
+		}
+
+		// 3. 비공개 게시글인 경우 비밀번호 검증
+		if (post.isSecret()) {
+			if (password == null || password.isBlank()) {
+				log.warn("Password required for modifying secret post ID: {}", post.getId());
+				return false;
+			}
+
+			// 비밀번호 검증
+			if (post.getPasswordHash() != null && BCrypt.checkpw(password, post.getPasswordHash())) {
+				log.info("Password verified for modifying post ID: {}", post.getId());
+				return true;
+			} else {
+				log.warn("Password verification failed for post ID: {}", post.getId());
+				return false;
+			}
+		}
+
+		// 4. 공개 게시글은 비밀번호 없이 허용
+		log.info("Public post authorized to modify ID: {}", post.getId());
+		return true;
+	}
+
+	/**
+	 * 사용자가 관리자 권한을 가지고 있는지 확인
+	 *
+	 * @param authentication Spring Security 인증 객체 (null 가능)
+	 * @return 관리자 여부 (true: 관리자, false: 일반 사용자 또는 비로그인)
+	 */
+	private boolean isAdmin(Authentication authentication) {
+		if (authentication == null) {
+			return false;
+		}
+
+		return authentication.getAuthorities().stream()
+			.anyMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN"));
+	}
+
+	/**
+	 * 게시글 상태 변경 (관리자 전용)
+	 *
+	 * <p>관리자만 게시글의 상태(WAIT/COMPLETE/END)를 변경할 수 있습니다.</p>
+	 *
+	 * @param postId 게시글 ID
+	 * @param newStatus 새 상태값 (WAIT/COMPLETE/END)
+	 * @param authentication Spring Security 인증 객체 (관리자 확인용)
+	 * @return 변경 성공 여부
+	 * @throws IllegalStateException 관리자가 아닌 경우
+	 * @throws IllegalArgumentException 잘못된 상태값
+	 */
+	@Transactional
+	public boolean updatePostStatus(Long postId, String newStatus, Authentication authentication) {
+		// 관리자 권한 확인
+		if (!isAdmin(authentication)) {
+			log.warn("Non-admin attempted to change post status: postId={}", postId);
+			throw new IllegalStateException("관리자만 게시글 상태를 변경할 수 있습니다.");
+		}
+
+		try {
+			CounselPost entity = repository.findById(postId)
+				.orElseThrow(() -> new IllegalArgumentException("Invalid post ID: " + postId));
+
+			// 상태값 검증 및 변환
+			org.springframework.samples.petclinic.counsel.CounselStatus status;
+			try {
+				status = org.springframework.samples.petclinic.counsel.CounselStatus.valueOf(newStatus.toUpperCase());
+			} catch (IllegalArgumentException e) {
+				log.error("Invalid status value: {}", newStatus);
+				throw new IllegalArgumentException("유효하지 않은 상태값입니다. (WAIT/COMPLETE/END만 가능)");
+			}
+
+			// 상태 변경
+			entity.setStatus(status);
+			repository.save(entity);
+
+			log.info("Post status updated by admin: postId={}, oldStatus={}, newStatus={}, admin={}",
+				postId, entity.getStatus(), status, authentication.getName());
+
+			return true;
+		} catch (Exception e) {
+			log.error("Error updating post status: postId={}, error={}", postId, e.getMessage(), e);
+			return false;
+		}
+	}
+
+	// ==================== 좋아요 기능 ====================
+
+	/**
+	 * 게시글 좋아요 토글 (추가/취소)
+	 *
+	 * <p>로그인한 사용자만 좋아요를 누를 수 있습니다.</p>
+	 * <p>이미 좋아요를 눌렀으면 취소하고, 안 눌렀으면 추가합니다.</p>
+	 *
+	 * @param postId 게시글 ID
+	 * @param authentication Spring Security 인증 객체 (null 불가)
+	 * @return 좋아요 상태 (true: 좋아요 추가됨, false: 좋아요 취소됨)
+	 * @throws IllegalStateException 비로그인 사용자인 경우
+	 */
+	/**
+	 * 게시글 좋아요 토글 (추가/취소) - ACID 속성 적용 고도화
+	 *
+	 * <p><strong>ACID 트랜잭션 속성 보장:</strong></p>
+	 * <ul>
+	 *   <li><strong>Atomicity (원자성)</strong>: 좋아요 추가/삭제가 완전히 성공하거나 실패 (All or Nothing)</li>
+	 *   <li><strong>Consistency (일관성)</strong>: UNIQUE 제약으로 중복 좋아요 방지, 데이터 무결성 유지</li>
+	 *   <li><strong>Isolation (격리성)</strong>: READ_COMMITTED 수준으로 동시성 제어, 더티 리드 방지</li>
+	 *   <li><strong>Durability (지속성)</strong>: 커밋 후 좋아요 데이터 영구 보존</li>
+	 * </ul>
+	 *
+	 * <p><strong>동시성 시나리오:</strong></p>
+	 * <pre>
+	 * 시나리오 1: 동일 사용자가 동시에 2번 좋아요 클릭
+	 *   → UNIQUE 제약으로 1개만 저장됨 (Consistency 보장)
+	 *
+	 * 시나리오 2: 여러 사용자가 동시에 좋아요
+	 *   → READ_COMMITTED로 각각 독립적으로 처리 (Isolation 보장)
+	 *
+	 * 시나리오 3: 좋아요 추가 중 서버 장애
+	 *   → 롤백으로 이전 상태 복구 (Atomicity 보장)
+	 * </pre>
+	 *
+	 * @param postId 게시글 ID
+	 * @param authentication Spring Security 인증 객체 (null 불가)
+	 * @return 좋아요 상태 (true: 좋아요 추가됨, false: 좋아요 취소됨)
+	 * @throws IllegalStateException 비로그인 사용자인 경우
+	 * @throws IllegalArgumentException 존재하지 않는 게시글 ID인 경우
+	 */
+	@Transactional(
+		isolation = Isolation.READ_COMMITTED,
+		rollbackFor = Exception.class
+	)
+	public boolean toggleLike(Long postId, Authentication authentication) {
+		// === 1. 입력 검증 (Consistency - 일관성) ===
+		if (authentication == null) {
+			log.warn("Unauthorized like attempt: postId={}, authentication=null", postId);
+			throw new IllegalStateException("로그인한 사용자만 좋아요를 누를 수 있습니다.");
+		}
+
+		String username = authentication.getName();
+
+		if (username == null || username.trim().isEmpty()) {
+			log.error("Invalid username: postId={}, username={}", postId, username);
+			throw new IllegalStateException("유효하지 않은 사용자 정보입니다.");
+		}
+
+		// === 2. 게시글 존재 확인 (Consistency) ===
+		CounselPost post = repository.findById(postId)
+			.orElseThrow(() -> {
+				log.error("Post not found: postId={}", postId);
+				return new IllegalArgumentException("존재하지 않는 게시글입니다. (ID: " + postId + ")");
+			});
+
+		try {
+			// === 3. 좋아요 중복 확인 (Isolation - READ_COMMITTED) ===
+			Optional<org.springframework.samples.petclinic.counsel.table.CounselPostLike> existingLike =
+				likeRepository.findByPostIdAndUsername(postId, username);
+
+			if (existingLike.isPresent()) {
+				// === 4-1. 좋아요 취소 (Atomicity - 완전히 삭제되거나 실패) ===
+				org.springframework.samples.petclinic.counsel.table.CounselPostLike like = existingLike.get();
+				likeRepository.delete(like);
+				likeRepository.flush(); // 즉시 DB 반영 (Durability 보장)
+
+				log.info("✅ [ACID-Atomicity] Like removed successfully: postId={}, username={}, likeId={}",
+					postId, username, like.getId());
+
+				return false; // 좋아요 취소됨
+
+			} else {
+				// === 4-2. 좋아요 추가 (Atomicity - 완전히 저장되거나 실패) ===
+				org.springframework.samples.petclinic.counsel.table.CounselPostLike newLike =
+					new org.springframework.samples.petclinic.counsel.table.CounselPostLike(post, username);
+
+				org.springframework.samples.petclinic.counsel.table.CounselPostLike savedLike =
+					likeRepository.save(newLike);
+				likeRepository.flush(); // 즉시 DB 반영 (Durability 보장)
+
+				log.info("✅ [ACID-Atomicity] Like added successfully: postId={}, username={}, likeId={}",
+					postId, username, savedLike.getId());
+
+				return true; // 좋아요 추가됨
+			}
+
+		} catch (org.springframework.dao.DataIntegrityViolationException e) {
+			// === 5. 동시성 제어 - UNIQUE 제약 위반 (Consistency) ===
+			log.warn("⚠️ [ACID-Consistency] Duplicate like attempt prevented: postId={}, username={}, error={}",
+				postId, username, e.getMessage());
+
+			// 이미 좋아요가 존재하므로 좋아요 상태 반환 (중복 방지)
+			boolean alreadyLiked = likeRepository.existsByPostIdAndUsername(postId, username);
+			return alreadyLiked;
+
+		} catch (Exception e) {
+			// === 6. 예외 처리 - 롤백 보장 (Atomicity) ===
+			log.error("❌ [ACID-Atomicity] Like toggle failed - Rolling back: postId={}, username={}, error={}",
+				postId, username, e.getMessage(), e);
+
+			// 예외를 다시 던져서 트랜잭션 롤백 발생
+			throw new RuntimeException("좋아요 처리 중 오류가 발생했습니다: " + e.getMessage(), e);
+		}
+	}
+
+	/**
+	 * 특정 게시글의 좋아요 개수 조회 - ACID 속성 적용 (읽기 전용)
+	 *
+	 * <p><strong>ACID 트랜잭션 속성:</strong></p>
+	 * <ul>
+	 *   <li><strong>Consistency (일관성)</strong>: 커밋된 데이터만 조회 (더티 리드 방지)</li>
+	 *   <li><strong>Isolation (격리성)</strong>: READ_COMMITTED 수준으로 최신 커밋 데이터 조회</li>
+	 *   <li><strong>Performance</strong>: readOnly=true로 읽기 최적화 (쓰기 락 불필요)</li>
+	 * </ul>
+	 *
+	 * <p><strong>동시성 시나리오:</strong></p>
+	 * <pre>
+	 * 시나리오 1: 좋아요 추가 중에 개수 조회
+	 *   → READ_COMMITTED로 커밋된 개수만 반환 (일관성 보장)
+	 *
+	 * 시나리오 2: 여러 사용자가 동시에 개수 조회
+	 *   → readOnly=true로 성능 최적화, 락 경합 없음
+	 * </pre>
+	 *
+	 * @param postId 게시글 ID
+	 * @return 좋아요 개수 (0 이상의 정수)
+	 */
+	@Transactional(
+		readOnly = true,
+		isolation = Isolation.READ_COMMITTED
+	)
+	public long getLikeCount(Long postId) {
+		try {
+			long count = likeRepository.countByPostId(postId);
+			log.debug("✅ [ACID-Consistency] Like count retrieved: postId={}, count={}", postId, count);
+			return count;
+
+		} catch (Exception e) {
+			log.error("❌ [ACID-Error] Failed to get like count: postId={}, error={}",
+				postId, e.getMessage(), e);
+
+			// 조회 실패 시 0 반환 (기본값)
+			return 0L;
+		}
+	}
+
+	/**
+	 * 특정 게시글에 특정 사용자가 좋아요를 눌렀는지 확인 - ACID 속성 적용
+	 *
+	 * <p><strong>ACID 트랜잭션 속성:</strong></p>
+	 * <ul>
+	 *   <li><strong>Consistency (일관성)</strong>: 커밋된 좋아요 상태만 반환</li>
+	 *   <li><strong>Isolation (격리성)</strong>: READ_COMMITTED 수준으로 최신 상태 확인</li>
+	 *   <li><strong>Performance</strong>: readOnly=true로 읽기 최적화</li>
+	 * </ul>
+	 *
+	 * <p><strong>사용 목적:</strong></p>
+	 * <pre>
+	 * - UI에서 하트 아이콘 색상 결정 (빨강 vs 회색)
+	 * - 사용자별 좋아요 상태 표시
+	 * - 비로그인 사용자는 항상 false 반환
+	 * </pre>
+	 *
+	 * @param postId 게시글 ID
+	 * @param authentication Spring Security 인증 객체 (null 가능)
+	 * @return 좋아요 여부 (true: 좋아요 누름, false: 안 누름)
+	 */
+	@Transactional(
+		readOnly = true,
+		isolation = Isolation.READ_COMMITTED
+	)
+	public boolean isLikedByUser(Long postId, Authentication authentication) {
+		// 비로그인 사용자는 좋아요 불가능
+		if (authentication == null) {
+			return false;
+		}
+
+		String username = authentication.getName();
+
+		// username이 null이거나 빈 문자열인 경우 false 반환
+		if (username == null || username.trim().isEmpty()) {
+			log.warn("⚠️ Invalid username for like check: postId={}", postId);
+			return false;
+		}
+
+		try {
+			boolean isLiked = likeRepository.existsByPostIdAndUsername(postId, username);
+			log.debug("✅ [ACID-Consistency] Like status checked: postId={}, username={}, isLiked={}",
+				postId, username, isLiked);
+			return isLiked;
+
+		} catch (Exception e) {
+			log.error("❌ [ACID-Error] Failed to check like status: postId={}, username={}, error={}",
+				postId, username, e.getMessage(), e);
+
+			// 조회 실패 시 false 반환 (안전한 기본값)
+			return false;
+		}
+	}
 }
+
+

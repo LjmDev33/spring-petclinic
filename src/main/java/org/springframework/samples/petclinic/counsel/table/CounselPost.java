@@ -11,14 +11,30 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-/*
+/**
  * Project : spring-petclinic
  * File    : CounselPost.java
  * Created : 2025-10-21
  * Author  : Jeongmin Lee
  *
  * Description :
- *   TODO: 온라인상담 테이블
+ *   온라인상담 게시글 Entity (DB 테이블: counsel_post)
+ *
+ * Purpose (만든 이유):
+ *   1. 온라인상담 게시글 데이터 영속화
+ *   2. 비공개글 비밀번호 보호 (BCrypt)
+ *   3. Soft Delete 정책 적용
+ *   4. 첨부파일 관계 관리 (OneToMany)
+ *   5. 본문 파일 저장 (contentPath)
+ *
+ * Key Features (주요 기능):
+ *   - Soft Delete: @SQLDelete, @SQLRestriction
+ *   - 비밀번호 해싱: passwordHash (BCrypt)
+ *   - 상태 관리: CounselStatus Enum
+ *   - 첨부파일: OneToMany (CounselPostAttachment)
+ *   - 본문 파일: contentPath로 파일 경로 저장
+ *
+ * 필드 설명은 각 필드의 인라인 주석 참조
  *
  * License :
  *   Copyright (c) 2025 AOF(AllForOne) / All rights reserved.

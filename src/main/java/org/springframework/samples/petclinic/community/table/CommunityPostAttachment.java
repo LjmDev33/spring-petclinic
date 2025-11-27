@@ -1,70 +1,73 @@
 package org.springframework.samples.petclinic.community.table;
 
 import jakarta.persistence.*;
-import org.hibernate.annotations.SQLDelete;
-import org.hibernate.annotations.SQLRestriction;
-import org.hibernate.annotations.Where;
+import org.springframework.samples.petclinic.common.entity.BaseEntity;
 import org.springframework.samples.petclinic.common.table.Attachment;
 
-import java.time.LocalDateTime;
-
-/*
+/**
  * Project : spring-petclinic
  * File    : CommunityPostAttachment.java
- * Created : 2025-10-23
+ * Created : 2025-11-27
  * Author  : Jeongmin Lee
  *
  * Description :
- *   TODO: 커뮤니티 게시판 첨부 테이블 생성
+ *   Community 게시글과 Attachment의 중간 테이블 Entity
+ *   - ManyToOne 관계로 CommunityPost와 Attachment 연결
+ *   - Phase 3: 게시글 첨부파일 관리 기능
+ *
+ * Purpose (만든 이유):
+ *   1. 게시글과 첨부파일의 다대다 관계를 명시적으로 관리
+ *   2. 추후 첨부파일별 순서, 설명 등 추가 정보를 저장할 수 있도록 확장 가능
+ *   3. JPA의 OneToMany/ManyToOne 양방향 관계를 통해 편리한 조회
+ *
+ * Related Features (연관 기능):
+ *   - Community 게시글 작성 시 파일 첨부
+ *   - Community 게시글 수정 시 파일 추가/삭제
+ *   - Community 게시글 삭제 시 첨부파일 Soft Delete
+ *
+ * Note:
+ *   - CommunityPost 삭제 시 cascade로 자동 삭제됨 (orphanRemoval = true)
+ *   - Attachment는 공통 테이블이므로 별도 Soft Delete 처리 필요
  *
  * License :
  *   Copyright (c) 2025 AOF(AllForOne) / All rights reserved.
  */
 @Entity
-@Table(name = "community_post_attachment")
-@SQLDelete(sql = "UPDATE community_post_attachment SET del_flag=1, deleted_at=NOW() WHERE community_post_id=? AND attachment_id=?")
-@SQLRestriction("del_flag = 0")
-public class CommunityPostAttachment {
+@Table(name = "community_post_attachment",
+	uniqueConstraints = @UniqueConstraint(
+		name = "uq_community_post_attachment",
+		columnNames = {"community_post_id", "attachment_id"}
+	))
+public class CommunityPostAttachment extends BaseEntity {
 
-	@EmbeddedId
-	private CommunityPostAttachmentId id;
-
-	@ManyToOne(fetch = FetchType.LAZY, optional = false)
-	@MapsId("communityPostId")
+	/** Community 게시글 (다대일) */
+	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "community_post_id", nullable = false)
-	private CommunityPost post;
+	private CommunityPost communityPost;
 
-	@ManyToOne(fetch = FetchType.LAZY, optional = false)
-	@MapsId("attachmentId")
+	/** 첨부파일 (다대일) */
+	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "attachment_id", nullable = false)
 	private Attachment attachment;
 
-	@Column(name = "sort_order", nullable = false)
-	private int sortOrder = 0;
-
-	@Column(name = "del_flag", nullable = false)
-	private boolean delFlag = false;
-
-	@Column(name = "deleted_at")
-	private LocalDateTime deletedAt;
-
-	@Column(name = "deleted_by", length = 60)
-	private String deletedBy;
-
-	public CommunityPostAttachmentId getId() {
-		return id;
+	// 기본 생성자
+	public CommunityPostAttachment() {
 	}
 
-	public void setId(CommunityPostAttachmentId id) {
-		this.id = id;
+	// 편의 생성자
+	public CommunityPostAttachment(CommunityPost communityPost, Attachment attachment) {
+		this.communityPost = communityPost;
+		this.attachment = attachment;
 	}
 
-	public CommunityPost getPost() {
-		return post;
+	// Getters and Setters
+
+	public CommunityPost getCommunityPost() {
+		return communityPost;
 	}
 
-	public void setPost(CommunityPost post) {
-		this.post = post;
+	public void setCommunityPost(CommunityPost communityPost) {
+		this.communityPost = communityPost;
 	}
 
 	public Attachment getAttachment() {
@@ -74,36 +77,5 @@ public class CommunityPostAttachment {
 	public void setAttachment(Attachment attachment) {
 		this.attachment = attachment;
 	}
-
-	public int getSortOrder() {
-		return sortOrder;
-	}
-
-	public void setSortOrder(int sortOrder) {
-		this.sortOrder = sortOrder;
-	}
-
-	public boolean isDelFlag() {
-		return delFlag;
-	}
-
-	public void setDelFlag(boolean delFlag) {
-		this.delFlag = delFlag;
-	}
-
-	public LocalDateTime getDeletedAt() {
-		return deletedAt;
-	}
-
-	public void setDeletedAt(LocalDateTime deletedAt) {
-		this.deletedAt = deletedAt;
-	}
-
-	public String getDeletedBy() {
-		return deletedBy;
-	}
-
-	public void setDeletedBy(String deletedBy) {
-		this.deletedBy = deletedBy;
-	}
 }
+

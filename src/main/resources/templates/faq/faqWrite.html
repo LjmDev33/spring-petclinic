@@ -3,6 +3,8 @@
 <head>
   <title>FAQ 등록 - Spring PetClinic</title>
   <link rel="stylesheet" th:href="@{/css/custom-buttons.css}">
+  <!-- Quill 에디터 CSS (로컬 내장) -->
+  <link rel="stylesheet" th:href="@{/css/quill/quill.snow.css}">
 </head>
 <body>
 <div class="container mt-4">
@@ -15,7 +17,7 @@
     </a>
   </div>
 
-  <form th:action="@{/admin/faq/write}" method="post">
+  <form th:action="@{/admin/faq/write}" method="post" id="faqForm">
     <!-- 카테고리 -->
     <div class="mb-3">
       <label for="category" class="form-label">
@@ -36,15 +38,18 @@
       <label for="question" class="form-label">
         <i class="bi bi-question-circle"></i> 질문 <span class="text-danger">*</span>
       </label>
-      <input type="text" id="question" name="question" class="form-control" required>
+      <input type="text" id="question" name="question" class="form-control" required
+             placeholder="자주 묻는 질문을 입력하세요">
     </div>
 
-    <!-- 답변 -->
+    <!-- 답변 (Quill 에디터) -->
     <div class="mb-3">
-      <label for="answer" class="form-label">
+      <label class="form-label">
         <i class="bi bi-chat-left-text"></i> 답변 <span class="text-danger">*</span>
       </label>
-      <textarea id="answer" name="answer" class="form-control" rows="10" required></textarea>
+      <div id="quillEditor" style="min-height: 300px; background-color: white;"></div>
+      <textarea id="answer" name="answer" style="display: none;" required></textarea>
+      <small class="text-muted">에디터를 사용하여 답변을 작성하세요.</small>
     </div>
 
     <!-- 노출 순서 -->
@@ -67,6 +72,47 @@
     </div>
   </form>
 </div>
+
+<!-- Quill 에디터 JS (로컬 내장) -->
+<script th:src="@{/js/quill/quill.js}"></script>
+<script>
+  /**
+   * Quill 에디터 초기화
+   */
+  document.addEventListener('DOMContentLoaded', function() {
+    const quill = new Quill('#quillEditor', {
+      theme: 'snow',
+      modules: {
+        toolbar: [
+          [{ 'header': [1, 2, 3, false] }],
+          ['bold', 'italic', 'underline', 'strike'],
+          [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+          [{ 'color': [] }, { 'background': [] }],
+          [{ 'align': [] }],
+          ['link'],
+          ['clean']
+        ]
+      },
+      placeholder: '답변 내용을 입력하세요...'
+    });
+
+    /**
+     * 폼 제출 시 Quill 내용을 textarea에 저장
+     */
+    const form = document.getElementById('faqForm');
+    form.addEventListener('submit', function(e) {
+      const answerField = document.getElementById('answer');
+      answerField.value = quill.root.innerHTML;
+
+      // 내용이 비어있으면 제출 방지
+      if (quill.getText().trim().length === 0) {
+        e.preventDefault();
+        alert('답변 내용을 입력해주세요.');
+        return false;
+      }
+    });
+  });
+</script>
 </body>
 </html>
 

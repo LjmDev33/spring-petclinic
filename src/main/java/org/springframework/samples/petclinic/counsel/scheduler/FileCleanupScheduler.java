@@ -2,7 +2,7 @@ package org.springframework.samples.petclinic.counsel.scheduler;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.samples.petclinic.counsel.model.Attachment;
+import org.springframework.samples.petclinic.common.table.Attachment;
 import org.springframework.samples.petclinic.counsel.repository.AttachmentRepository;
 import org.springframework.samples.petclinic.counsel.service.FileStorageService;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -52,9 +52,9 @@ public class FileCleanupScheduler {
 
             for (Attachment attachment : filesToDelete) {
                 try {
-                    fileStorageService.deleteFile(attachment.getFilePath());
+                    fileStorageService.deleteFile(attachment.getStoredFilename());
                     attachmentRepository.delete(attachment); // DB에서 최종 삭제
-                    log.info("Successfully deleted attachment record and physical file: {}", attachment.getOriginalFileName());
+                    log.info("Successfully deleted attachment record and physical file: {}", attachment.getOriginalFilename());
                 } catch (Exception e) {
                     log.error("Error during deletion of attachment ID {}: {}", attachment.getId(), e.getMessage());
                     // 개별 파일 삭제 실패가 전체 스케줄링 작업을 중단시키지 않도록 처리

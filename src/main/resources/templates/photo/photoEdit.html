@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+  <title>포토게시글 수정 - Spring PetClinic</title>
+  <!-- Quill Editor CSS (로컬 내장) -->
+  <link rel="stylesheet" th:href="@{/css/quill/quill.snow.css}">
+  <link rel="stylesheet" th:href="@{/css/custom-buttons.css}">
+</head>
+<body>
+<div class="container mt-4">
+  <!-- 헤더: 제목 + 취소/목록 버튼 -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">
+      <i class="bi bi-pencil-square"></i> 포토게시글 수정
+    </h2>
+    <div class="d-flex" style="gap: 8px;">
+      <a th:href="@{/photo/detail/{id}(id=${post.id})}" class="custom-btn custom-btn-secondary">
+        <i class="bi bi-arrow-left me-1"></i> 취소
+      </a>
+      <a th:href="@{/photo/list}" class="custom-btn custom-btn-secondary">
+        <i class="bi bi-list me-1"></i> 목록
+      </a>
+    </div>
+  </div>
+
+  <form id="editForm" th:action="@{/photo/edit/{id}(id=${post.id})}" method="post">
+    <!-- 제목 입력 -->
+    <div class="mb-3">
+      <label for="title" class="form-label">
+        <i class="bi bi-card-heading"></i> 제목 <span class="text-danger">*</span>
+      </label>
+      <input type="text" id="title" name="title" class="form-control" th:value="${post.title}" required>
+    </div>
+
+    <!-- 작성자 -->
+    <div class="mb-3">
+      <label for="author" class="form-label">
+        <i class="bi bi-person"></i> 작성자
+      </label>
+      <input type="text" id="author" name="author" class="form-control" th:value="${post.author}" readonly>
+    </div>
+
+    <!-- 썸네일 URL -->
+    <div class="mb-3">
+      <label for="thumbnailUrl" class="form-label">
+        <i class="bi bi-image"></i> 썸네일 URL <small class="text-muted">(선택사항)</small>
+      </label>
+      <input type="text" id="thumbnailUrl" name="thumbnailUrl" class="form-control"
+             th:value="${post.thumbnailUrl}"
+             placeholder="썸네일 이미지 URL (비어있으면 본문에서 자동 추출)">
+      <small class="form-text text-muted">
+        썸네일 URL을 입력하지 않으면 본문의 첫 번째 이미지가 자동으로 썸네일로 사용됩니다.
+      </small>
+    </div>
+
+    <!-- 에디터 영역 -->
+    <div class="mb-3">
+      <label class="form-label">
+        <i class="bi bi-file-text"></i> 내용 <span class="text-danger">*</span>
+      </label>
+      <div id="editor" style="height: 400px;"></div>
+      <textarea name="content" id="content" hidden></textarea>
+    </div>
+
+    <!-- 버튼 영역 -->
+    <div class="d-flex justify-content-end mt-4" style="gap: 8px;">
+      <a th:href="@{/photo/detail/{id}(id=${post.id})}" class="custom-btn custom-btn-secondary">
+        <i class="bi bi-x-lg me-1"></i> 취소
+      </a>
+      <button type="submit" class="custom-btn custom-btn-primary" id="submitBtn">
+        <i class="bi bi-save me-1"></i> 수정 완료
+      </button>
+    </div>
+  </form>
+</div>
+
+<!-- Quill Editor JS (로컬 내장) -->
+<script th:src="@{/js/quill/quill.js}"></script>
+
+<script th:inline="javascript">
+  document.addEventListener('DOMContentLoaded', function () {
+    // Quill Editor 초기화
+    const quill = new Quill('#editor', {
+      theme: 'snow',
+      modules: {
+        toolbar: [
+          [{ 'header': [1, 2, 3, false] }],
+          ['bold', 'italic', 'underline', 'strike'],
+          [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+          [{ 'color': [] }, { 'background': [] }],
+          [{ 'align': [] }],
+          ['link', 'image'],
+          ['clean']
+        ]
+      },
+      placeholder: '포토게시글 내용을 입력하세요...'
+    });
+
+    // 기존 게시글 내용을 에디터에 로드
+    const existingContent = /*[[${post.content}]]*/ '';
+    if (existingContent) {
+      quill.root.innerHTML = existingContent;
+    }
+
+    // 폼 제출 시 에디터 내용을 textarea에 동기화
+    const form = document.getElementById('editForm');
+    form.addEventListener('submit', function(e) {
+      const contentTextarea = document.getElementById('content');
+      contentTextarea.value = quill.root.innerHTML;
+
+      // 내용 필수 검증
+      if (!contentTextarea.value || contentTextarea.value.trim() === '<p><br></p>' || contentTextarea.value.trim() === '') {
+        e.preventDefault();
+        alert('내용을 입력해주세요.');
+        return false;
+      }
+
+      // 제출 버튼 비활성화 (중복 제출 방지)
+      const submitBtn = document.getElementById('submitBtn');
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> 수정 중...';
+    });
+  });
+</script>
+</body>
+</html>
+
