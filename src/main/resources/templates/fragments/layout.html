@@ -95,10 +95,10 @@
       <div class="collapse navbar-collapse justify-content-center" id="navbarNav">
           <ul class="navbar-nav d-flex flex-row justify-content-between align-items-center gap-4">
             <li class="nav-item dropdown">
-              <a class="nav-link dropdown-toggle" style="font-size: 16px;" aria-current="page" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">솔 동물의료센터 소개</a>
+              <a class="nav-link dropdown-toggle" style="font-size: 16px;" aria-current="page" href="#" role="button" th:onclick="|location.href='@{/introduce/greetings}'|" data-bs-toggle="dropdown" aria-expanded="false">솔 동물의료센터 소개</a>
               <ul class="dropdown-menu">
-                <li><a class="dropdown-item" href="#">인사말</a></li>
-                <li><a class="dropdown-item" href="#">의료진소개</a></li>
+                <li><a class="dropdown-item" th:href="@{/introduce/greetings}">인사말</a></li>
+                <li><a class="dropdown-item" th:href="@{/introduce/staff}">의료진소개</a></li>
                 <li><a class="dropdown-item" href="#">진료철학</a></li>
                 <li><a class="dropdown-item" href="#">특별함</a></li>
                 <li><a class="dropdown-item" href="#">운영시간</a></li>

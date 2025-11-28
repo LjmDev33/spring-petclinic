@@ -72,6 +72,8 @@ public class SecurityConfig {
 				.requestMatchers("/photo/list", "/photo/detail/**").permitAll()
 				// 관리자 전용
 				.requestMatchers("/admin/**").hasRole("ADMIN")
+				// 소개 (공개)
+				.requestMatchers("/introduce/**").permitAll()
 				// 나머지는 인증 필요
 				.anyRequest().authenticated()
 			)

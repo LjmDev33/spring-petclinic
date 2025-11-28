@@ -23,14 +23,14 @@
   <!-- 버튼 그룹 -->
   <div class="d-flex justify-content-between mb-3">
     <div class="d-flex" style="gap: 8px;">
-      <a th:href="@{/photo/edit/{id}(id=${post.id})}" class="custom-btn custom-btn-warning">
+      <a th:href="@{/photo/edit/{id}(id=${post.id})}" class="btn btn-outline-dark">
         <i class="bi bi-pencil me-1"></i> 수정
       </a>
-      <button type="button" class="custom-btn custom-btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+      <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
         <i class="bi bi-trash me-1"></i> 삭제
       </button>
     </div>
-    <a th:href="@{/photo/list}" class="custom-btn custom-btn-secondary">
+    <a th:href="@{/photo/list}" class="btn btn-light">
       <i class="bi bi-list me-1"></i> 목록
     </a>
   </div>
@@ -48,16 +48,6 @@
     </div>
   </div>
 
-  <!-- 썸네일 이미지 (있는 경우만 표시) -->
-  <div th:if="${post.thumbnailUrl != null && !post.thumbnailUrl.isEmpty()}" class="row mt-3">
-    <div class="col-12 text-center">
-      <img th:src="${post.thumbnailUrl}"
-           th:alt="${post.title}"
-           class="thumbnail-preview"
-           onerror="this.style.display='none';">
-    </div>
-  </div>
-
   <!-- 본문 내용 (Quill 에디터 스타일 적용) -->
   <div class="row mt-3">
     <div class="table table-bordered">
@@ -72,15 +62,15 @@
       <ul class="nav nav-tabs" id="postTabs" role="tablist">
         <!-- 좋아요 탭 -->
         <li class="nav-item" role="presentation">
-          <button class="nav-link active" id="like-tab" data-bs-toggle="tab" data-bs-target="#like-panel"
-                  type="button" role="tab" aria-controls="like-panel" aria-selected="true">
-            <i class="fa fa-heart"></i> 좋아요 (<span id="likeCountTab" th:text="${likeCount}">0</span>)
+          <button class="nav-link" id="like-tab" data-post-id th:attr="data-post-id=${post.id}" th:onclick="'toggleLike(' + ${post.id} + ')'"
+                  type="button" role="tab" >
+            <i id="likeIcon" th:class="${isLiked} ? 'fa fa-heart text-danger' : 'fa fa-heart-o text-secondary'"></i> 좋아요 (<span id="likeCountTab" th:text="${likeCount}">0</span>)
           </button>
         </li>
         <!-- 답변 탭 -->
         <li class="nav-item" role="presentation">
-          <button class="nav-link" id="reply-tab" data-bs-toggle="tab" data-bs-target="#reply-panel"
-                  type="button" role="tab" aria-controls="reply-panel" aria-selected="false">
+          <button class="nav-link active" id="reply-tab" data-bs-toggle="tab" data-bs-target="#reply-panel"
+                  type="button" role="tab" aria-controls="reply-panel" aria-selected="true">
             <i class="fa fa-comments"></i> 답변 (<span id="replyCountTab">0</span>)
           </button>
         </li>
@@ -88,31 +78,8 @@
 
       <!-- 탭 콘텐츠 -->
       <div class="tab-content border border-top-0 rounded-bottom" id="postTabContent">
-        <!-- 좋아요 탭 패널 -->
-        <div class="tab-pane fade show active" id="like-panel" role="tabpanel" aria-labelledby="like-tab">
-          <div class="p-5 text-center">
-            <!-- 좋아요 버튼 (큰 하트) -->
-            <div class="mb-4">
-              <button type="button" id="likeButton" class="btn btn-link text-decoration-none p-0"
-                      style="font-size: 5rem; cursor: pointer;"
-                      data-post-id th:attr="data-post-id=${post.id}"
-                      th:onclick="'toggleLike(' + ${post.id} + ')'">
-                <i id="likeIcon" th:class="${isLiked} ? 'fa fa-heart text-danger' : 'fa fa-heart-o text-secondary'"></i>
-              </button>
-            </div>
-            <!-- 좋아요 개수 -->
-            <h4 class="mb-3 fw-bold">
-              <span id="likeCountDisplay" th:text="${likeCount}">0</span>명이 좋아합니다
-            </h4>
-            <!-- 비로그인 사용자 안내 -->
-            <div sec:authorize="!isAuthenticated()" class="alert alert-info mt-3 d-inline-block">
-              <i class="fa fa-info-circle me-2"></i>좋아요를 누르려면 로그인이 필요합니다.
-            </div>
-          </div>
-        </div>
-
         <!-- 답변 탭 패널 -->
-        <div class="tab-pane fade" id="reply-panel" role="tabpanel" aria-labelledby="reply-tab">
+        <div class="tab-pane fade active show" id="reply-panel" role="tabpanel" aria-labelledby="reply-tab">
           <div class="p-4">
             <!-- 답변 토글 버튼 -->
             <div class="d-flex justify-content-between align-items-center mb-3">
@@ -193,7 +160,6 @@
         }
 
         // 좋아요 개수 업데이트
-        document.getElementById('likeCountDisplay').textContent = data.likeCount;
         document.getElementById('likeCountTab').textContent = data.likeCount;
 
         // 성공 메시지 표시
