@@ -1,6 +1,8 @@
 package org.springframework.samples.petclinic.photo.table;
 
 import jakarta.persistence.*;
+import jakarta.persistence.ForeignKey;
+import jakarta.persistence.ConstraintMode;
 import org.springframework.samples.petclinic.common.entity.BaseEntity;
 import org.springframework.samples.petclinic.common.table.Attachment;
 
@@ -63,4 +65,3 @@ public class PhotoPostAttachment extends BaseEntity {
 		this.attachment = attachment;
 	}
 }
-

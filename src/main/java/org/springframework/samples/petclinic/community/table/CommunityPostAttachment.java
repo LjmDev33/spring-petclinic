@@ -1,6 +1,8 @@
 package org.springframework.samples.petclinic.community.table;
 
 import jakarta.persistence.*;
+import jakarta.persistence.ForeignKey;
+import jakarta.persistence.ConstraintMode;
 import org.springframework.samples.petclinic.common.entity.BaseEntity;
 import org.springframework.samples.petclinic.common.table.Attachment;
 
@@ -78,4 +80,3 @@ public class CommunityPostAttachment extends BaseEntity {
 		this.attachment = attachment;
 	}
 }
-

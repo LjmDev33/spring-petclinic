@@ -79,6 +79,9 @@ public class User extends BaseEntity {
 	@Column(name = "last_login_ip", length = 50)
 	private String lastLoginIp; // 마지막 로그인 IP
 
+	@Column(name = "profile_image_url", length = 500)
+	private String profileImageUrl; // 프로필 이미지 경로 (마이페이지에서 업로드, nullable)
+
 	// Getters and Setters
 	public String getUsername() {
 		return username;
@@ -200,12 +203,69 @@ public class User extends BaseEntity {
 		this.lastLoginIp = lastLoginIp;
 	}
 
+	public String getProfileImageUrl() {
+		return profileImageUrl;
+	}
+
+	public void setProfileImageUrl(String profileImageUrl) {
+		this.profileImageUrl = profileImageUrl;
+	}
+
 	/**
 	 * 관리자 권한 여부 확인
 	 * @return true: 관리자, false: 일반 사용자
 	 */
 	public boolean isAdmin() {
 		return roles.contains("ROLE_ADMIN");
+	}
+
+	/**
+	 * 프로필 이미지가 있는지 확인
+	 * @return true: 이미지 있음, false: 이미지 없음
+	 */
+	public boolean hasProfileImage() {
+		return profileImageUrl != null && !profileImageUrl.trim().isEmpty();
+	}
+
+	/**
+	 * 닉네임의 첫 글자 추출 (아바타 이니셜용)
+	 * - 한글: 1글자 (예: "홍길동" → "홍")
+	 * - 영문: 최대 2글자 (예: "John" → "JO")
+	 * @return 이니셜 문자열
+	 */
+	public String getInitial() {
+		if (nickname == null || nickname.trim().isEmpty()) {
+			return "?";
+		}
+		String trimmed = nickname.trim();
+		// 한글이면 1글자, 영문이면 2글자
+		if (trimmed.matches(".*[가-힣].*")) {
+			return trimmed.substring(0, 1).toUpperCase();
+		} else {
+			return trimmed.substring(0, Math.min(2, trimmed.length())).toUpperCase();
+		}
+	}
+
+	/**
+	 * username 해시값 기반 아바타 배경색 반환
+	 * - 6가지 색상 중 하나를 일관되게 반환
+	 * @return HEX 색상 코드
+	 */
+	public String getAvatarColor() {
+		String[] colors = {
+			"#3b82f6", // 파란색
+			"#10b981", // 초록색
+			"#8b5cf6", // 보라색
+			"#f59e0b", // 주황색
+			"#ec4899", // 분홍색
+			"#06b6d4"  // 청록색
+		};
+		if (username == null) {
+			return colors[0];
+		}
+		int hash = username.hashCode();
+		int index = Math.abs(hash % colors.length);
+		return colors[index];
 	}
 }
 

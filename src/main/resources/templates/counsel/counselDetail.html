@@ -7,6 +7,50 @@
   <link rel="stylesheet" th:href="@{/css/error-notification.css}">
   <!-- 댓글 스타일 CSS -->
   <link rel="stylesheet" th:href="@{/css/comment-styles.css}">
+
+  <!-- 아코디언 애니메이션 CSS -->
+  <style>
+    /* 아코디언 헤더 */
+    .accordion-header {
+      user-select: none;
+      border-radius: 0;
+    }
+
+    .accordion-header:hover {
+      background-color: #e9ecef !important;
+    }
+
+    /* 아코디언 토글 아이콘 (화살표) 회전 애니메이션 */
+    .accordion-toggle-icon i {
+      display: inline-block;
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* 아코디언 본문 */
+    .accordion-body {
+      padding: 1.5rem;
+    }
+
+    /* 패널 높이 변경 애니메이션 */
+    .collapse {
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .collapse.show {
+      overflow: visible;
+    }
+
+    /* 아코디언 헤더 폰트 */
+    .accordion-header .fw-bold {
+      font-weight: 600;
+      color: #212529;
+    }
+
+    /* 갭 스타일 */
+    .accordion-header .gap-2 {
+      gap: 0.75rem;
+    }
+  </style>
 </head>
 <body>
 <div class="container mt-4">
@@ -92,79 +136,104 @@
       </div>
     </div>
 
-    <!-- 좋아요/답변 탭 영역 -->
+    <!-- 좋아요/답변 탭 헤더 + 패널 영역 -->
     <div class="row mt-5">
       <div class="col-12">
-        <!-- 탭 네비게이션 -->
-        <ul class="nav nav-tabs" id="postTabs" role="tablist">
-          <!-- 좋아요 탭 -->
-          <li class="nav-item" role="presentation">
-            <button class="nav-link" id="like-tab" data-bs-toggle="tab" data-bs-target="#like-panel"
-                    type="button" role="tab" aria-controls="like-panel" aria-selected="false">
-              <i class="bi bi-heart"></i> 좋아요 (<span id="likeCountTab" th:text="${likeCount}">0</span>)
-            </button>
-          </li>
-          <!-- 답변 탭 -->
-          <li class="nav-item" role="presentation">
-            <button class="nav-link active" id="comment-tab" data-bs-toggle="tab" data-bs-target="#comment-panel"
-                    type="button" role="tab" aria-controls="comment-panel" aria-selected="true">
-              <i class="bi bi-chat-dots"></i> 답변 (<span th:text="${#lists.size(comments)}">0</span>)
-            </button>
-          </li>
-        </ul>
+        <!-- 탭 헤더 (같은 줄에 배치) -->
+        <div class="d-flex border rounded-top" id="tabContainer" style="background-color: #f8f9fa;">
 
-        <!-- 탭 콘텐츠 -->
-        <div class="tab-content" id="postTabContent">
-          <!-- 좋아요 탭 패널 -->
-          <div class="tab-pane fade" id="like-panel" role="tabpanel" aria-labelledby="like-tab">
-            <div class="p-4 text-center">
-              <!-- 좋아요 버튼 (큰 하트) -->
-              <div class="mb-4">
-                <button type="button" id="likeButton" class="btn btn-link text-decoration-none"
-                        style="font-size: 5rem;" onclick="toggleLike()">
-                  <i id="likeIcon" th:class="${isLiked} ? 'bi bi-heart-fill text-danger' : 'bi bi-heart'"></i>
-                </button>
-              </div>
-              <!-- 좋아요 개수 -->
-              <h4 class="mb-0">
-                <span id="likeCountDisplay" th:text="${likeCount}">0</span>명이 좋아합니다
-              </h4>
-              <!-- 비로그인 사용자 안내 -->
-              <div sec:authorize="!isAuthenticated()" class="alert alert-info mt-3">
-                <i class="bi bi-info-circle"></i> 좋아요를 누르려면 로그인이 필요합니다.
-              </div>
-            </div>
+          <!-- 좋아요 헤더 -->
+          <div class="accordion-header d-flex align-items-center p-3"
+               id="likeAccordionHeader"
+               style="cursor: pointer; transition: background-color 0.3s ease; width: auto; border-right: 1px solid #dee2e6; gap: 8px;"
+               data-bs-toggle="collapse" data-bs-target="#likeAccordionPanel"
+               aria-expanded="false" aria-controls="likeAccordionPanel">
+
+            <!-- 좋아요 하트 아이콘 (클릭 시 토글) -->
+            <span id="likeButton" style="cursor: pointer; font-size: 1.2rem;"
+                  onclick="toggleLike(event)"
+                  title="좋아요를 누르려면 로그인하세요">
+              <i id="likeIcon" th:class="${isLiked} ? 'fa fa-heart text-danger' : 'fa fa-heart-o'"></i>
+            </span>
+
+            <!-- 텍스트 -->
+            <span class="fw-bold">좋아요 (<span id="likeCountTab" th:text="${likeCount}">0</span>)</span>
+
+            <!-- 아코디언 화살표 (오른쪽 끝) -->
+            <span class="accordion-toggle-icon" style="display: inline-flex; align-items: center; transition: transform 0.3s ease; margin-left: auto;">
+              <i class="fa fa-chevron-down"></i>
+            </span>
           </div>
 
-          <!-- 답변 탭 패널 -->
-          <div class="tab-pane fade show active" id="comment-panel" role="tabpanel" aria-labelledby="comment-tab">
-            <div class="p-3">
-              <!-- 댓글 작성 버튼 -->
-              <div class="d-flex justify-content-end mb-3">
-                <button type="button"
-                        class="btn btn-primary"
-                        data-bs-toggle="modal"
-                        data-bs-target="#commentWriteModal"
-                        id="openCommentModalBtn">
-                  <i class="bi bi-pencil-square"></i> 댓글 작성
-                </button>
+          <!-- 답변 헤더 -->
+          <div class="accordion-header d-flex align-items-center p-3"
+               id="commentAccordionHeader"
+               style="cursor: pointer; transition: background-color 0.3s ease; width: auto; gap: 8px;"
+               data-bs-toggle="collapse" data-bs-target="#commentAccordionPanel"
+               aria-expanded="false" aria-controls="commentAccordionPanel">
+
+            <!-- 채팅 아이콘 -->
+            <i class="bi bi-chat-dots"></i>
+
+            <!-- 텍스트 -->
+            <span class="fw-bold">답변 (<span th:text="${#lists.size(comments)}">0</span>)</span>
+
+            <!-- 아코디언 화살표 (오른쪽 끝) -->
+            <span class="accordion-toggle-icon" style="display: inline-flex; align-items: center; transition: transform 0.3s ease; margin-left: auto;">
+              <i class="fa fa-chevron-down"></i>
+            </span>
+          </div>
+        </div>
+
+        <!-- 좋아요 패널 -->
+        <div class="collapse border border-top-0 rounded-bottom" id="likeAccordionPanel"
+             data-bs-parent="#tabContainer"
+             style="transition: max-height 0.3s ease;">
+          <div class="accordion-body p-4 bg-light">
+                <!-- 비로그인 사용자 안내 -->
+                <div sec:authorize="!isAuthenticated()" class="alert alert-info text-center mb-4">
+                  <i class="fa fa-info-circle me-2"></i>좋아요를 누르려면 로그인이 필요합니다.
+                </div>
+
+                <!-- 좋아요 누른 사용자 목록 -->
+                <div th:if="${likedUsers != null and !likedUsers.isEmpty()}">
+                  <h5 class="mb-3 fw-bold text-center">📌 이 글에 공감한 사용자</h5>
+                  <div style="display: flex; flex-wrap: wrap; gap: 12px;">
+                    <!-- 사용자 목록 -->
+                    <div th:each="user : ${likedUsers}" style="flex: 0 1 auto;">
+                      <div class="d-flex align-items-center p-2 border rounded bg-white">
+                        <!-- 프로필 이미지 또는 이니셜 아바타 -->
+                        <div th:if="${user.hasProfileImage()}"
+                             class="rounded-circle me-2 flex-shrink-0"
+                             th:style="'width: 36px; height: 36px; background-image: url(' + ${user.profileImageUrl} + '); background-size: cover; background-position: center;'">
+                        </div>
+                        <div th:unless="${user.hasProfileImage()}"
+                             class="rounded-circle me-2 flex-shrink-0 d-flex align-items-center justify-content-center text-white fw-bold"
+                             th:style="'width: 36px; height: 36px; background-color: ' + ${user.avatarColor} + '; font-size: 14px;'"
+                             th:text="${user.initial}">
+                        </div>
+                        <!-- 닉네임 -->
+                        <span class="fw-bold text-truncate" th:text="${user.nickname}" th:title="${user.nickname}">사용자</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 좋아요 없을 때 안내 -->
+                <div th:if="${likedUsers == null or likedUsers.isEmpty()}" class="alert alert-light text-center">
+                  <i class="fa fa-heart-o me-2"></i>아직 좋아요를 누른 사용자가 없습니다.
+                </div>
               </div>
+            </div>
+        </div>
 
-              <!-- 댓글 접기/펼치기 버튼 -->
-              <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="mb-0">
-                  <i class="bi bi-chat-dots"></i> 댓글 목록
-                </h5>
-                <button type="button" class="btn btn-sm btn-outline-secondary" id="toggleCommentsBtn"
-                        onclick="toggleComments()">
-                  <i id="toggleCommentsIcon" class="bi bi-chevron-up"></i>
-                  <span id="toggleCommentsText">접기</span>
-                </button>
-              </div>
+        <!-- 답변 패널 -->
+        <div class="collapse border border-top-0 rounded-bottom" id="commentAccordionPanel"
+             data-bs-parent="#tabContainer"
+             style="transition: max-height 0.3s ease;">
+          <div class="accordion-body p-4">
 
-              <hr>
-
-              <!-- 댓글 목록 (접기/펼치기 가능) -->
+              <!-- 댓글 목록 -->
               <div id="commentsContainer">
                 <!-- 댓글 없음 -->
                 <div th:if="${#lists.isEmpty(comments)}" class="alert alert-light text-center py-5">
@@ -273,13 +342,24 @@
             <!-- 재귀 렌더링 시작 (depth 0부터) -->
             <th:block th:replace="~{:: commentTree(${comments}, 0)}"></th:block>
           </div>
+
+          <!-- 댓글 작성 버튼 (하단 우측) -->
+          <div class="d-flex justify-content-end mt-4">
+            <button type="button"
+                    class="btn btn-primary"
+                    data-bs-toggle="modal"
+                    data-bs-target="#commentWriteModal"
+                    id="openCommentModalBtn">
+              <i class="bi bi-pencil-square"></i> 댓글 작성
+            </button>
+          </div>
         </div>
-              </div> <!-- /commentsContainer -->
-            </div> <!-- /p-3 -->
-          </div> <!-- /답변 탭 패널 -->
-        </div> <!-- /tab-content -->
+          </div>
+        </div>
       </div> <!-- /col-12 -->
     </div> <!-- /row -->
+  </div> <!-- /container-fluid -->
+</div> <!-- /container -->
   </div> <!-- /container-fluid -->
 </div> <!-- /container -->
 
@@ -484,23 +564,42 @@
     // 댓글 작성 버튼 클릭 시 모달 초기화
     const openCommentModalBtn = document.getElementById('openCommentModalBtn');
     if (openCommentModalBtn) {
-      openCommentModalBtn.addEventListener('click', resetCommentModal);
+      openCommentModalBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        resetCommentModal(); // 모달 열기 전에 초기화
+      });
     }
 
-    // 답글 버튼 이벤트 리스너 (이벤트 위임 방식)
-    document.querySelectorAll('.reply-btn').forEach(function(btn) {
-      btn.addEventListener('click', function() {
-        const commentId = this.getAttribute('data-comment-id');
-        const authorName = this.getAttribute('data-author-name');
-        setReplyTo(commentId, authorName);
+    // 모달 show 이벤트 후 포커스 설정
+    const commentModal = document.getElementById('commentWriteModal');
+    if (commentModal) {
+      commentModal.addEventListener('show.bs.modal', function() {
+        // 모달이 표시될 때 댓글 내용 필드에 포커스
+        setTimeout(() => {
+          document.getElementById('commentContent').focus();
+        }, 100);
       });
+    }
+
+    // 답글 버튼 이벤트 리스너 (이벤트 위임 방식 - 동적 버튼도 지원)
+    document.addEventListener('click', function(e) {
+      if (e.target.closest('.reply-btn')) {
+        const btn = e.target.closest('.reply-btn');
+        const commentId = btn.getAttribute('data-comment-id');
+        const authorName = btn.getAttribute('data-author-name');
+        setReplyTo(commentId, authorName);
+        // 모달 열기
+        const modal = new bootstrap.Modal(document.getElementById('commentWriteModal'));
+        modal.show();
+      }
     });
 
-    // 댓글 삭제 버튼 이벤트 리스너 (이벤트 위임 방식)
-    document.querySelectorAll('.delete-comment-btn').forEach(function(btn) {
-      btn.addEventListener('click', function() {
-        openDeleteCommentModal(this);
-      });
+    // 댓글 삭제 버튼 이벤트 리스너 (이벤트 위임 방식 - 동적 버튼도 지원)
+    document.addEventListener('click', function(e) {
+      if (e.target.closest('.delete-comment-btn')) {
+        const btn = e.target.closest('.delete-comment-btn');
+        openDeleteCommentModal(btn);
+      }
     });
 
     // 댓글 폼 제출 시 검증
@@ -546,8 +645,15 @@
    * 좋아요 토글 (AJAX)
    * - 로그인한 사용자만 가능
    * - 하트 아이콘 및 개수 업데이트
+   * - 아코디언 펼침/접힘과 독립적으로 동작
    */
-  function toggleLike() {
+  function toggleLike(event) {
+    // 이벤트 전파 방지 (아코디언 토글과 독립)
+    if (event) {
+      event.stopPropagation();
+      event.preventDefault();
+    }
+
     const postId = /*[[${post.id}]]*/ '';
     const csrfToken = document.querySelector('meta[name="_csrf"]').getAttribute('content');
     const csrfHeader = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');
@@ -562,18 +668,17 @@
     .then(response => response.json())
     .then(data => {
       if (data.success) {
-        // 하트 아이콘 업데이트
+        // 탭의 하트 아이콘 업데이트
         const likeIcon = document.getElementById('likeIcon');
         if (data.liked) {
           // 좋아요 추가됨 (빨간 하트)
-          likeIcon.className = 'bi bi-heart-fill text-danger';
+          likeIcon.className = 'fa fa-heart text-danger';
         } else {
           // 좋아요 취소됨 (빈 하트)
-          likeIcon.className = 'bi bi-heart';
+          likeIcon.className = 'fa fa-heart-o';
         }
 
-        // 좋아요 개수 업데이트
-        document.getElementById('likeCountDisplay').textContent = data.likeCount;
+        // 좋아요 개수 업데이트 (탭만)
         document.getElementById('likeCountTab').textContent = data.likeCount;
 
         // Toast 알림
@@ -589,27 +694,78 @@
     });
   }
 
-  /**
-   * 댓글 접기/펼치기
-   * - 아이콘 및 텍스트 토글
-   */
-  function toggleComments() {
-    const container = document.getElementById('commentsContainer');
-    const icon = document.getElementById('toggleCommentsIcon');
-    const text = document.getElementById('toggleCommentsText');
 
-    if (container.style.display === 'none') {
-      // 펼치기
-      container.style.display = 'block';
-      icon.className = 'bi bi-chevron-up';
-      text.textContent = '접기';
-    } else {
-      // 접기
-      container.style.display = 'none';
-      icon.className = 'bi bi-chevron-down';
-      text.textContent = '펼치기';
-    }
-  }
+  /**
+   * 상호 배타적 아코디언 동작 + 화살표 회전 애니메이션
+   * - 좋아요 패널을 열면 답변 패널을 닫음
+   * - 답변 패널을 열면 좋아요 패널을 닫음
+   * - 화살표가 자연스럽게 회전 (CSS transition 활용)
+   */
+  (function initAccordionBehavior() {
+    const likePanel = document.getElementById('likeAccordionPanel');
+    const likeHeader = document.getElementById('likeAccordionHeader');
+    const likeToggleIcon = likeHeader.querySelector('.accordion-toggle-icon i');
+
+    const commentPanel = document.getElementById('commentAccordionPanel');
+    const commentHeader = document.getElementById('commentAccordionHeader');
+    const commentToggleIcon = commentHeader.querySelector('.accordion-toggle-icon i');
+
+    // === 좋아요 패널 이벤트 ===
+    likePanel.addEventListener('show.bs.collapse', function() {
+      // 좋아요 패널 열기 → 화살표 회전 (down → up)
+      if (likeToggleIcon) {
+        likeToggleIcon.style.transform = 'rotate(180deg)';
+      }
+
+      // 답변 패널 닫기 (부자연스러움 방지를 위해 약간의 딜레이 추가)
+      if (commentPanel.classList.contains('show')) {
+        const commentCollapse = bootstrap.Collapse.getInstance(commentPanel);
+        if (commentCollapse) {
+          commentCollapse.hide();
+        }
+      }
+    });
+
+    likePanel.addEventListener('hide.bs.collapse', function() {
+      // 좋아요 패널 닫기 → 화살표 회전 (up → down)
+      if (likeToggleIcon) {
+        likeToggleIcon.style.transform = 'rotate(0deg)';
+      }
+    });
+
+    // === 답변 패널 이벤트 ===
+    commentPanel.addEventListener('show.bs.collapse', function() {
+      // 답변 패널 열기 → 화살표 회전 (down → up)
+      if (commentToggleIcon) {
+        commentToggleIcon.style.transform = 'rotate(180deg)';
+      }
+
+      // 좋아요 패널 닫기 (부자연스러움 방지를 위해 약간의 딜레이 추가)
+      if (likePanel.classList.contains('show')) {
+        const likeCollapse = bootstrap.Collapse.getInstance(likePanel);
+        if (likeCollapse) {
+          likeCollapse.hide();
+        }
+      }
+    });
+
+    commentPanel.addEventListener('hide.bs.collapse', function() {
+      // 답변 패널 닫기 → 화살표 회전 (up → down)
+      if (commentToggleIcon) {
+        commentToggleIcon.style.transform = 'rotate(0deg)';
+      }
+    });
+
+    // === 헤더 호버 효과 ===
+    [likeHeader, commentHeader].forEach(header => {
+      header.addEventListener('mouseenter', function() {
+        this.style.backgroundColor = '#e9ecef';
+      });
+      header.addEventListener('mouseleave', function() {
+        this.style.backgroundColor = '#f8f9fa';
+      });
+    });
+  })();
 </script>
 
 </body>

@@ -498,12 +498,21 @@ CREATE TABLE counsel_post_likes (
     - ✅ 내가 작성한 게시글 목록 (/mypage/my-posts)
     - ✅ 내가 작성한 댓글 목록 (/mypage/my-comments)
 
-### **Phase 7: 검색 기능 강화** (7주차) ✅ **완료 (2025-11-27)**
-16. ✅ 고급 검색 구현 (2025-11-27)
-    - ✅ 날짜 범위 필터링 (startDate ~ endDate)
-    - ✅ 상태별 필터링 (WAIT, COMPLETE, END)
-    - ✅ 기존 검색 타입 유지 (title, content, author, 전체)
-    - ✅ QueryDSL BooleanBuilder로 동적 쿼리 구현
+### **Phase 7: 검색 기능 강화** (7주차) ⏳ **진행 중 (2025-11-27)**
+16. ⏳ 고급 검색 구현 - 패키지별 진행 중
+    - ✅ **Counsel 패키지** (100% 완료)
+      - ✅ Repository: advancedSearch (날짜, 상태 필터)
+      - ✅ Service: advancedSearch 메서드
+      - ✅ Controller: 파라미터 추가 및 호출
+    - ⏳ **Community 패키지** (50% 완료)
+      - ✅ Repository Custom: advancedSearch 메서드 추가
+      - ✅ Repository Impl: 날짜 범위 필터링 구현
+      - ❌ Service: advancedSearch 메서드 추가 필요
+      - ❌ Controller: 호출 로직 추가 필요
+    - ❌ **FAQ 패키지** (미작업)
+      - Repository, Service, Controller 모두 추가 필요
+    - ❌ **Photo 패키지** (미작업)
+      - Repository, Service, Controller 모두 추가 필요
 
 ### **Phase 4: 사용자 경험** (4주차) ⏳ 예정
 14. ❌ 이메일 발송 기능

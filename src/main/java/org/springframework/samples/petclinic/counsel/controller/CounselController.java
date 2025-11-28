@@ -50,8 +50,13 @@ public class CounselController {
 
 	private static final Logger log = LoggerFactory.getLogger(CounselController.class);
 	private final CounselService counselService;
+	private final org.springframework.samples.petclinic.user.repository.UserRepository userRepository;
 
-	public CounselController(CounselService counselService) { this.counselService = counselService; }
+	public CounselController(CounselService counselService,
+							 org.springframework.samples.petclinic.user.repository.UserRepository userRepository) {
+		this.counselService = counselService;
+		this.userRepository = userRepository;
+	}
 
 	/**
 	 * 온라인상담 목록 조회
@@ -190,11 +195,17 @@ public class CounselController {
 		org.springframework.security.core.Authentication authentication =
 			org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
 		boolean isLiked = counselService.isLikedByUser(id, authentication);
+		java.util.List<String> likedUsernames = counselService.getLikedUsernames(id);
+
+		// 좋아요 누른 사용자 정보 조회 (username → User 객체)
+		java.util.List<org.springframework.samples.petclinic.user.table.User> likedUsers =
+			likedUsernames.isEmpty() ? java.util.Collections.emptyList() : userRepository.findByUsernameIn(likedUsernames);
 
 		model.addAttribute("post", post);
 		model.addAttribute("comments", comments);
 		model.addAttribute("likeCount", likeCount);
 		model.addAttribute("isLiked", isLiked);
+		model.addAttribute("likedUsers", likedUsers);
 		model.addAttribute("template", "counsel/counselDetail");
 		return "fragments/layout";
 	}

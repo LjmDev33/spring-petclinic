@@ -63,7 +63,7 @@ public class Attachment extends BaseEntity {
 	private Long fileSize;
 
 	/** 다운로드 횟수 (성능 모니터링 및 인기 파일 추적) */
-	@Column(name = "download_count", nullable = false, columnDefinition = "INT DEFAULT 0")
+	@Column(name = "download_count", nullable = false)
 	private int downloadCount = 0;
 
 	/** 생성 일시 (업로드 시간) */

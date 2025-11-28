@@ -73,7 +73,7 @@ public class CounselPost  extends BaseEntity {
 	@Column(nullable = false, length = 20)
 	private CounselStatus status = CounselStatus.WAIT; // 상담 상태 (WAIT: 대기, COMPLETE: 완료)
 
-	@Column(name = "view_count", nullable = false , columnDefinition = "INT DEFAULT 0")
+	@Column(name = "view_count", nullable = false)
 	private int viewCount = 0; // 조회수
 
 	@Column(name = "comment_count", nullable = false)

@@ -150,5 +150,82 @@ public class CommunityPostRepositoryImpl implements CommunityPostRepositoryCusto
 		return Optional.ofNullable(result);
 	}
 
+	/**
+	 * 고급 검색 구현 (Phase 7: 검색 기능 강화)
+	 *
+	 * <p>추가된 필터링 옵션:</p>
+	 * <ul>
+	 *   <li>날짜 범위 필터링: 작성일 기준 (startDate ~ endDate)</li>
+	 *   <li>기존 검색 타입: title, content, author, 전체</li>
+	 *   <li>Community는 상태(status) 없음</li>
+	 * </ul>
+	 *
+	 * @param type 검색 타입
+	 * @param keyword 검색 키워드
+	 * @param startDate 시작 날짜 (null이면 제한 없음)
+	 * @param endDate 종료 날짜 (null이면 제한 없음)
+	 * @param pageable 페이징 정보
+	 * @return 검색 결과 페이지
+	 */
+	@Override
+	public PageResponse<CommunityPost> advancedSearch(
+		String type,
+		String keyword,
+		java.time.LocalDateTime startDate,
+		java.time.LocalDateTime endDate,
+		Pageable pageable) {
 
+		QCommunityPost post = QCommunityPost.communityPost;
+		BooleanBuilder builder = new BooleanBuilder();
+
+		// 1. 키워드 검색 (기존 로직)
+		if (keyword != null && !keyword.isBlank()) {
+			switch (type == null ? "" : type) {
+				case "title":
+					builder.and(post.title.containsIgnoreCase(keyword));
+					break;
+				case "content":
+					builder.and(post.content.containsIgnoreCase(keyword));
+					break;
+				case "author":
+					builder.and(post.author.containsIgnoreCase(keyword));
+					break;
+				default:
+					builder.and(
+						post.title.containsIgnoreCase(keyword)
+							.or(post.content.containsIgnoreCase(keyword))
+							.or(post.author.containsIgnoreCase(keyword))
+					);
+			}
+		}
+
+		// 2. 날짜 범위 필터링 (Phase 7: 추가)
+		if (startDate != null) {
+			builder.and(post.createdAt.goe(startDate)); // Greater or Equal (>=)
+		}
+		if (endDate != null) {
+			// endDate는 해당 날짜의 23:59:59까지 포함
+			java.time.LocalDateTime endOfDay = endDate.plusDays(1).withHour(0).withMinute(0).withSecond(0).withNano(0);
+			builder.and(post.createdAt.lt(endOfDay)); // Less Than (<)
+		}
+
+		// 3. 데이터 조회
+		List<CommunityPost> content = queryFactory
+			.selectFrom(post)
+			.where(builder)
+			.offset(pageable.getOffset())
+			.limit(pageable.getPageSize())
+			.orderBy(post.createdAt.desc()) // 최신순 정렬
+			.fetch();
+
+		// 4. COUNT 쿼리
+		Long total = queryFactory
+			.select(post.count())
+			.from(post)
+			.where(builder)
+			.fetchOne();
+
+		org.springframework.data.domain.Page<CommunityPost> page = new PageImpl<>(content, pageable, total == null ? 0L : total);
+		return new PageResponse<>(page);
+	}
 }

@@ -224,42 +224,45 @@ public class DataInit {
 		LocalDateTime now = LocalDateTime.now();
 		List<CommunityPost> allPosts = new ArrayList<>();
 
-		// 공지사항 3개
-		CommunityPost post1 = new CommunityPost();
-		post1.setTitle("📢 공지사항");
-		post1.setContent("이 커뮤니티는 개발자들이 자유롭게 의견을 나누는 공간입니다.");
-		post1.setAuthor("관리자");
-		post1.setCreatedAt(now.minusDays(100));
-		post1.setViewCount(199);
-		post1.setLikeCount(0);
-		post1.setAttachFlag(false);
-		post1.setDelFlag(false);
-		post1.setDeletedBy(null);
-		allPosts.add(post1);
+	// 공지사항 3개
+	CommunityPost post1 = new CommunityPost();
+	post1.setTitle("📢 공지사항");
+	post1.setContent("이 커뮤니티는 개발자들이 자유롭게 의견을 나누는 공간입니다.");
+	post1.setAuthor("관리자");
+	post1.setCreatedAt(now.minusDays(100));
+	post1.setUpdatedAt(now.minusDays(100)); // updated_at 명시적 설정
+	post1.setViewCount(199);
+	post1.setLikeCount(0);
+	post1.setAttachFlag(false);
+	post1.setDelFlag(false);
+	post1.setDeletedBy(null);
+	allPosts.add(post1);
 
-		CommunityPost post2 = new CommunityPost();
-		post2.setTitle("💬 자유게시판 안내");
-		post2.setContent("잡담, 질문, 공유하고 싶은 자료를 자유롭게 올려주세요.");
-		post2.setAuthor("운영팀");
-		post2.setCreatedAt(now.minusDays(90));
-		post2.setViewCount(240);
-		post2.setLikeCount(1);
-		post2.setAttachFlag(false);
-		post2.setDelFlag(false);
-		post2.setDeletedBy(null);
-		allPosts.add(post2);
+	CommunityPost post2 = new CommunityPost();
+	post2.setTitle("💬 자유게시판 안내");
+	post2.setContent("잡담, 질문, 공유하고 싶은 자료를 자유롭게 올려주세요.");
+	post2.setAuthor("운영팀");
+	post2.setCreatedAt(now.minusDays(90));
+	post2.setUpdatedAt(now.minusDays(90)); // updated_at 명시적 설정
+	post2.setViewCount(240);
+	post2.setLikeCount(1);
+	post2.setAttachFlag(false);
+	post2.setDelFlag(false);
+	post2.setDeletedBy(null);
+	allPosts.add(post2);
 
-		CommunityPost post3 = new CommunityPost();
-		post3.setTitle("🎉 첫 이벤트 안내");
-		post3.setContent("다음 달에 열리는 개발자 밋업 이벤트에 많은 참여 바랍니다!");
-		post3.setAuthor("운영팀");
-		post3.setCreatedAt(now.minusDays(80));
-		post3.setViewCount(278);
-		post3.setLikeCount(1);
-		post3.setAttachFlag(false);
-		post3.setDelFlag(false);
-		post3.setDeletedBy(null);
-		allPosts.add(post3);
+	CommunityPost post3 = new CommunityPost();
+	post3.setTitle("🎉 첫 이벤트 안내");
+	post3.setContent("다음 달에 열리는 개발자 밋업 이벤트에 많은 참여 바랍니다!");
+	post3.setAuthor("운영팀");
+	post3.setCreatedAt(now.minusDays(80));
+	post3.setUpdatedAt(now.minusDays(80)); // updated_at 명시적 설정
+	post3.setViewCount(278);
+	post3.setLikeCount(1);
+	post3.setAttachFlag(false);
+	post3.setDelFlag(false);
+	post3.setDeletedBy(null);
+	allPosts.add(post3);
 
 		// 더미 데이터 103개 (다양한 주제)
 		String[] categories = {"🔧 기술", "💡 팁", "🎓 학습", "🔥 핫이슈", "🎮 잡담"};
@@ -276,21 +279,23 @@ public class DataInit {
 			"커리어 고민"
 		};
 
-		for (int i = 0; i < 103; i++) {
-			CommunityPost dummyPost = new CommunityPost();
-			String category = categories[i % categories.length];
-			String topic = topics[i % topics.length];
-			dummyPost.setTitle(category + " " + topic + " #" + (i + 1));
-			dummyPost.setContent("게시글 내용입니다. " + topic + "에 대한 내용을 공유합니다.");
-			dummyPost.setAuthor("회원" + (i % 20 + 1));
-			dummyPost.setCreatedAt(now.minusDays(70 - (i % 70)));
-			dummyPost.setViewCount(ThreadLocalRandom.current().nextInt(1, 500));
-			dummyPost.setLikeCount(ThreadLocalRandom.current().nextInt(0, 50));
-			dummyPost.setAttachFlag(i % 10 == 0); // 10%는 첨부파일 있음
-			dummyPost.setDelFlag(false);
-			dummyPost.setDeletedBy(null);
-			allPosts.add(dummyPost);
-		}
+	for (int i = 0; i < 103; i++) {
+		CommunityPost dummyPost = new CommunityPost();
+		String category = categories[i % categories.length];
+		String topic = topics[i % topics.length];
+		LocalDateTime postDate = now.minusDays(70 - (i % 70));
+		dummyPost.setTitle(category + " " + topic + " #" + (i + 1));
+		dummyPost.setContent("게시글 내용입니다. " + topic + "에 대한 내용을 공유합니다.");
+		dummyPost.setAuthor("회원" + (i % 20 + 1));
+		dummyPost.setCreatedAt(postDate);
+		dummyPost.setUpdatedAt(postDate); // updated_at 명시적 설정
+		dummyPost.setViewCount(ThreadLocalRandom.current().nextInt(1, 500));
+		dummyPost.setLikeCount(ThreadLocalRandom.current().nextInt(0, 50));
+		dummyPost.setAttachFlag(i % 10 == 0); // 10%는 첨부파일 있음
+		dummyPost.setDelFlag(false);
+		dummyPost.setDeletedBy(null);
+		allPosts.add(dummyPost);
+	}
 
 		communityPostRepo.saveAll(allPosts);
 		System.out.println("✅ 커뮤니티 게시판 초기 데이터 생성 완료: " + allPosts.size() + "개");
@@ -748,6 +753,7 @@ public class DataInit {
 
 			List<org.springframework.samples.petclinic.community.table.CommunityPostLike> likes = new ArrayList<>();
 			int totalLikes = 0;
+			int skippedDuplicates = 0;
 
 			for (CommunityPost post : posts) {
 				// 각 게시글마다 0~10개의 좋아요 랜덤 생성
@@ -757,6 +763,12 @@ public class DataInit {
 					// 사용자는 "admin", "user1", "user2", ... 형식으로 생성
 					String username = i == 0 ? likeUsername : "user" + i;
 
+					// 중복 체크: 이미 존재하는 좋아요는 건너뛰기 (UNIQUE 제약조건 위반 방지)
+					if (likeRepo.existsByPostIdAndUsername(post.getId(), username)) {
+						skippedDuplicates++;
+						continue;
+					}
+
 					org.springframework.samples.petclinic.community.table.CommunityPostLike like =
 						new org.springframework.samples.petclinic.community.table.CommunityPostLike(post, username);
 					likes.add(like);
@@ -764,8 +776,10 @@ public class DataInit {
 				}
 			}
 
-			likeRepo.saveAll(likes);
-			System.out.println("✅ 커뮤니티 좋아요 초기 데이터 생성 완료: " + totalLikes + "개 (게시글 " + posts.size() + "개)");
+			if (!likes.isEmpty()) {
+				likeRepo.saveAll(likes);
+			}
+			System.out.println("✅ 커뮤니티 좋아요 초기 데이터 생성 완료: " + totalLikes + "개 생성 (중복 " + skippedDuplicates + "개 건너뜀)");
 		} catch (Exception e) {
 			System.err.println("❌ 커뮤니티 좋아요 초기 데이터 생성 실패: " + e.getMessage());
 			e.printStackTrace();
@@ -801,6 +815,7 @@ public class DataInit {
 
 			List<org.springframework.samples.petclinic.photo.table.PhotoPostLike> likes = new ArrayList<>();
 			int totalLikes = 0;
+			int skippedDuplicates = 0;
 
 			for (PhotoPost post : allPosts) {
 				// 각 게시글마다 5~20개의 좋아요 랜덤 생성 (포토게시판은 인기가 많음)
@@ -810,6 +825,12 @@ public class DataInit {
 					// 사용자는 "admin", "user1", "user2", ... 형식으로 생성
 					String username = i == 0 ? likeUsername : "user" + i;
 
+					// 중복 체크: 이미 존재하는 좋아요는 건너뛰기 (UNIQUE 제약조건 위반 방지)
+					if (likeRepo.existsByPostIdAndUsername(post.getId(), username)) {
+						skippedDuplicates++;
+						continue;
+					}
+
 					org.springframework.samples.petclinic.photo.table.PhotoPostLike like =
 						new org.springframework.samples.petclinic.photo.table.PhotoPostLike(post, username);
 					likes.add(like);
@@ -817,8 +838,10 @@ public class DataInit {
 				}
 			}
 
-			likeRepo.saveAll(likes);
-			System.out.println("✅ 포토게시판 좋아요 초기 데이터 생성 완료: " + totalLikes + "개 (게시글 " + allPosts.size() + "개)");
+			if (!likes.isEmpty()) {
+				likeRepo.saveAll(likes);
+			}
+			System.out.println("✅ 포토게시판 좋아요 초기 데이터 생성 완료: " + totalLikes + "개 생성 (중복 " + skippedDuplicates + "개 건너뜀)");
 		} catch (Exception e) {
 			System.err.println("❌ 포토게시판 좋아요 초기 데이터 생성 실패: " + e.getMessage());
 			e.printStackTrace();

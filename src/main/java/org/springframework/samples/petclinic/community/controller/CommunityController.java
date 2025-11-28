@@ -32,9 +32,12 @@ public class CommunityController {
 	private static final Logger log = LoggerFactory.getLogger(CommunityController.class);
 
 	private final CommunityService communityService;
+	private final org.springframework.samples.petclinic.user.repository.UserRepository userRepository;
 
-	public CommunityController(CommunityService communityService) {
+	public CommunityController(CommunityService communityService,
+							   org.springframework.samples.petclinic.user.repository.UserRepository userRepository) {
 		this.communityService = communityService;
+		this.userRepository = userRepository;
 	}
 
 	@GetMapping("/list")
@@ -82,9 +85,15 @@ public class CommunityController {
 		org.springframework.security.core.Authentication authentication =
 			org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
 		boolean isLiked = communityService.isLikedByUser(id, authentication);
+		java.util.List<String> likedUsernames = communityService.getLikedUsernames(id);
+
+		// 좋아요 누른 사용자 정보 조회 (username → User 객체)
+		java.util.List<org.springframework.samples.petclinic.user.table.User> likedUsers =
+			likedUsernames.isEmpty() ? java.util.Collections.emptyList() : userRepository.findByUsernameIn(likedUsernames);
 
 		model.addAttribute("likeCount", likeCount);
 		model.addAttribute("isLiked", isLiked);
+		model.addAttribute("likedUsers", likedUsers);
 
 		if (subject.equalsIgnoreCase("notice")) {
 			model.addAttribute("template", "community/noticeDetail");

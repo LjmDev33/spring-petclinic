@@ -53,10 +53,10 @@ public class CommunityPost extends BaseEntity {
 	@Column(name = "updated_at", nullable = false)
 	private LocalDateTime updatedAt;
 
-	@Column(name = "view_count", nullable = false , columnDefinition = "INT DEFAULT 0")
+	@Column(name = "view_count", nullable = false)
 	private int viewCount = 0;
 
-	@Column(name = "like_count", nullable = false , columnDefinition = "INT DEFAULT 0")
+	@Column(name = "like_count", nullable = false)
 	private int likeCount = 0;
 
 	@Column(name = "del_flag", nullable = false)

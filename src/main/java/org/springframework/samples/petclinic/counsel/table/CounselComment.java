@@ -3,6 +3,8 @@ package org.springframework.samples.petclinic.counsel.table;
 import jakarta.persistence.*;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
+import jakarta.persistence.ForeignKey;
+import jakarta.persistence.ConstraintMode;
 import org.hibernate.annotations.*;
 import org.springframework.samples.petclinic.common.entity.BaseEntity;
 
@@ -30,13 +32,11 @@ import java.time.LocalDateTime;
 @SQLRestriction("del_flag = 0")
 public class CounselComment extends BaseEntity {
 	@ManyToOne(fetch = FetchType.LAZY, optional = false)
-	@JoinColumn(name = "post_id", nullable = false) // foreignKey 제거로 DROP 문제 해결
-	// @OnDelete(action = OnDeleteAction.CASCADE) // 개발 환경에서 비활성화
+	@JoinColumn(name = "post_id", nullable = false)
 	private CounselPost post; // 이 댓글이 속한 게시글
 
 	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "parent_id") // foreignKey 제거
-	// @OnDelete(action = OnDeleteAction.CASCADE) // 개발 환경에서 비활성화
+	@JoinColumn(name = "parent_id")
 	private CounselComment parent; // 부모 댓글 (대댓글의 경우)
 
 	@Lob

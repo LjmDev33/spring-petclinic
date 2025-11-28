@@ -62,4 +62,11 @@ public interface UserRepository extends JpaRepository<User, Long> {
 	 * @return 중복 여부
 	 */
 	boolean existsByNickname(String nickname);
+
+	/**
+	 * username 리스트로 User 목록 조회 (좋아요 패널용)
+	 * @param usernames username 리스트
+	 * @return User 엔티티 리스트
+	 */
+	java.util.List<User> findByUsernameIn(java.util.List<String> usernames);
 }

@@ -7,18 +7,25 @@ spring:
     password: ezflow_010
 
   jpa:
+    hibernate:
+      # 개발 환경: create 모드 사용 (ENUM 타입 안전 처리)
+      # - ENUM 변경 시 update 모드에서 테이블 재구성 문제 발생
+      # - create 모드: 매번 깨끗한 스키마 + DataInit 자동 실행
+      # - 운영 환경: validate 모드 사용 (Flyway/Liquibase 권장)
+      ddl-auto: validate
+      use-new-id-generator-mappings: true
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+    show-sql: true
+    open-in-view: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQL8Dialect
         format_sql: true
         jdbc:
           batch_size: 50
-    hibernate:
-      ddl-auto: update  # 개발환경: 스키마 자동 업데이트 (테이블 추가/컬럼 변경)
-      naming:
-        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
-    show-sql: true
-    open-in-view: false
+        order_inserts: true
+        order_updates: true
 
   thymeleaf:
     mode: HTML

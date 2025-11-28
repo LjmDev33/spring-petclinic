@@ -1,6 +1,8 @@
 package org.springframework.samples.petclinic.photo.table;
 
 import jakarta.persistence.*;
+import jakarta.persistence.ForeignKey;
+import jakarta.persistence.ConstraintMode;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
@@ -70,7 +72,7 @@ public class PhotoPostLike {
 
 	/** 게시글 (ManyToOne 관계) */
 	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "post_id", nullable = false, foreignKey = @ForeignKey(name = "fk_photo_post_likes_post"))
+	@JoinColumn(name = "post_id", nullable = false)
 	private PhotoPost post;
 
 	/** 좋아요를 누른 사용자 아이디 */
@@ -160,4 +162,3 @@ public class PhotoPostLike {
 			'}';
 	}
 }
-

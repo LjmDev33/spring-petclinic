@@ -37,7 +37,35 @@ import java.util.Optional;
  *   Copyright (c) 2025 AOF(AllForOne) / All rights reserved.
  */
 public interface CommunityPostRepositoryCustom {
+	/**
+	 * 기본 검색 (제목, 내용, 작성자)
+	 * @param type 검색 타입 (title, content, author)
+	 * @param keyword 검색 키워드
+	 * @param pageable 페이징 정보
+	 * @return 검색 결과 페이지
+	 */
 	PageResponse<CommunityPost> search(String type, String keyword, Pageable pageable);
+
+	/**
+	 * 고급 검색 (날짜 범위 필터링 추가) - Phase 7
+	 *
+	 * <p>Community 게시판은 상태(status)가 없으므로 날짜 범위 필터링만 제공</p>
+	 *
+	 * @param type 검색 타입 (title, content, author, 전체)
+	 * @param keyword 검색 키워드
+	 * @param startDate 시작 날짜 (null 가능)
+	 * @param endDate 종료 날짜 (null 가능)
+	 * @param pageable 페이징 정보
+	 * @return 검색 결과 페이지
+	 */
+	PageResponse<CommunityPost> advancedSearch(
+		String type,
+		String keyword,
+		java.time.LocalDateTime startDate,
+		java.time.LocalDateTime endDate,
+		Pageable pageable
+	);
+
 	Optional<CommunityPost> getPrevPost(Long id);
 	Optional<CommunityPost> getNextPost(Long id);
 }

@@ -439,4 +439,40 @@ public class CommunityService {
 			return false;
 		}
 	}
+
+	/**
+	 * 특정 게시글에 좋아요를 누른 사용자 목록 조회 (좋아요 패널용)
+	 *
+	 * <p><strong>기능:</strong></p>
+	 * <ul>
+	 *   <li>좋아요를 누른 사용자의 username 목록 반환</li>
+	 *   <li>생성일시(좋아요 누른 순서) 기준 오름차순 정렬</li>
+	 *   <li>UI에서 User 정보(닉네임, 프로필 이미지)와 조인하여 표시</li>
+	 * </ul>
+	 *
+	 * @param postId 게시글 ID
+	 * @return 좋아요 누른 사용자의 username 리스트
+	 */
+	@Transactional(
+		readOnly = true,
+		isolation = Isolation.READ_COMMITTED
+	)
+	public java.util.List<String> getLikedUsernames(Long postId) {
+		try {
+			java.util.List<org.springframework.samples.petclinic.community.table.CommunityPostLike> likes =
+				likeRepository.findAllByPostIdOrderByCreatedAtAsc(postId);
+
+			java.util.List<String> usernames = likes.stream()
+				.map(org.springframework.samples.petclinic.community.table.CommunityPostLike::getUsername)
+				.collect(java.util.stream.Collectors.toList());
+
+			log.debug("✅ [Community] Liked usernames retrieved: postId={}, count={}", postId, usernames.size());
+			return usernames;
+
+		} catch (Exception e) {
+			log.error("❌ [Community] Failed to get liked usernames: postId={}, error={}",
+				postId, e.getMessage(), e);
+			return java.util.Collections.emptyList();
+		}
+	}
 }

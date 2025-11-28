@@ -1,6 +1,8 @@
 package org.springframework.samples.petclinic.community.table;
 
 import jakarta.persistence.*;
+import jakarta.persistence.ForeignKey;
+import jakarta.persistence.ConstraintMode;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
@@ -107,4 +109,3 @@ public class CommunityPostLike {
 		this.createdAt = createdAt;
 	}
 }
-

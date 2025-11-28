@@ -48,71 +48,60 @@
       </table>
     </div>
 
-    <!-- 좋아요/답변 탭 영역 -->
+    <!-- 좋아요 영역 (아코디언 형식, 공지사항은 답변 없음) -->
     <div class="row mt-5">
       <div class="col-12">
-        <!-- 탭 네비게이션 -->
-        <ul class="nav nav-tabs" id="postTabs" role="tablist">
-          <!-- 좋아요 탭 -->
-          <li class="nav-item" role="presentation">
-            <button class="nav-link active" id="like-tab" data-bs-toggle="tab" data-bs-target="#like-panel"
-                    type="button" role="tab" aria-controls="like-panel" aria-selected="true">
-              <i class="fa fa-heart"></i> 좋아요 (<span id="likeCountTab" th:text="${likeCount}">0</span>)
+        <div class="border rounded">
+          <!-- 좋아요 헤더 (하트=토글, 화살표=아코디언) -->
+          <div class="d-flex align-items-center px-3 py-2 bg-light border-bottom">
+            <!-- 좋아요 하트 아이콘 (클릭 시 토글) -->
+            <span id="likeButton" style="cursor: pointer;" th:onclick="'toggleLike(' + ${post.id} + ', event)'">
+              <i id="likeIcon" th:class="${isLiked} ? 'fa fa-heart text-danger' : 'fa fa-heart-o'"></i>
+            </span>
+            <span class="ms-2 fw-bold">좋아요 (<span id="likeCountTab" th:text="${likeCount}">0</span>)</span>
+            <!-- 아코디언 토글 화살표 -->
+            <button class="btn btn-link p-0 ms-auto" type="button"
+                    data-bs-toggle="collapse" data-bs-target="#likeCollapsePanel"
+                    aria-expanded="false" aria-controls="likeCollapsePanel">
+              <i class="fa fa-chevron-down"></i>
             </button>
-          </li>
-          <!-- 답변 탭 -->
-          <li class="nav-item" role="presentation">
-            <button class="nav-link" id="reply-tab" data-bs-toggle="tab" data-bs-target="#reply-panel"
-                    type="button" role="tab" aria-controls="reply-panel" aria-selected="false">
-              <i class="fa fa-comments"></i> 답변 (<span id="replyCountTab">0</span>)
-            </button>
-          </li>
-        </ul>
-
-        <!-- 탭 콘텐츠 -->
-        <div class="tab-content border border-top-0 rounded-bottom" id="postTabContent">
-          <!-- 좋아요 탭 패널 -->
-          <div class="tab-pane fade show active" id="like-panel" role="tabpanel" aria-labelledby="like-tab">
-            <div class="p-5 text-center">
-              <!-- 좋아요 버튼 (큰 하트) -->
-              <div class="mb-4">
-                <button type="button" id="likeButton" class="btn btn-link text-decoration-none p-0"
-                        style="font-size: 5rem; cursor: pointer;"
-                        data-post-id th:attr="data-post-id=${post.id}"
-                        th:onclick="'toggleLike(' + ${post.id} + ')'">
-                  <i id="likeIcon" th:class="${isLiked} ? 'fa fa-heart text-danger' : 'fa fa-heart-o text-secondary'"></i>
-                </button>
-              </div>
-              <!-- 좋아요 개수 -->
-              <h4 class="mb-3 fw-bold">
-                <span id="likeCountDisplay" th:text="${likeCount}">0</span>명이 좋아합니다
-              </h4>
-              <!-- 비로그인 사용자 안내 -->
-              <div sec:authorize="!isAuthenticated()" class="alert alert-info mt-3 d-inline-block">
-                <i class="fa fa-info-circle me-2"></i>좋아요를 누르려면 로그인이 필요합니다.
-              </div>
-            </div>
           </div>
 
-          <!-- 답변 탭 패널 -->
-          <div class="tab-pane fade" id="reply-panel" role="tabpanel" aria-labelledby="reply-tab">
+          <!-- 좋아요 아코디언 패널 -->
+          <div class="collapse" id="likeCollapsePanel">
             <div class="p-4">
-              <!-- 답변 토글 버튼 -->
-              <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="mb-0 fw-bold">답변 목록</h5>
-                <button class="btn btn-sm btn-outline-secondary" type="button"
-                        data-bs-toggle="collapse" data-bs-target="#replyListCollapse"
-                        aria-expanded="false" aria-controls="replyListCollapse">
-                  <i class="fa fa-chevron-down"></i> 답변 보기/숨기기
-                </button>
+              <!-- 비로그인 사용자 안내 -->
+              <div sec:authorize="!isAuthenticated()" class="alert alert-info text-center mb-4">
+                <i class="fa fa-info-circle me-2"></i>좋아요를 누르려면 로그인이 필요합니다.
               </div>
 
-              <!-- 답변 목록 (접을 수 있는 영역) -->
-              <div class="collapse" id="replyListCollapse">
-                <div class="alert alert-secondary text-center py-5">
-                  <i class="fa fa-comments" style="font-size: 3rem; display: block; margin-bottom: 1rem;"></i>
-                  <p class="mb-0 text-muted">공지사항에는 답변 기능이 제공되지 않습니다.</p>
+              <!-- 좋아요 누른 사용자 목록 -->
+              <div th:if="${likedUsers != null and !likedUsers.isEmpty()}">
+                <h5 class="mb-3 fw-bold text-center">📌 이 글에 공감한 사용자</h5>
+                <div class="row g-2">
+                  <!-- 한 줄에 4명씩 배치 -->
+                  <div th:each="user : ${likedUsers}" class="col-12 col-sm-6 col-md-4 col-lg-3">
+                    <div class="d-flex align-items-center p-2 border rounded bg-light">
+                      <!-- 프로필 이미지 또는 이니셜 아바타 -->
+                      <div th:if="${user.hasProfileImage()}"
+                           class="rounded-circle me-2 flex-shrink-0"
+                           th:style="'width: 36px; height: 36px; background-image: url(' + ${user.profileImageUrl} + '); background-size: cover; background-position: center;'">
+                      </div>
+                      <div th:unless="${user.hasProfileImage()}"
+                           class="rounded-circle me-2 flex-shrink-0 d-flex align-items-center justify-content-center text-white fw-bold"
+                           th:style="'width: 36px; height: 36px; background-color: ' + ${user.avatarColor} + '; font-size: 14px;'"
+                           th:text="${user.initial}">
+                      </div>
+                      <!-- 닉네임 -->
+                      <span class="fw-bold text-truncate" th:text="${user.nickname}" th:title="${user.nickname}">사용자</span>
+                    </div>
+                  </div>
                 </div>
+              </div>
+
+              <!-- 좋아요 없을 때 안내 -->
+              <div th:if="${likedUsers == null or likedUsers.isEmpty()}" class="alert alert-light text-center">
+                <i class="fa fa-heart-o me-2"></i>아직 좋아요를 누른 사용자가 없습니다.
               </div>
             </div>
           </div>
@@ -155,7 +144,13 @@
    *
    * @param postId 게시글 ID (Thymeleaf inline으로 전달)
    */
-  function toggleLike(postId) {
+  function toggleLike(postId, event) {
+    // 이벤트 전파 방지 (아코디언 토글과 독립)
+    if (event) {
+      event.stopPropagation();
+      event.preventDefault();
+    }
+
     // CSRF 토큰 가져오기
     const csrfToken = document.querySelector('meta[name="_csrf"]')?.getAttribute('content');
     const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content');
@@ -191,18 +186,17 @@
     })
     .then(data => {
       if (data.success) {
-        // 하트 아이콘 업데이트
+        // 탭의 하트 아이콘 업데이트
         const likeIcon = document.getElementById('likeIcon');
         if (data.liked) {
           // 좋아요 추가됨 (빨간 하트)
           likeIcon.className = 'fa fa-heart text-danger';
         } else {
-          // 좋아요 취소됨 (회색 빈 하트)
-          likeIcon.className = 'fa fa-heart-o text-secondary';
+          // 좋아요 취소됨 (빈 하트)
+          likeIcon.className = 'fa fa-heart-o';
         }
 
-        // 좋아요 개수 업데이트
-        document.getElementById('likeCountDisplay').textContent = data.likeCount;
+        // 좋아요 개수 업데이트 (탭만)
         document.getElementById('likeCountTab').textContent = data.likeCount;
 
         // 성공 메시지 표시
