@@ -139,13 +139,13 @@
     <!-- 좋아요/답변 탭 헤더 + 패널 영역 -->
     <div class="row mt-5">
       <div class="col-12">
-        <!-- 탭 헤더 (같은 줄에 배치) -->
-        <div class="d-flex border rounded-top" id="tabContainer" style="background-color: #f8f9fa;">
+        <!-- 탭 헤더 (콘텐츠 크기에 맞게 왼쪽 정렬) -->
+        <div class="border rounded-top" id="tabContainer" style="background-color: #f8f9fa; display: inline-flex;">
 
           <!-- 좋아요 헤더 -->
           <div class="accordion-header d-flex align-items-center p-3"
                id="likeAccordionHeader"
-               style="cursor: pointer; transition: background-color 0.3s ease; width: auto; border-right: 1px solid #dee2e6; gap: 8px;"
+               style="cursor: pointer; transition: background-color 0.3s ease; min-width: 150px; border-right: 1px solid #dee2e6; gap: 8px;"
                data-bs-toggle="collapse" data-bs-target="#likeAccordionPanel"
                aria-expanded="false" aria-controls="likeAccordionPanel">
 
@@ -168,7 +168,7 @@
           <!-- 답변 헤더 -->
           <div class="accordion-header d-flex align-items-center p-3"
                id="commentAccordionHeader"
-               style="cursor: pointer; transition: background-color 0.3s ease; width: auto; gap: 8px;"
+               style="cursor: pointer; transition: background-color 0.3s ease; min-width: 150px; gap: 8px;"
                data-bs-toggle="collapse" data-bs-target="#commentAccordionPanel"
                aria-expanded="false" aria-controls="commentAccordionPanel">
 
@@ -223,9 +223,8 @@
                 <div th:if="${likedUsers == null or likedUsers.isEmpty()}" class="alert alert-light text-center">
                   <i class="fa fa-heart-o me-2"></i>아직 좋아요를 누른 사용자가 없습니다.
                 </div>
-              </div>
-            </div>
-        </div>
+          </div> <!-- /accordion-body -->
+        </div> <!-- /likeAccordionPanel -->
 
         <!-- 답변 패널 -->
         <div class="collapse border border-top-0 rounded-bottom" id="commentAccordionPanel"
@@ -241,7 +240,30 @@
                   <p class="mt-3 mb-0 text-muted">아직 댓글이 없습니다. 첫 댓글을 작성해보세요!</p>
                 </div>
 
-        <!-- 재귀 렌더링 프래그먼트 정의 -->
+                <!-- 댓글 있을 때만 렌더링 -->
+                <div th:if="${!#lists.isEmpty(comments)}">
+                  <div class="comments-container">
+                    <!-- 재귀 렌더링 시작 (depth 0부터) -->
+                    <th:block th:replace="~{:: commentTree(${comments}, 0)}"></th:block>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 댓글 작성 버튼 (항상 표시, 하단 우측) -->
+              <div class="d-flex justify-content-end mt-4">
+                <button type="button"
+                        class="btn btn-primary"
+                        data-bs-toggle="modal"
+                        data-bs-target="#commentWriteModal"
+                        id="openCommentModalBtn">
+                  <i class="bi bi-pencil-square"></i> 댓글 작성
+                </button>
+              </div>
+
+          </div> <!-- /accordion-body -->
+        </div> <!-- /commentAccordionPanel -->
+
+        <!-- 재귀 렌더링 프래그먼트 정의 (패널 밖에 위치) -->
         <th:block th:fragment="commentTree(comments, depth)">
           <div th:each="c : ${comments}">
             <!-- 댓글 카드 (depth에 따라 들여쓰기) -->
@@ -336,30 +358,8 @@
           </div>
         </th:block>
 
-        <div th:if="${!#lists.isEmpty(comments)}">
-          <!-- 댓글 컨테이너 -->
-          <div class="comments-container">
-            <!-- 재귀 렌더링 시작 (depth 0부터) -->
-            <th:block th:replace="~{:: commentTree(${comments}, 0)}"></th:block>
-          </div>
-
-          <!-- 댓글 작성 버튼 (하단 우측) -->
-          <div class="d-flex justify-content-end mt-4">
-            <button type="button"
-                    class="btn btn-primary"
-                    data-bs-toggle="modal"
-                    data-bs-target="#commentWriteModal"
-                    id="openCommentModalBtn">
-              <i class="bi bi-pencil-square"></i> 댓글 작성
-            </button>
-          </div>
-        </div>
-          </div>
-        </div>
       </div> <!-- /col-12 -->
     </div> <!-- /row -->
-  </div> <!-- /container-fluid -->
-</div> <!-- /container -->
   </div> <!-- /container-fluid -->
 </div> <!-- /container -->
 
@@ -399,7 +399,7 @@
         </h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <form th:action="@{/counsel/detail/{postId}/comments(postId=${post.id})}" method="post" id="commentForm">
+      <form id="commentForm">
         <div class="modal-body">
           <!-- 대댓글 대상 표시 -->
           <div id="replyToInfo" class="alert alert-info" style="display: none;">
@@ -442,7 +442,7 @@
           <button type="button" class="custom-btn custom-btn-secondary" data-bs-dismiss="modal">
             <i class="bi bi-x-circle me-1"></i> 취소
           </button>
-          <button type="submit" class="custom-btn custom-btn-primary">
+          <button type="submit" class="custom-btn custom-btn-primary" id="submitCommentBtn">
             <i class="bi bi-send me-1"></i> 등록
           </button>
         </div>
@@ -602,27 +602,72 @@
       }
     });
 
-    // 댓글 폼 제출 시 검증
+    // 댓글 폼 AJAX 제출
     const commentForm = document.getElementById('commentForm');
     if (commentForm) {
       commentForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+
         const authorName = document.getElementById('commentAuthor').value.trim();
         const content = document.getElementById('commentContent').value.trim();
 
         if (!authorName) {
-          e.preventDefault();
-          ErrorNotification.showToast('입력 오류', '이름을 입력해주세요.', 'warning', 3000);
-          return false;
+          TOAST.showError('이름을 입력해주세요.', 3000);
+          return;
         }
 
         if (!content) {
-          e.preventDefault();
-          ErrorNotification.showToast('입력 오류', '댓글 내용을 입력해주세요.', 'warning', 3000);
-          return false;
+          TOAST.showError('댓글 내용을 입력해주세요.', 3000);
+          return;
         }
 
-        // 정상 제출
-        return true;
+        const postId = /*[[${post.id}]]*/ '';
+        const csrfToken = document.querySelector('meta[name="_csrf"]').getAttribute('content');
+        const csrfHeader = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');
+
+        const formData = new FormData(this);
+        const submitBtn = document.getElementById('submitCommentBtn');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> 등록 중...';
+
+        fetch('/counsel/detail/' + postId + '/comments', {
+          method: 'POST',
+          headers: {
+            [csrfHeader]: csrfToken
+          },
+          body: formData
+        })
+        .then(response => {
+          if (!response.ok) {
+            return response.text().then(text => Promise.reject(text));
+          }
+          return response.text();
+        })
+        .then(() => {
+          // 모달 닫기
+          const modal = bootstrap.Modal.getInstance(document.getElementById('commentWriteModal'));
+          modal.hide();
+
+          // 폼 초기화
+          resetCommentModal();
+          commentForm.reset();
+
+          // Toast 알림
+          TOAST.showSuccess('댓글이 등록되었습니다', 2000);
+
+          // 페이지 새로고침 (간단한 구현)
+          setTimeout(() => {
+            window.location.reload();
+          }, 500);
+        })
+        .catch(error => {
+          console.error('Comment submit error:', error);
+          TOAST.showError('댓글 등록 중 오류가 발생했습니다.', 3000);
+        })
+        .finally(() => {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = '<i class="bi bi-send me-1"></i> 등록';
+        });
       });
     }
 
