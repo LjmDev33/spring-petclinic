@@ -1,7 +1,8 @@
 # 프로젝트 성능 및 효율성 개선 규칙
 
 **작성일**: 2025-11-26  
-**목적**: I/O 최소화, 트래픽 병목 방지, 효율적인 예외 처리
+**최종 업데이트**: 2025-12-03  
+**목적**: I/O 최소화, 트래픽 병목 방지, 효율적인 예외 처리, 동시성 제어
 
 ---
 
@@ -121,32 +122,67 @@ Long total = queryFactory
     .fetchOne();
 ```
 
-### 2.3 조회수 중복 방지 (캐싱)
+### 2.3 조회수 중복 방지 (세션 기반) ⭐프로젝트 실제 적용
 
 #### 원칙
-- 세션 + IP + 쿠키 3단계 검증
-- 쿠키 만료 시간: **24시간**
-- 세션 메모리 부담 최소화
+- **세션 기반** 중복 방지 (간단하고 효과적)
+- 브라우저 종료 시 세션 초기화
+- 세션 메모리 부담 최소화 (Set<Long>만 저장)
 
-#### 구현 예제
+#### Controller 구현 예제
 ```java
-// 세션에 조회한 게시글 ID 저장
-Set<Long> viewedPosts = (Set<Long>) session.getAttribute("viewedPosts");
-if (viewedPosts == null) {
-    viewedPosts = new HashSet<>();
+@GetMapping("/detail/{id}")
+public String detail(@PathVariable Long id, HttpSession session) {
+    // 1. 세션에서 조회한 게시글 ID Set 가져오기
+    Set<Long> viewedPosts = (Set<Long>) session.getAttribute("viewedCounselPosts");
+    if (viewedPosts == null) {
+        viewedPosts = new HashSet<>();
+    }
+    
+    // 2. 처음 조회하는 게시글이면 조회수 증가
+    if (!viewedPosts.contains(id)) {
+        counselService.incrementViewCount(id);
+        viewedPosts.add(id);
+        session.setAttribute("viewedCounselPosts", viewedPosts);
+    }
+    
+    // 3. 게시글 상세 정보 조회
+    CounselPostDto post = counselService.getPostDetail(id);
+    model.addAttribute("post", post);
+    return "counsel/counselDetail";
 }
-
-// IP 기반 중복 방지
-String clientIp = getClientIp(request);
-String viewKey = postId + "_" + clientIp;
-
-// 쿠키 기반 중복 방지 (24시간)
-String cookieName = "post_view_" + postId;
-Cookie viewCookie = new Cookie(cookieName, "viewed");
-viewCookie.setMaxAge(24 * 60 * 60);
-viewCookie.setHttpOnly(true);
-response.addCookie(viewCookie);
 ```
+
+#### Service 구현 예제
+```java
+@Service
+@Transactional
+public class CounselService {
+    
+    /**
+     * 조회수 증가 (예외 처리 포함)
+     * - 조회수 증가 실패는 치명적이지 않으므로 예외를 던지지 않음
+     */
+    public void incrementViewCount(Long postId) {
+        try {
+            CounselPost entity = repository.findById(postId).orElse(null);
+            if (entity != null) {
+                entity.setViewCount(entity.getViewCount() + 1);
+                repository.save(entity);
+            }
+        } catch (Exception e) {
+            log.error("Error incrementing view count for postId={}: {}", postId, e.getMessage());
+            // 조회수 증가 실패 시에도 서비스는 정상 동작
+        }
+    }
+}
+```
+
+#### 장점
+- ✅ 구현 간단 (세션만 사용)
+- ✅ 중복 조회 방지
+- ✅ 브라우저 종료 시 자동 초기화
+- ✅ 예외 발생 시에도 서비스 안정성 유지
 
 ---
 
@@ -207,12 +243,108 @@ public Object handleBusinessException(BusinessException ex, HttpServletRequest r
 
 ## 🔄 4. 동시성 문제 방지 규칙
 
-### 4.1 트랜잭션 범위 최소화
+### 4.1 ACID 트랜잭션 보장 ⭐NEW (2025-12-03)
+
+#### ACID 속성 (Atomicity, Consistency, Isolation, Durability)
+
+모든 비즈니스 로직은 다음 4가지 속성을 보장해야 합니다:
+
+1. **Atomicity (원자성)**: 트랜잭션의 모든 작업이 완료되거나 전혀 수행되지 않음
+2. **Consistency (일관성)**: 트랜잭션 전후로 데이터베이스의 일관성 유지
+3. **Isolation (격리성)**: 동시 실행 중인 트랜잭션들이 서로 영향을 미치지 않음
+4. **Durability (지속성)**: 트랜잭션 완료 후 결과가 영구적으로 저장됨
+
+#### 격리 수준 (Isolation Level) 선택 가이드
+
+```java
+// 일반적인 CRUD 작업 (기본값)
+@Transactional(isolation = Isolation.READ_COMMITTED)
+public void savePost(CounselPostDto dto) {
+    // ...
+}
+
+// 동일 트랜잭션 내 여러 번 읽을 때
+@Transactional(isolation = Isolation.REPEATABLE_READ)
+public void processWithMultipleReads(Long id) {
+    Post post1 = repository.findById(id).orElseThrow();
+    // ... 다른 작업
+    Post post2 = repository.findById(id).orElseThrow();
+    // post1과 post2가 동일함을 보장
+}
+
+// 완벽한 격리 필요 시 (성능 저하 주의)
+@Transactional(isolation = Isolation.SERIALIZABLE)
+public void criticalOperation() {
+    // 은행 거래, 재고 관리 등
+}
+```
+
+#### 좋아요 기능 ACID 적용 예시 ⭐프로젝트 실제 적용
+
+```java
+@Service
+@Transactional
+public class CounselService {
+    
+    /**
+     * 좋아요 토글 (ACID 보장)
+     * - Atomicity: 좋아요 추가/삭제 + 카운트 증감이 원자적으로 수행
+     * - Consistency: 좋아요 테이블과 게시글의 like_count가 항상 일치
+     * - Isolation: READ_COMMITTED 격리 수준으로 동시성 제어
+     * - Durability: 커밋 후 데이터 영구 저장
+     */
+    @Transactional(isolation = Isolation.READ_COMMITTED, rollbackFor = Exception.class)
+    public boolean toggleLike(Long postId, String username) {
+        try {
+            // 1. 기존 좋아요 확인
+            Optional<CounselPostLikes> existing = likesRepository
+                .findByPostIdAndUsername(postId, username);
+            
+            if (existing.isPresent()) {
+                // 2-1. 좋아요 취소 (Atomicity 보장)
+                likesRepository.delete(existing.get());
+                decrementLikeCount(postId);
+                log.info("Like removed: postId={}, username={}", postId, username);
+                return false;
+            } else {
+                // 2-2. 좋아요 추가 (Atomicity 보장)
+                CounselPostLikes like = new CounselPostLikes();
+                like.setPostId(postId);
+                like.setUsername(username);
+                likesRepository.save(like);
+                incrementLikeCount(postId);
+                log.info("Like added: postId={}, username={}", postId, username);
+                return true;
+            }
+            // 3. 트랜잭션 커밋 (Durability 보장)
+        } catch (Exception e) {
+            // 4. 예외 발생 시 롤백 (Atomicity 보장)
+            log.error("Failed to toggle like: postId={}, username={}", postId, username, e);
+            throw new BusinessException(ErrorCode.LIKE_TOGGLE_FAILED, e);
+        }
+    }
+    
+    private void incrementLikeCount(Long postId) {
+        CounselPost post = repository.findById(postId).orElseThrow();
+        post.setLikeCount(post.getLikeCount() + 1);
+        repository.save(post);
+    }
+    
+    private void decrementLikeCount(Long postId) {
+        CounselPost post = repository.findById(postId).orElseThrow();
+        post.setLikeCount(Math.max(0, post.getLikeCount() - 1));
+        repository.save(post);
+    }
+}
+```
+
+### 4.2 트랜잭션 범위 최소화
 
 #### 원칙
 - **@Transactional**은 Service 계층에만 사용
 - 읽기 전용: **@Transactional(readOnly = true)**
 - 긴 트랜잭션 분리: 여러 메서드로 나눔
+- **트랜잭션 시간 목표**: 1~2초 이내
 
 #### 예제
 ```java
@@ -234,29 +366,106 @@ public void processOrder(Order order) {
     saveOrderWithTransaction(order); // 트랜잭션 O (2초만 유지)
 }
 
-@Transactional
+@Transactional(isolation = Isolation.READ_COMMITTED, rollbackFor = Exception.class)
 private void saveOrderWithTransaction(Order order) {
     updateInventory(order);
     saveOrder(order);
 }
 ```
 
-### 4.2 낙관적 락 (Optimistic Locking)
+### 4.3 낙관적 락 (Optimistic Locking)
 
 #### 원칙
-- 동시 수정 가능성이 낮은 경우 사용
+- 동시 수정 가능성이 **낮은** 경우 사용
 - **@Version** 어노테이션 활용
 - 충돌 시 재시도 로직 구현
+- 조회수 증가, 좋아요 카운트 등에 적합
 
 #### Entity 예제
 ```java
 @Entity
-public class Post extends BaseEntity {
+public class CounselPost extends BaseEntity {
     @Version
     @Column(name = "version")
     private Long version; // 낙관적 락 버전 관리
     
+    @Column(name = "view_count", nullable = false)
+    private Integer viewCount = 0;
+    
+    @Column(name = "like_count", nullable = false)
+    private Integer likeCount = 0;
+    
     // ...existing code...
+}
+```
+
+#### Service 재시도 로직
+```java
+@Service
+public class CounselService {
+    
+    private static final int MAX_RETRY = 3;
+    
+    /**
+     * 조회수 증가 (낙관적 락 + 재시도)
+     */
+    public void incrementViewCount(Long postId) {
+        int attempt = 0;
+        while (attempt < MAX_RETRY) {
+            try {
+                incrementViewCountInternal(postId);
+                return; // 성공
+            } catch (OptimisticLockException e) {
+                attempt++;
+                log.warn("View count update conflict, retry {}/{}", attempt, MAX_RETRY);
+                if (attempt >= MAX_RETRY) {
+                    log.error("Failed to increment view count after {} retries", MAX_RETRY);
+                    // 조회수 증가 실패는 치명적이지 않으므로 예외를 던지지 않음
+                }
+            }
+        }
+    }
+    
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    private void incrementViewCountInternal(Long postId) {
+        CounselPost post = repository.findById(postId).orElseThrow();
+        post.setViewCount(post.getViewCount() + 1);
+        repository.save(post); // version 자동 증가
+    }
+}
+```
+
+### 4.4 비관적 락 (Pessimistic Locking)
+
+#### 원칙
+- 동시 수정 가능성이 **높은** 경우 사용
+- **SELECT ... FOR UPDATE** 쿼리 실행
+- 재고 관리, 포인트 차감 등에 적합
+
+#### Repository 예제
+```java
+public interface CounselPostRepository extends JpaRepository<CounselPost, Long> {
+    
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT p FROM CounselPost p WHERE p.id = :id")
+    Optional<CounselPost> findByIdWithLock(@Param("id") Long id);
+}
+```
+
+#### Service 예제
+```java
+@Transactional(isolation = Isolation.READ_COMMITTED)
+public void decrementStock(Long productId, int quantity) {
+    // SELECT ... FOR UPDATE로 행 잠금
+    Product product = productRepository.findByIdWithLock(productId).orElseThrow();
+    
+    if (product.getStock() < quantity) {
+        throw new BusinessException(ErrorCode.INSUFFICIENT_STOCK);
+    }
+    
+    product.setStock(product.getStock() - quantity);
+    productRepository.save(product);
+    // 트랜잭션 커밋 시 잠금 해제
 }
 ```
 
@@ -287,19 +496,124 @@ spring:
     cache-names:
       - systemConfig
       - faqList
+      - noticeList
 ```
 
-#### Service 예제
+#### CacheConfig 클래스 ⭐프로젝트 실제 적용
 ```java
-@Cacheable(value = "systemConfig", key = "#configKey")
-public SystemConfig getConfig(String configKey) {
-    return repository.findByConfigKey(configKey)
-        .orElseThrow(() -> new EntityNotFoundException(ErrorCode.SYSTEM_CONFIG_NOT_FOUND));
+@Configuration
+@EnableCaching
+public class CacheConfiguration {
+    
+    @Bean
+    public CacheManager cacheManager() {
+        CaffeineCacheManager cacheManager = new CaffeineCacheManager();
+        cacheManager.setCaffeine(Caffeine.newBuilder()
+            .maximumSize(500)
+            .expireAfterWrite(10, TimeUnit.MINUTES)
+            .recordStats()); // 캐시 통계 기록
+        return cacheManager;
+    }
 }
+```
 
-@CacheEvict(value = "systemConfig", key = "#config.configKey")
-public void updateConfig(SystemConfig config) {
-    repository.save(config);
+#### Service 예제 - SystemConfig 캐싱
+```java
+@Service
+@Transactional
+public class SystemConfigService {
+    
+    /**
+     * 시스템 설정 조회 (캐싱)
+     * - 자주 조회되고 변경이 적은 데이터
+     * - 10분 동안 캐시 유지
+     */
+    @Cacheable(value = "systemConfig", key = "#configKey")
+    @Transactional(readOnly = true)
+    public SystemConfig getConfig(String configKey) {
+        log.debug("Cache MISS: systemConfig [{}]", configKey);
+        return repository.findByConfigKey(configKey)
+            .orElseThrow(() -> new EntityNotFoundException(ErrorCode.SYSTEM_CONFIG_NOT_FOUND));
+    }
+    
+    /**
+     * 시스템 설정 수정 (캐시 무효화)
+     */
+    @CacheEvict(value = "systemConfig", key = "#config.configKey")
+    public void updateConfig(SystemConfig config) {
+        log.info("Cache EVICT: systemConfig [{}]", config.getConfigKey());
+        repository.save(config);
+    }
+    
+    /**
+     * 전체 시스템 설정 캐시 초기화
+     */
+    @CacheEvict(value = "systemConfig", allEntries = true)
+    public void clearAllCache() {
+        log.info("Cache EVICT ALL: systemConfig");
+    }
+}
+```
+
+#### Service 예제 - FAQ 목록 캐싱
+```java
+@Service
+@Transactional
+public class FaqService {
+    
+    /**
+     * FAQ 목록 조회 (캐싱)
+     * - 카테고리별로 캐시 저장
+     * - 10분 동안 캐시 유지
+     */
+    @Cacheable(value = "faqList", key = "#category")
+    @Transactional(readOnly = true)
+    public List<FaqPostDto> getFaqListByCategory(String category) {
+        log.debug("Cache MISS: faqList [{}]", category);
+        List<FaqPost> entities = repository.findByCategoryAndDelFlagFalse(category);
+        return entities.stream()
+            .map(faqMapper::toDto)
+            .collect(Collectors.toList());
+    }
+    
+    /**
+     * FAQ 작성/수정/삭제 시 해당 카테고리 캐시 무효화
+     */
+    @CacheEvict(value = "faqList", key = "#post.category")
+    public void saveOrUpdate(FaqPost post) {
+        log.info("Cache EVICT: faqList [{}]", post.getCategory());
+        repository.save(post);
+    }
+}
+```
+
+### 5.3 캐시 모니터링
+
+#### 캐시 통계 확인
+```java
+@RestController
+@RequestMapping("/admin/cache")
+public class CacheMonitorController {
+    
+    @Autowired
+    private CacheManager cacheManager;
+    
+    @GetMapping("/stats")
+    public Map<String, Object> getCacheStats() {
+        Map<String, Object> stats = new HashMap<>();
+        
+        cacheManager.getCacheNames().forEach(cacheName -> {
+            Cache cache = cacheManager.getCache(cacheName);
+            if (cache instanceof CaffeineCache) {
+                com.github.benmanes.caffeine.cache.Cache<Object, Object> nativeCache = 
+                    ((CaffeineCache) cache).getNativeCache();
+                
+                stats.put(cacheName, nativeCache.stats());
+            }
+        });
+        
+        return stats;
+    }
 }
 ```
 
@@ -375,17 +689,60 @@ logging:
 
 ### 신규 기능 개발 시 필수 점검 사항
 
+#### 기본 규칙
 - [ ] **I/O 최소화**: try-with-resources 사용
 - [ ] **페이징 처리**: Pageable 파라미터 추가
 - [ ] **Custom Exception**: BusinessException 사용
-- [ ] **트랜잭션 범위**: 최소화 (1~2초 이내)
 - [ ] **N+1 문제**: Fetch Join 또는 EntityGraph
 - [ ] **로그 기록**: 중요 동작은 INFO 이상
 - [ ] **예외 처리**: try-catch + 의미 있는 에러 메시지
-- [ ] **동시성 검증**: synchronized 또는 @Version 사용
+
+#### ACID 트랜잭션 ⭐NEW (2025-12-03)
+- [ ] **트랜잭션 범위**: Service 계층에만 적용
+- [ ] **격리 수준**: READ_COMMITTED (기본값) 사용
+- [ ] **트랜잭션 시간**: 1~2초 이내로 최소화
+- [ ] **읽기 전용**: @Transactional(readOnly = true) 명시
+- [ ] **롤백 설정**: rollbackFor = Exception.class 명시
+- [ ] **원자성 보장**: 관련 작업이 모두 성공하거나 모두 실패
+
+#### 동시성 제어
+- [ ] **낙관적 락**: @Version 사용 (조회수, 좋아요 등)
+- [ ] **비관적 락**: @Lock 사용 (재고 관리 등)
+- [ ] **재시도 로직**: OptimisticLockException 처리
+- [ ] **동시성 테스트**: 여러 스레드에서 동시 요청 검증
+
+#### 캐싱
+- [ ] **캐싱 대상**: 자주 조회, 변경 적음 데이터만
+- [ ] **캐시 만료**: expireAfterWrite 10분 설정
+- [ ] **캐시 무효화**: CacheEvict 적절히 사용
+- [ ] **캐시 통계**: recordStats() 활성화
+
+#### 성능 최적화
+- [ ] **COUNT 쿼리**: SELECT와 분리 실행
+- [ ] **Batch 처리**: batch_size 50 설정
+- [ ] **정적 리소스**: 1년 캐싱 (max-age=365days)
+- [ ] **HTTP 압축**: 1KB 이상 파일 압축 활성화
+
+---
+
+## 📊 9. 성능 모니터링 지표
+
+### 측정 대상
+1. **응답 시간**: 평균 < 500ms, P95 < 1s
+2. **트랜잭션 시간**: 평균 < 2s
+3. **캐시 적중률**: > 80%
+4. **N+1 쿼리**: 0건
+5. **Slow Query**: < 1s
+
+### 모니터링 도구
+- **Hibernate Statistics**: SQL 쿼리 수 측정
+- **Caffeine Stats**: 캐시 적중률 측정
+- **Spring Actuator**: 메트릭 수집
+- **DB 슬로우 쿼리 로그**: 느린 쿼리 탐지
 
 ---
 
 **작성 완료일**: 2025-11-26  
-**다음 검토 예정일**: 2025-12-03
+**최종 업데이트**: 2025-12-03  
+**다음 검토 예정일**: 2025-12-10
 

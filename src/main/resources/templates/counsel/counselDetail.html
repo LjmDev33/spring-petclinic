@@ -1,58 +1,51 @@
-<!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" lang="ko">
-<head>
-  <title>온라인 상담 상세 - Spring PetClinic</title>
-  <link rel="stylesheet" th:href="@{/css/custom-buttons.css}">
-  <!-- 오류 알림 시스템 CSS -->
-  <link rel="stylesheet" th:href="@{/css/error-notification.css}">
-  <!-- 댓글 스타일 CSS -->
-  <link rel="stylesheet" th:href="@{/css/comment-styles.css}">
+<!-- 온라인 상담 상세 템플릿 (layout.html에 삽입되는 프래그먼트) -->
+<div xmlns:th="http://www.thymeleaf.org">
+<!-- 아코디언 애니메이션 CSS -->
+<style>
+  /* 아코디언 헤더 */
+  .accordion-header {
+    user-select: none;
+    border-radius: 0;
+  }
 
-  <!-- 아코디언 애니메이션 CSS -->
-  <style>
-    /* 아코디언 헤더 */
-    .accordion-header {
-      user-select: none;
-      border-radius: 0;
-    }
+  .accordion-header:hover {
+    background-color: #e9ecef !important;
+  }
 
-    .accordion-header:hover {
-      background-color: #e9ecef !important;
-    }
+  /* 아코디언 토글 아이콘 (화살표) 회전 애니메이션 */
+  .accordion-toggle-icon i {
+    display: inline-block;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transform: rotate(180deg); /* 초기 상태: 화살표 위 방향 (닫힘 상태) */
+  }
 
-    /* 아코디언 토글 아이콘 (화살표) 회전 애니메이션 */
-    .accordion-toggle-icon i {
-      display: inline-block;
-      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
+  /* 아코디언 본문 */
+  .accordion-body {
+    padding: 1.5rem;
+  }
 
-    /* 아코디언 본문 */
-    .accordion-body {
-      padding: 1.5rem;
-    }
+  /* 패널 높이 변경 애니메이션 (부드럽게) */
+  .collapse {
+    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden; /* 애니메이션 중 내용 숨김 */
+  }
 
-    /* 패널 높이 변경 애니메이션 */
-    .collapse {
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
+  .collapse.show {
+    overflow: visible; /* 열린 후 내용 표시 */
+  }
 
-    .collapse.show {
-      overflow: visible;
-    }
+  /* 아코디언 헤더 폰트 */
+  .accordion-header .fw-bold {
+    font-weight: 600;
+    color: #212529;
+  }
 
-    /* 아코디언 헤더 폰트 */
-    .accordion-header .fw-bold {
-      font-weight: 600;
-      color: #212529;
-    }
+  /* 갭 스타일 */
+  .accordion-header .gap-2 {
+    gap: 0.75rem;
+  }
+</style>
 
-    /* 갭 스타일 */
-    .accordion-header .gap-2 {
-      gap: 0.75rem;
-    }
-  </style>
-</head>
-<body>
 <div class="container mt-4">
   <!-- Flash 메시지 표시 -->
   <div th:if="${message}" class="alert alert-success alert-dismissible fade show" role="alert">
@@ -140,13 +133,12 @@
     <div class="row mt-5">
       <div class="col-12">
         <!-- 탭 헤더 (콘텐츠 크기에 맞게 왼쪽 정렬) -->
-        <div class="border rounded-top" id="tabContainer" style="background-color: #f8f9fa; display: inline-flex;">
+        <div class="border rounded-top" id="tabContainer" style="background-color: #f8f9fa; display: inline-flex; position: relative; z-index: 1;">
 
           <!-- 좋아요 헤더 -->
           <div class="accordion-header d-flex align-items-center p-3"
                id="likeAccordionHeader"
                style="cursor: pointer; transition: background-color 0.3s ease; min-width: 150px; border-right: 1px solid #dee2e6; gap: 8px;"
-               data-bs-toggle="collapse" data-bs-target="#likeAccordionPanel"
                aria-expanded="false" aria-controls="likeAccordionPanel">
 
             <!-- 좋아요 하트 아이콘 (클릭 시 토글) -->
@@ -169,8 +161,7 @@
           <div class="accordion-header d-flex align-items-center p-3"
                id="commentAccordionHeader"
                style="cursor: pointer; transition: background-color 0.3s ease; min-width: 150px; gap: 8px;"
-               data-bs-toggle="collapse" data-bs-target="#commentAccordionPanel"
-               aria-expanded="false" aria-controls="commentAccordionPanel">
+               aria-expanded="true" aria-controls="commentAccordionPanel">
 
             <!-- 채팅 아이콘 -->
             <i class="bi bi-chat-dots"></i>
@@ -187,7 +178,6 @@
 
         <!-- 좋아요 패널 -->
         <div class="collapse border border-top-0 rounded-bottom" id="likeAccordionPanel"
-             data-bs-parent="#tabContainer"
              style="transition: max-height 0.3s ease;">
           <div class="accordion-body p-4 bg-light">
                 <!-- 비로그인 사용자 안내 -->
@@ -226,9 +216,8 @@
           </div> <!-- /accordion-body -->
         </div> <!-- /likeAccordionPanel -->
 
-        <!-- 답변 패널 -->
-        <div class="collapse border border-top-0 rounded-bottom" id="commentAccordionPanel"
-             data-bs-parent="#tabContainer"
+        <!-- 답변 패널 (초기 상태: 열림) -->
+        <div class="collapse show border border-top-0 rounded-bottom" id="commentAccordionPanel"
              style="transition: max-height 0.3s ease;">
           <div class="accordion-body p-4">
 
@@ -243,8 +232,10 @@
                 <!-- 댓글 있을 때만 렌더링 -->
                 <div th:if="${!#lists.isEmpty(comments)}">
                   <div class="comments-container">
-                    <!-- 재귀 렌더링 시작 (depth 0부터) -->
-                    <th:block th:replace="~{:: commentTree(${comments}, 0)}"></th:block>
+                    <!-- 재귀 렌더링 시작 (Service에서 이미 트리 구조로 정렬됨) -->
+                    <th:block th:each="comment : ${comments}">
+                      <th:block th:replace="~{:: renderComment(${comment})}"></th:block>
+                    </th:block>
                   </div>
                 </div>
               </div>
@@ -263,15 +254,18 @@
           </div> <!-- /accordion-body -->
         </div> <!-- /commentAccordionPanel -->
 
-        <!-- 재귀 렌더링 프래그먼트 정의 (패널 밖에 위치) -->
-        <th:block th:fragment="commentTree(comments, depth)">
-          <div th:each="c : ${comments}">
+      </div> <!-- /col-12 -->
+    </div> <!-- /row -->
+
+    <!-- 단일 댓글 렌더링 프래그먼트 (col-12 밖, 중복 방지) -->
+    <th:block th:fragment="renderComment(c)">
+      <div th:if="${c != null}">
             <!-- 댓글 카드 (depth에 따라 들여쓰기) -->
             <div class="comment-item mb-2"
-                 th:style="${(depth != null ? depth : 0) > 0 ? 'margin-left: ' + ((depth != null ? depth : 0) * 48) + 'px; padding-left: 20px; border-left: 3px solid #e3f2fd;' : ''}">
+                 th:style="${(c.depth != null && c.depth > 0) ? 'margin-left: ' + (c.depth * 48) + 'px; padding-left: 20px; border-left: 3px solid #e3f2fd;' : ''}">
 
               <!-- 답글 대상 표시 (대댓글인 경우) -->
-              <div th:if="${(depth != null ? depth : 0) > 0 && c.parentAuthorName != null}"
+              <div th:if="${c.depth != null && c.depth > 0 && c.parentAuthorName != null}"
                    class="reply-target-info mb-1"
                    style="font-size: 0.75rem; color: #0d6efd; font-weight: 500;">
                 <i class="bi bi-arrow-return-right me-1"></i>
@@ -280,15 +274,15 @@
 
               <!-- 댓글 카드 -->
               <div class="card shadow-sm border-0"
-                   th:style="${c.staffReply ? 'border-left: 3px solid #198754 !important; border-radius: 6px; background-color: #f0fdf4;' : ((depth != null && depth > 0) ? 'border-radius: 6px; background-color: #f8f9fa;' : 'border-radius: 6px;')}">
+                   th:style="${c.staffReply ? 'border-left: 3px solid #198754 !important; border-radius: 6px; background-color: #f0fdf4;' : ((c.depth != null && c.depth > 0) ? 'border-radius: 6px; background-color: #f8f9fa;' : 'border-radius: 6px;')}">
                 <div class="card-body p-2 p-md-3">
                   <!-- 댓글 헤더 -->
                   <div class="d-flex align-items-start mb-2">
                     <!-- 아바타 -->
                     <div class="flex-shrink-0">
                       <div class="avatar-circle text-white d-flex align-items-center justify-content-center"
-                           th:classappend="${(depth != null && depth > 0) ? 'bg-info' : 'bg-primary'}"
-                           th:style="${(depth != null && depth > 0) ? 'width: 32px; height: 32px; font-size: 13px;' : 'width: 36px; height: 36px; font-size: 16px;'} + 'border-radius: 50%; font-weight: bold;'">
+                           th:classappend="${(c.depth != null && c.depth > 0) ? 'bg-info' : 'bg-primary'}"
+                           th:style="${(c.depth != null && c.depth > 0) ? 'width: 32px; height: 32px; font-size: 13px;' : 'width: 36px; height: 36px; font-size: 16px;'} + 'border-radius: 50%; font-weight: bold;'">
                         <span th:text="${#strings.substring(c.authorName, 0, 1)}">작</span>
                       </div>
                     </div>
@@ -297,23 +291,23 @@
                     <div class="flex-grow-1 ms-2">
                       <div class="d-flex justify-content-between align-items-start">
                         <div>
-                          <strong th:style="${(depth != null && depth > 0) ? 'font-size: 0.85rem;' : 'font-size: 0.95rem;'}"
+                          <strong th:style="${(c.depth != null && c.depth > 0) ? 'font-size: 0.85rem;' : 'font-size: 0.95rem;'}"
                                   th:text="${c.authorName}">작성자</strong>
 
                           <!-- 답글 배지 (대댓글인 경우) -->
-                          <span th:if="${depth != null && depth > 0}" class="badge bg-info ms-1" style="font-size: 0.65rem;">
+                          <span th:if="${c.depth != null && c.depth > 0}" class="badge bg-info ms-1" style="font-size: 0.65rem;">
                             <i class="bi bi-reply-fill"></i> 답글
                           </span>
 
                           <!-- 운영자 배지 -->
                           <span th:if="${c.staffReply}" class="badge bg-success ms-1"
-                                th:style="${(depth != null && depth > 0) ? 'font-size: 0.65rem;' : 'font-size: 0.7rem;'}">
+                                th:style="${(c.depth != null && c.depth > 0) ? 'font-size: 0.65rem;' : 'font-size: 0.7rem;'}">
                             <i class="bi bi-shield-check"></i> 운영자
                           </span>
                         </div>
 
                         <!-- 작성 시간 -->
-                        <small class="text-muted" th:style="${(depth != null && depth > 0) ? 'font-size: 0.75rem;' : 'font-size: 0.8rem;'}">
+                        <small class="text-muted" th:style="${(c.depth != null && c.depth > 0) ? 'font-size: 0.75rem;' : 'font-size: 0.8rem;'}">
                           <i class="bi bi-clock"></i>
                           <span th:text="${#temporals.format(c.createdAt, 'MM-dd HH:mm')}"></span>
                         </small>
@@ -324,14 +318,14 @@
                   <!-- 댓글 내용 -->
                   <div class="comment-content ps-0 ps-md-5 mb-2"
                        th:text="${c.content}"
-                       th:style="${(depth != null && depth > 0) ? 'font-size: 0.85rem; line-height: 1.4; color: #555;' : 'font-size: 0.9rem; line-height: 1.5; color: #333;'} + 'word-break: break-word; white-space: pre-wrap;'"></div>
+                       th:style="${(c.depth != null && c.depth > 0) ? 'font-size: 0.85rem; line-height: 1.4; color: #555;' : 'font-size: 0.9rem; line-height: 1.5; color: #333;'} + 'word-break: break-word; white-space: pre-wrap;'"></div>
 
                   <!-- 댓글 액션 버튼 -->
                   <div class="d-flex justify-content-end ps-0 ps-md-5 gap-1">
                     <!-- 답글 버튼 -->
                     <button type="button"
                             class="btn btn-sm btn-outline-primary reply-btn"
-                            th:style="${(depth != null && depth > 0) ? 'font-size: 0.75rem; padding: 0.2rem 0.4rem;' : 'font-size: 0.8rem; padding: 0.25rem 0.5rem;'}"
+                            th:style="${(c.depth != null && c.depth > 0) ? 'font-size: 0.75rem; padding: 0.2rem 0.4rem;' : 'font-size: 0.8rem; padding: 0.25rem 0.5rem;'}"
                             data-bs-toggle="modal"
                             data-bs-target="#commentWriteModal"
                             th:attr="data-comment-id=${c.id},data-author-name=${c.authorName}">
@@ -341,7 +335,7 @@
                     <!-- 삭제 버튼 (운영자 댓글 제외) -->
                     <button type="button"
                             class="btn btn-sm btn-outline-danger delete-comment-btn"
-                            th:style="${(depth != null && depth > 0) ? 'font-size: 0.75rem; padding: 0.2rem 0.4rem;' : 'font-size: 0.8rem; padding: 0.25rem 0.5rem;'}"
+                            th:style="${(c.depth != null && c.depth > 0) ? 'font-size: 0.75rem; padding: 0.2rem 0.4rem;' : 'font-size: 0.8rem; padding: 0.25rem 0.5rem;'}"
                             th:if="${!c.staffReply}"
                             th:attr="data-comment-id=${c.id},data-has-password=${c.passwordHash != null}">
                       <i class="bi bi-trash"></i> 삭제
@@ -352,14 +346,14 @@
             </div>
 
             <!-- 자식 댓글 재귀 렌더링 -->
-            <th:block th:if="${!#lists.isEmpty(c.children)}"
-                      th:replace="~{:: commentTree(${c.children}, ${(depth != null ? depth : 0) + 1})}">
+            <th:block th:if="${!#lists.isEmpty(c.children)}">
+              <th:block th:each="child : ${c.children}">
+                <th:block th:replace="~{:: renderComment(${child})}"></th:block>
+              </th:block>
             </th:block>
           </div>
-        </th:block>
+    </th:block>
 
-      </div> <!-- /col-12 -->
-    </div> <!-- /row -->
   </div> <!-- /container-fluid -->
 </div> <!-- /container -->
 
@@ -539,6 +533,37 @@
    * 페이지 로드 후 이벤트 리스너 등록
    */
   document.addEventListener('DOMContentLoaded', function() {
+    // === 아코디언 패널 초기 상태 강제 설정 ===
+    const likePanel = document.getElementById('likeAccordionPanel');
+    const commentPanel = document.getElementById('commentAccordionPanel');
+    const likeHeader = document.getElementById('likeAccordionHeader');
+    const commentHeader = document.getElementById('commentAccordionHeader');
+
+    // 좋아요 패널: 닫힘 상태 강제 설정
+    if (likePanel) {
+      likePanel.classList.remove('show');
+      likePanel.style.height = '';
+    }
+
+    // 답변 패널: 열림 상태 유지 (show 클래스는 HTML에 있음)
+    // (별도 조작 불필요)
+
+    // 화살표 초기 방향 강제 설정
+    // 좋아요: 닫힘 → 위 방향 (180deg)
+    // 답변: 열림 → 아래 방향 (0deg)
+    if (likeHeader) {
+      const likeIcon = likeHeader.querySelector('.accordion-toggle-icon i');
+      if (likeIcon) {
+        likeIcon.style.transform = 'rotate(180deg)'; // 위 방향
+      }
+    }
+    if (commentHeader) {
+      const commentIcon = commentHeader.querySelector('.accordion-toggle-icon i');
+      if (commentIcon) {
+        commentIcon.style.transform = 'rotate(0deg)'; // 아래 방향
+      }
+    }
+
     // Flash 메시지를 TOAST로 변환
     const successMessage = /*[[${message}]]*/ null;
     const errorMessage = /*[[${error}]]*/ null;
@@ -745,6 +770,7 @@
    * - 좋아요 패널을 열면 답변 패널을 닫음
    * - 답변 패널을 열면 좋아요 패널을 닫음
    * - 화살표가 자연스럽게 회전 (CSS transition 활용)
+   * - 스크롤 위치 유지 (페이지 점프 방지)
    */
   (function initAccordionBehavior() {
     const likePanel = document.getElementById('likeAccordionPanel');
@@ -755,50 +781,61 @@
     const commentHeader = document.getElementById('commentAccordionHeader');
     const commentToggleIcon = commentHeader.querySelector('.accordion-toggle-icon i');
 
+    // === 헤더 클릭 시 스크롤 방지 + 수동 토글 ===
+    likeHeader.addEventListener('click', function(e) {
+      e.preventDefault(); // 기본 동작 방지 (스크롤 점프 방지)
+      const likeCollapse = bootstrap.Collapse.getOrCreateInstance(likePanel);
+      likeCollapse.toggle(); // 수동 토글
+    });
+
+    commentHeader.addEventListener('click', function(e) {
+      e.preventDefault(); // 기본 동작 방지 (스크롤 점프 방지)
+      const commentCollapse = bootstrap.Collapse.getOrCreateInstance(commentPanel);
+      commentCollapse.toggle(); // 수동 토글
+    });
+
     // === 좋아요 패널 이벤트 ===
     likePanel.addEventListener('show.bs.collapse', function() {
-      // 좋아요 패널 열기 → 화살표 회전 (down → up)
+      // 좋아요 패널 열기 → 화살표 아래 방향 (0deg)
       if (likeToggleIcon) {
-        likeToggleIcon.style.transform = 'rotate(180deg)';
+        likeToggleIcon.style.transform = 'rotate(0deg)';
       }
 
-      // 답변 패널 닫기 (부자연스러움 방지를 위해 약간의 딜레이 추가)
+      // 답변 패널 닫기 (다른 패널이 열려있을 때만)
       if (commentPanel.classList.contains('show')) {
-        const commentCollapse = bootstrap.Collapse.getInstance(commentPanel);
-        if (commentCollapse) {
-          commentCollapse.hide();
-        }
+        const commentCollapse = bootstrap.Collapse.getOrCreateInstance(commentPanel);
+        commentCollapse.hide();
       }
     });
 
     likePanel.addEventListener('hide.bs.collapse', function() {
-      // 좋아요 패널 닫기 → 화살표 회전 (up → down)
+      // 좋아요 패널 닫기 → 화살표 위 방향 (180deg)
       if (likeToggleIcon) {
-        likeToggleIcon.style.transform = 'rotate(0deg)';
+        likeToggleIcon.style.transform = 'rotate(180deg)';
       }
+      // 다른 패널은 건드리지 않음 (그대로 유지)
     });
 
     // === 답변 패널 이벤트 ===
     commentPanel.addEventListener('show.bs.collapse', function() {
-      // 답변 패널 열기 → 화살표 회전 (down → up)
+      // 답변 패널 열기 → 화살표 아래 방향 (0deg)
       if (commentToggleIcon) {
-        commentToggleIcon.style.transform = 'rotate(180deg)';
+        commentToggleIcon.style.transform = 'rotate(0deg)';
       }
 
-      // 좋아요 패널 닫기 (부자연스러움 방지를 위해 약간의 딜레이 추가)
+      // 좋아요 패널 닫기 (다른 패널이 열려있을 때만)
       if (likePanel.classList.contains('show')) {
-        const likeCollapse = bootstrap.Collapse.getInstance(likePanel);
-        if (likeCollapse) {
-          likeCollapse.hide();
-        }
+        const likeCollapse = bootstrap.Collapse.getOrCreateInstance(likePanel);
+        likeCollapse.hide();
       }
     });
 
     commentPanel.addEventListener('hide.bs.collapse', function() {
-      // 답변 패널 닫기 → 화살표 회전 (up → down)
+      // 답변 패널 닫기 → 화살표 위 방향 (180deg)
       if (commentToggleIcon) {
-        commentToggleIcon.style.transform = 'rotate(0deg)';
+        commentToggleIcon.style.transform = 'rotate(180deg)';
       }
+      // 다른 패널은 건드리지 않음 (그대로 유지)
     });
 
     // === 헤더 호버 효과 ===
@@ -813,5 +850,5 @@
   })();
 </script>
 
-</body>
-</html>
+</div> <!-- /container -->
+</div> <!-- /wrapper div -->

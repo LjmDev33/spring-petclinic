@@ -1,24 +1,62 @@
-<!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org"
-      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
-      lang="ko">
-<head>
-  <title>포토 상세</title>
-  <link rel="stylesheet" th:href="@{/css/custom-buttons.css}">
-  <!-- Quill 에디터 스타일 (본문 표시용) -->
-  <link rel="stylesheet" th:href="@{/css/quill/quill.snow.css}">
-  <style>
-    .thumbnail-preview {
-      width: 100%;
-      max-height: 400px;
-      object-fit: contain;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      margin-bottom: 1.5rem;
+<!-- 포토 상세 템플릿 (layout.html에 삽입되는 프래그먼트) -->
+<div xmlns:th="http://www.thymeleaf.org"
+     xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<!-- 아코디언 애니메이션 CSS -->
+<style>
+  .thumbnail-preview {
+    width: 100%;
+    max-height: 400px;
+    object-fit: contain;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    margin-bottom: 1.5rem;
+  }
+
+  /* 아코디언 헤더 */
+    .accordion-header {
+      user-select: none;
+      border-radius: 0;
     }
-  </style>
-</head>
-<body>
+
+    .accordion-header:hover {
+      background-color: #e9ecef !important;
+    }
+
+    /* 아코디언 토글 아이콘 (화살표) 회전 애니메이션 */
+    .accordion-toggle-icon i {
+      display: inline-block;
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      transform: rotate(180deg); /* 초기 상태: 화살표 위 방향 (닫힘 상태) */
+    }
+
+    /* 아코디언 본문 */
+    .accordion-body {
+      padding: 1.5rem;
+    }
+
+    /* 패널 높이 변경 애니메이션 (부드럽게) */
+    .collapse {
+      transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      overflow: hidden; /* 애니메이션 중 내용 숨김 */
+    }
+
+    .collapse.show {
+      overflow: visible; /* 열린 후 내용 표시 */
+    }
+
+    /* 스크롤 동작 부드럽게 */
+    html {
+      scroll-behavior: smooth;
+    }
+
+    /* 아코디언 헤더 폰트 */
+    .accordion-header .fw-bold {
+      font-weight: 600;
+      color: #212529;
+    }
+</style>
+
 <div class="container mt-4">
   <!-- 버튼 그룹 -->
   <div class="d-flex justify-content-between mb-3">
@@ -55,76 +93,146 @@
     </div>
   </div>
 
-  <!-- 좋아요 영역 (아코디언 형식, 포토게시판은 답변 없음) -->
+  <!-- 좋아요/답변 탭 헤더 + 패널 영역 -->
   <div class="row mt-5">
     <div class="col-12">
-      <div class="border rounded">
-        <!-- 좋아요 헤더 (하트=토글, 화살표=아코디언) -->
-        <div class="d-flex align-items-center px-3 py-2 bg-light border-bottom">
+      <!-- 탭 헤더 (콘텐츠 크기에 맞게 왼쪽 정렬) -->
+      <div class="border rounded-top" id="tabContainer" style="background-color: #f8f9fa; display: inline-flex; position: relative; z-index: 1;">
+
+        <!-- 좋아요 헤더 -->
+        <div class="accordion-header d-flex align-items-center p-3"
+             id="likeAccordionHeader"
+             style="cursor: pointer; transition: background-color 0.3s ease; min-width: 150px; border-right: 1px solid #dee2e6; gap: 8px;"
+             aria-expanded="false" aria-controls="likeAccordionPanel">
+
           <!-- 좋아요 하트 아이콘 (클릭 시 토글) -->
-          <span id="likeButton" style="cursor: pointer;" th:onclick="'toggleLike(' + ${post.id} + ', event)'">
+          <span id="likeButton" style="cursor: pointer; font-size: 1.2rem;"
+                onclick="toggleLike(event)"
+                title="좋아요를 누르려면 로그인하세요">
             <i id="likeIcon" th:class="${isLiked} ? 'fa fa-heart text-danger' : 'fa fa-heart-o'"></i>
           </span>
-          <span class="ms-2 fw-bold">좋아요 (<span id="likeCountTab" th:text="${likeCount}">0</span>)</span>
-          <!-- 아코디언 토글 화살표 -->
-          <button class="btn btn-link p-0 ms-auto" type="button"
-                  data-bs-toggle="collapse" data-bs-target="#likeCollapsePanel"
-                  aria-expanded="false" aria-controls="likeCollapsePanel">
+
+          <!-- 텍스트 -->
+          <span class="fw-bold">좋아요 (<span id="likeCountTab" th:text="${likeCount}">0</span>)</span>
+
+          <!-- 아코디언 화살표 (오른쪽 끝) -->
+          <span class="accordion-toggle-icon" style="display: inline-flex; align-items-center; transition: transform 0.3s ease; margin-left: auto;">
             <i class="fa fa-chevron-down"></i>
-          </button>
+          </span>
         </div>
 
-        <!-- 좋아요 아코디언 패널 -->
-        <div class="collapse" id="likeCollapsePanel">
-          <div class="p-4">
-            <!-- 비로그인 사용자 안내 -->
-            <div sec:authorize="!isAuthenticated()" class="alert alert-info text-center mb-4">
-              <i class="fa fa-info-circle me-2"></i>좋아요를 누르려면 로그인이 필요합니다.
-            </div>
+        <!-- 답변 헤더 -->
+        <div class="accordion-header d-flex align-items-center p-3"
+             id="commentAccordionHeader"
+             style="cursor: pointer; transition: background-color 0.3s ease; min-width: 150px; gap: 8px;"
+             aria-expanded="true" aria-controls="commentAccordionPanel">
 
-            <!-- 좋아요 누른 사용자 목록 (Photo는 아직 미구현이므로 TODO 표시) -->
-            <div class="alert alert-light text-center">
-              <i class="fa fa-heart-o me-2"></i>좋아요 사용자 목록 기능은 준비 중입니다.
-            </div>
-          </div>
+          <!-- 채팅 아이콘 -->
+          <i class="bi bi-chat-dots"></i>
+
+          <!-- 텍스트 -->
+          <span class="fw-bold">답변 (<span id="commentCount">0</span>)</span>
+
+          <!-- 아코디언 화살표 (오른쪽 끝) -->
+          <span class="accordion-toggle-icon" style="display: inline-flex; align-items-center; transition: transform 0.3s ease; margin-left: auto;">
+            <i class="fa fa-chevron-down"></i>
+          </span>
         </div>
       </div>
-    </div>
-  </div>
+
+      <!-- 좋아요 패널 -->
+      <div class="collapse border border-top-0 rounded-bottom" id="likeAccordionPanel"
+           style="transition: max-height 0.3s ease;">
+        <div class="accordion-body p-4 bg-light">
+          <!-- 비로그인 사용자 안내 -->
+          <div sec:authorize="!isAuthenticated()" class="alert alert-info text-center mb-4">
+            <i class="fa fa-info-circle me-2"></i>좋아요를 누르려면 로그인이 필요합니다.
+          </div>
+
+          <!-- 좋아요 누른 사용자 목록 (Photo는 준비 중) -->
+          <div class="alert alert-light text-center">
+            <i class="fa fa-heart-o me-2"></i>좋아요 사용자 목록 기능은 준비 중입니다.
+          </div>
+        </div> <!-- /accordion-body -->
+      </div> <!-- /likeAccordionPanel -->
+
+      <!-- 답변 패널 (초기 상태: 열림) -->
+      <div class="collapse show border border-top-0 rounded-bottom" id="commentAccordionPanel"
+           style="transition: max-height 0.3s ease;">
+        <div class="accordion-body p-4">
+
+          <!-- 댓글 목록 (준비 중) -->
+          <div id="commentsContainer">
+            <div class="alert alert-light text-center py-5">
+              <i class="bi bi-chat-text fs-1 text-muted"></i>
+              <p class="mt-3 mb-0 text-muted">댓글 기능은 준비 중입니다.</p>
+            </div>
+          </div>
+
+        </div> <!-- /accordion-body -->
+      </div> <!-- /commentAccordionPanel -->
+
+    </div> <!-- /col-12 -->
+  </div> <!-- /row -->
 </div>
 
+<!-- 오류 알림 시스템 JS -->
+<script th:src="@{/js/error-notification.js}"></script>
+
 <script th:inline="javascript">
+  /**
+   * 페이지 로드 후 이벤트 리스너 등록
+   */
+  document.addEventListener('DOMContentLoaded', function() {
+    // === 아코디언 패널 초기 상태 강제 설정 ===
+    const likePanel = document.getElementById('likeAccordionPanel');
+    const commentPanel = document.getElementById('commentAccordionPanel');
+    const likeHeader = document.getElementById('likeAccordionHeader');
+    const commentHeader = document.getElementById('commentAccordionHeader');
+
+    // 좋아요 패널: 닫힘 상태 강제 설정
+    if (likePanel) {
+      likePanel.classList.remove('show');
+      likePanel.style.height = '';
+    }
+
+    // 답변 패널: 열림 상태 유지 (show 클래스는 HTML에 있음)
+    // (별도 조작 불필요)
+
+    // 화살표 초기 방향 강제 설정
+    // 좋아요: 닫힘 → 위 방향 (180deg)
+    // 답변: 열림 → 아래 방향 (0deg)
+    if (likeHeader) {
+      const likeIcon = likeHeader.querySelector('.accordion-toggle-icon i');
+      if (likeIcon) {
+        likeIcon.style.transform = 'rotate(180deg)'; // 위 방향
+      }
+    }
+    if (commentHeader) {
+      const commentIcon = commentHeader.querySelector('.accordion-toggle-icon i');
+      if (commentIcon) {
+        commentIcon.style.transform = 'rotate(0deg)'; // 아래 방향
+      }
+    }
+  });
+
   /**
    * 좋아요 토글 (AJAX)
    * - 로그인한 사용자만 가능
    * - 하트 아이콘 및 개수 업데이트
-   *
-   * @param postId 게시글 ID (Thymeleaf inline으로 전달)
-   * @param event 이벤트 객체 (아코디언 토글과 독립 동작)
+   * - 아코디언 펼침/접힘과 독립적으로 동작
    */
-  function toggleLike(postId, event) {
+  function toggleLike(event) {
     // 이벤트 전파 방지 (아코디언 토글과 독립)
     if (event) {
       event.stopPropagation();
       event.preventDefault();
     }
 
-    // CSRF 토큰 가져오기
-    const csrfToken = document.querySelector('meta[name="_csrf"]')?.getAttribute('content');
-    const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content');
+    const postId = /*[[${post.id}]]*/ '';
+    const csrfToken = document.querySelector('meta[name="_csrf"]').getAttribute('content');
+    const csrfHeader = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');
 
-    // CSRF 토큰이 없으면 에러 처리
-    if (!csrfToken || !csrfHeader) {
-      console.error('CSRF token not found');
-      if (typeof TOAST !== 'undefined') {
-        TOAST.showError('보안 토큰을 찾을 수 없습니다. 페이지를 새로고침해주세요.', 3000);
-      } else {
-        alert('보안 토큰을 찾을 수 없습니다. 페이지를 새로고침해주세요.');
-      }
-      return;
-    }
-
-    // 좋아요 토글 AJAX 요청
     fetch('/photo/detail/' + postId + '/like', {
       method: 'POST',
       headers: {
@@ -132,53 +240,118 @@
         'Content-Type': 'application/json'
       }
     })
-    .then(response => {
-      if (response.status === 401) {
-        // 비로그인 사용자
-        throw new Error('로그인이 필요합니다.');
-      }
-      if (!response.ok) {
-        throw new Error('서버 오류가 발생했습니다.');
-      }
-      return response.json();
-    })
+    .then(response => response.json())
     .then(data => {
       if (data.success) {
-        // 하트 아이콘 업데이트
+        // 탭의 하트 아이콘 업데이트
         const likeIcon = document.getElementById('likeIcon');
         if (data.liked) {
           // 좋아요 추가됨 (빨간 하트)
           likeIcon.className = 'fa fa-heart text-danger';
         } else {
-          // 좋아요 취소됨 (회색 빈 하트)
-          likeIcon.className = 'fa fa-heart-o text-secondary';
+          // 좋아요 취소됨 (빈 하트)
+          likeIcon.className = 'fa fa-heart-o';
         }
 
-        // 좋아요 개수 업데이트
+        // 좋아요 개수 업데이트 (탭만)
         document.getElementById('likeCountTab').textContent = data.likeCount;
 
-        // 성공 메시지 표시
-        if (typeof TOAST !== 'undefined') {
-          TOAST.showSuccess(data.message, 2000);
-        } else {
-          console.log(data.message);
-        }
+        // Toast 알림
+        TOAST.showSuccess(data.message, 2000);
       } else {
-        // 서버에서 success: false 응답
-        throw new Error(data.error || '좋아요 처리에 실패했습니다.');
+        // 에러 (비로그인 등)
+        TOAST.showError(data.error, 3000);
       }
     })
     .catch(error => {
       console.error('Like toggle error:', error);
-      const errorMessage = error.message || '좋아요 처리 중 오류가 발생했습니다.';
-
-      if (typeof TOAST !== 'undefined') {
-        TOAST.showError(errorMessage, 3000);
-      } else {
-        alert(errorMessage);
-      }
+      TOAST.showError('좋아요 처리 중 오류가 발생했습니다.', 3000);
     });
   }
+
+  /**
+   * 상호 배타적 아코디언 동작 + 화살표 회전 애니메이션
+   * - 좋아요 패널을 열면 답변 패널을 닫음
+   * - 답변 패널을 열면 좋아요 패널을 닫음
+   * - 화살표가 자연스럽게 회전 (CSS transition 활용)
+   * - 스크롤 위치 유지 (페이지 점프 방지)
+   */
+  (function initAccordionBehavior() {
+    const likePanel = document.getElementById('likeAccordionPanel');
+    const likeHeader = document.getElementById('likeAccordionHeader');
+    const likeToggleIcon = likeHeader.querySelector('.accordion-toggle-icon i');
+
+    const commentPanel = document.getElementById('commentAccordionPanel');
+    const commentHeader = document.getElementById('commentAccordionHeader');
+    const commentToggleIcon = commentHeader.querySelector('.accordion-toggle-icon i');
+
+    // === 헤더 클릭 시 스크롤 방지 + 수동 토글 ===
+    likeHeader.addEventListener('click', function(e) {
+      e.preventDefault(); // 기본 동작 방지 (스크롤 점프 방지)
+      const likeCollapse = bootstrap.Collapse.getOrCreateInstance(likePanel);
+      likeCollapse.toggle(); // 수동 토글
+    });
+
+    commentHeader.addEventListener('click', function(e) {
+      e.preventDefault(); // 기본 동작 방지 (스크롤 점프 방지)
+      const commentCollapse = bootstrap.Collapse.getOrCreateInstance(commentPanel);
+      commentCollapse.toggle(); // 수동 토글
+    });
+
+    // === 좋아요 패널 이벤트 ===
+    likePanel.addEventListener('show.bs.collapse', function() {
+      // 좋아요 패널 열기 → 화살표 아래 방향 (0deg)
+      if (likeToggleIcon) {
+        likeToggleIcon.style.transform = 'rotate(0deg)';
+      }
+
+      // 답변 패널 닫기 (다른 패널이 열려있을 때만)
+      if (commentPanel.classList.contains('show')) {
+        const commentCollapse = bootstrap.Collapse.getOrCreateInstance(commentPanel);
+        commentCollapse.hide();
+      }
+    });
+
+    likePanel.addEventListener('hide.bs.collapse', function() {
+      // 좋아요 패널 닫기 → 화살표 위 방향 (180deg)
+      if (likeToggleIcon) {
+        likeToggleIcon.style.transform = 'rotate(180deg)';
+      }
+      // 다른 패널은 건드리지 않음 (그대로 유지)
+    });
+
+    // === 답변 패널 이벤트 ===
+    commentPanel.addEventListener('show.bs.collapse', function() {
+      // 답변 패널 열기 → 화살표 아래 방향 (0deg)
+      if (commentToggleIcon) {
+        commentToggleIcon.style.transform = 'rotate(0deg)';
+      }
+
+      // 좋아요 패널 닫기 (다른 패널이 열려있을 때만)
+      if (likePanel.classList.contains('show')) {
+        const likeCollapse = bootstrap.Collapse.getOrCreateInstance(likePanel);
+        likeCollapse.hide();
+      }
+    });
+
+    commentPanel.addEventListener('hide.bs.collapse', function() {
+      // 답변 패널 닫기 → 화살표 위 방향 (180deg)
+      if (commentToggleIcon) {
+        commentToggleIcon.style.transform = 'rotate(180deg)';
+      }
+      // 다른 패널은 건드리지 않음 (그대로 유지)
+    });
+
+    // === 헤더 호버 효과 ===
+    [likeHeader, commentHeader].forEach(header => {
+      header.addEventListener('mouseenter', function() {
+        this.style.backgroundColor = '#e9ecef';
+      });
+      header.addEventListener('mouseleave', function() {
+        this.style.backgroundColor = '#f8f9fa';
+      });
+    });
+  })();
 </script>
 
 <!-- 삭제 모달 -->
@@ -202,6 +375,5 @@
     </div>
   </div>
 </div>
-</body>
-</html>
+</div> <!-- /wrapper div -->
 

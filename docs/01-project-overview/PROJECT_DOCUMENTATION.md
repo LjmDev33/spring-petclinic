@@ -1,8 +1,9 @@
 # 🏥 Spring PetClinic 프로젝트 상세 문서
 
-**작성일**: 2025년 11월 6일  
-**버전**: 3.5.1  
-**작성자**: Jeongmin Lee
+**작성일**: 2025년 12월 3일  
+**버전**: 4.0.0  
+**작성자**: Jeongmin Lee  
+**최종 업데이트**: 2025-12-03
 
 ---
 
@@ -16,6 +17,7 @@
 6. [개발 규칙](#6-개발-규칙)
 7. [주요 기능 명세](#7-주요-기능-명세)
 8. [설정 파일](#8-설정-파일)
+9. [최근 업데이트 내역](#9-최근-업데이트-내역)
 
 ---
 
@@ -36,10 +38,14 @@
 
 | 모듈 | 설명 | 상태 |
 |------|------|------|
-| **counsel** | 온라인상담 게시판 (비공개/공개, 댓글, 첨부파일) | ✅ 구현 완료 |
-| **community** | 커뮤니티 게시판 (공지사항, 자유게시판) | ✅ 구현 완료 |
-| **common** | 공통 모듈 (Entity, DTO, Config, DataInit) | ✅ 구현 완료 |
-| **system** | 시스템 설정 (Cache, Web, Welcome) | ✅ 구현 완료 |
+| **counsel** | 온라인상담 게시판 (비공개/공개, 댓글 트리구조, 첨부파일, 좋아요) | ✅ 구현 완료 |
+| **community** | 커뮤니티 게시판 (공지사항, 첨부파일, 좋아요) | ✅ 구현 완료 |
+| **photo** | 포토게시판 (썸네일, 첨부파일, 댓글, 좋아요) | ✅ 구현 완료 |
+| **faq** | 자주묻는질문 게시판 (카테고리별 검색) | ✅ 구현 완료 |
+| **user** | 회원 관리 (회원가입, 로그인, 마이페이지) | ✅ 구현 완료 |
+| **security** | 보안/인증 (Spring Security, 로그인 기록) | ✅ 구현 완료 |
+| **common** | 공통 모듈 (Entity, DTO, Config, DataInit, 예외처리) | ✅ 구현 완료 |
+| **system** | 시스템 설정 (Cache, Web, Welcome, 설정 관리) | ✅ 구현 완료 |
 
 ---
 
@@ -130,13 +136,11 @@ org.springframework.samples.petclinic
 │   │   ├── CounselPostMapper
 │   │   ├── CounselCommentMapper
 │   │   └── AttachmentMapper
-│   ├── model/
-│   │   └── Attachment                # 온라인상담 전용 첨부파일
 │   ├── repository/
 │   │   ├── CounselPostRepository     # JpaRepository
 │   │   ├── CounselPostRepositoryImpl # QueryDSL
 │   │   ├── CounselCommentRepository
-│   │   ├── AttachmentRepository
+│   │   ├── CounselPostLikesRepository # 좋아요
 │   │   └── CounselPostAttachmentRepository
 │   ├── scheduler/
 │   │   └── FileCleanupScheduler      # 2주 후 파일 삭제
@@ -146,19 +150,93 @@ org.springframework.samples.petclinic
 │   │   └── CounselContentStorage     # 본문 파일 저장
 │   ├── table/
 │   │   ├── CounselPost               # 게시글 Entity
-│   │   ├── CounselComment            # 댓글 Entity
+│   │   ├── CounselComment            # 댓글 Entity (트리 구조)
+│   │   ├── CounselPostLikes          # 좋아요 Entity
 │   │   ├── CounselPostAttachment     # 게시글-첨부파일 관계
 │   │   ├── CounselCommentAttachment  # 댓글-첨부파일 관계
 │   │   ├── CounselPostAttachmentId
 │   │   └── CounselCommentAttachmentId
 │   └── CounselStatus.java            # Enum (WAIT, COMPLETE, END)
 │
+├── 📦 faq/                            # 자주묻는질문 게시판
+│   ├── controller/
+│   │   └── FaqController             # FAQ CRUD
+│   ├── dto/
+│   │   └── FaqPostDto                # FAQ DTO
+│   ├── mapper/
+│   │   └── FaqPostMapper
+│   ├── repository/
+│   │   ├── FaqPostRepository
+│   │   └── FaqPostRepositoryImpl     # QueryDSL
+│   ├── service/
+│   │   └── FaqService
+│   └── table/
+│       └── FaqPost                   # FAQ Entity
+│
+├── 📦 photo/                          # 포토게시판
+│   ├── controller/
+│   │   └── PhotoController           # 포토게시판 CRUD
+│   ├── dto/
+│   │   ├── PhotoPostDto
+│   │   └── PhotoCommentDto
+│   ├── mapper/
+│   │   ├── PhotoPostMapper
+│   │   └── PhotoCommentMapper
+│   ├── repository/
+│   │   ├── PhotoPostRepository
+│   │   ├── PhotoPostRepositoryImpl   # QueryDSL
+│   │   ├── PhotoCommentRepository
+│   │   ├── PhotoPostLikesRepository
+│   │   └── PhotoPostAttachmentRepository
+│   ├── service/
+│   │   └── PhotoService
+│   └── table/
+│       ├── PhotoPost                 # 포토게시글 Entity
+│       ├── PhotoComment              # 댓글 Entity (트리 구조)
+│       ├── PhotoPostLikes            # 좋아요 Entity
+│       └── PhotoPostAttachment       # 첨부파일 관계
+│
+├── 📦 security/                       # 보안/인증
+│   ├── config/
+│   │   ├── SecurityConfig            # Spring Security 설정
+│   │   └── PasswordEncoderConfig     # BCrypt 설정
+│   ├── handler/
+│   │   ├── CustomAuthenticationSuccessHandler
+│   │   ├── CustomAuthenticationFailureHandler
+│   │   └── CustomLogoutSuccessHandler
+│   └── table/
+│       └── LoginHistory              # 로그인 기록 Entity
+│
+├── 📦 user/                           # 회원 관리
+│   ├── controller/
+│   │   ├── UserController            # 회원가입/마이페이지
+│   │   └── LoginController           # 로그인
+│   ├── dto/
+│   │   ├── UserDto
+│   │   └── LoginDto
+│   ├── mapper/
+│   │   └── UserMapper
+│   ├── repository/
+│   │   └── UserRepository
+│   ├── service/
+│   │   ├── UserService
+│   │   └── CustomUserDetailsService  # Spring Security 연동
+│   └── table/
+│       └── User                      # 회원 Entity
+│
 └── 📦 system/                         # 시스템 설정
+    ├── controller/
+    │   ├── WelcomeController         # 홈 페이지
+    │   └── AdminController           # 관리자 설정
+    ├── repository/
+    │   └── SystemConfigRepository
+    ├── service/
+    │   └── SystemConfigService
+    ├── table/
+    │   └── SystemConfig              # 시스템 설정 Entity
     ├── BooleanToYNConverter          # Boolean ↔ 'Y'/'N'
     ├── CacheConfiguration            # Caffeine 캐시
-    ├── WebConfiguration              # 웹 설정
-    ├── WelcomeController             # 홈 페이지
-    └── CrashController               # 에러 테스트
+    └── WebConfiguration              # 웹 설정
 ```
 
 ---
@@ -263,13 +341,14 @@ org.springframework.samples.petclinic
 - `INDEX idx_post_created (created_at)`
 - `INDEX idx_post_status (status)`
 
-#### **counsel_comment** (댓글)
+#### **counsel_comment** (댓글) - 트리 구조 (무제한 depth)
 
 | 컬럼 | 타입 | 설명 | 비고 |
 |------|------|------|------|
 | `id` | BIGINT | Primary Key | Auto Increment |
 | `post_id` | BIGINT | 게시글 ID (FK) | NOT NULL |
-| `parent_id` | BIGINT | 부모 댓글 ID (FK) | 대댓글 기능 (1-depth) |
+| `parent_id` | BIGINT | 부모 댓글 ID (FK) | 대댓글 기능 (무제한 depth) |
+| `depth` | INT | 댓글 깊이 | 0=최상위, 1=대댓글, 2=대대댓글... |
 | `content` | TEXT | 댓글 내용 | NOT NULL |
 | `author_name` | VARCHAR(100) | 작성자 이름 | NOT NULL |
 | `author_email` | VARCHAR(120) | 작성자 이메일 | Nullable |
@@ -285,6 +364,36 @@ org.springframework.samples.petclinic
 - `PRIMARY KEY (id)`
 - `INDEX idx_comment_post_created (post_id, created_at)`
 - `INDEX idx_comment_parent (parent_id)`
+- `INDEX idx_comment_depth (depth)`
+
+**트리 구조 예시**:
+```
+댓글 1 (depth=0)
+  └─ 대댓글 1-1 (depth=1, parent_id=1)
+      └─ 대대댓글 1-1-1 (depth=2, parent_id=1-1)
+          └─ 대대대댓글 1-1-1-1 (depth=3, parent_id=1-1-1)
+댓글 2 (depth=0)
+  └─ 대댓글 2-1 (depth=1, parent_id=2)
+```
+
+#### **counsel_post_likes** (좋아요)
+
+| 컬럼 | 타입 | 설명 | 비고 |
+|------|------|------|------|
+| `id` | BIGINT | Primary Key | Auto Increment |
+| `post_id` | BIGINT | 게시글 ID (FK) | NOT NULL |
+| `username` | VARCHAR(50) | 사용자 아이디 | NOT NULL |
+| `created_at` | DATETIME | 좋아요 누른 일시 | @CreationTimestamp |
+
+**인덱스**:
+- `PRIMARY KEY (id)`
+- `UNIQUE INDEX uk_counsel_post_likes (post_id, username)` - 중복 방지
+- `INDEX idx_likes_post (post_id)`
+
+**기능**:
+- 로그인한 사용자만 좋아요 가능
+- 한 게시글에 사용자당 1회만 좋아요 가능 (UNIQUE 제약)
+- 좋아요 취소 시 DELETE (Soft Delete 없음)
 
 #### **counsel_attachments** (첨부파일)
 
@@ -852,7 +961,80 @@ dependencies {
 ./gradlew dependencyUpdates
 ```
 
-#### **9. UI 설계 규칙** ⭐NEW (2025-11-12 업데이트)
+#### **9. ACID 트랜잭션 규칙** ⭐NEW (2025-11-27)
+
+**규칙**: 모든 비즈니스 로직은 ACID 속성을 보장해야 함
+
+**ACID 속성**:
+1. **Atomicity (원자성)**: 트랜잭션의 모든 작업이 완료되거나 전혀 수행되지 않아야 함
+2. **Consistency (일관성)**: 트랜잭션 전후로 데이터베이스의 일관성이 유지되어야 함
+3. **Isolation (격리성)**: 동시 실행 중인 트랜잭션들이 서로 영향을 미치지 않아야 함
+4. **Durability (지속성)**: 트랜잭션이 완료되면 그 결과가 영구적으로 저장되어야 함
+
+**적용 예시**:
+```java
+@Service
+@Transactional
+public class CounselService {
+    
+    // ✅ 올바른 예시: 좋아요 토글 (ACID 보장)
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public boolean toggleLike(Long postId, String username) {
+        // 1. 기존 좋아요 확인
+        Optional<CounselPostLikes> existing = likesRepository
+            .findByPostIdAndUsername(postId, username);
+        
+        if (existing.isPresent()) {
+            // 2-1. 좋아요 취소
+            likesRepository.delete(existing.get());
+            decrementLikeCount(postId);
+            return false; // 취소됨
+        } else {
+            // 2-2. 좋아요 추가
+            CounselPostLikes like = new CounselPostLikes();
+            like.setPostId(postId);
+            like.setUsername(username);
+            likesRepository.save(like);
+            incrementLikeCount(postId);
+            return true; // 추가됨
+        }
+        // 3. 트랜잭션 커밋 또는 롤백 (자동)
+    }
+    
+    // ❌ 잘못된 예시: 트랜잭션 없음
+    public boolean toggleLike(Long postId, String username) {
+        // 동시성 문제 발생 가능
+        // 좋아요 추가 후 카운트 증가 실패 시 데이터 불일치
+    }
+}
+```
+
+**격리 수준 선택 가이드**:
+- `READ_COMMITTED`: 일반적인 조회/수정 작업 (기본값)
+- `REPEATABLE_READ`: 동일 트랜잭션 내 여러 번 읽을 때
+- `SERIALIZABLE`: 완벽한 격리 필요 시 (성능 저하 주의)
+
+**예외 처리**:
+```java
+@Transactional(rollbackFor = Exception.class)
+public void savePost(CounselPostDto dto) {
+    try {
+        // 비즈니스 로직
+        CounselPost entity = postMapper.toEntity(dto);
+        repository.save(entity);
+        
+        // 파일 업로드
+        fileStorageService.storeFiles(dto.getFiles());
+        
+        log.info("Post saved successfully: {}", entity.getId());
+    } catch (Exception e) {
+        log.error("Failed to save post: {}", e.getMessage());
+        throw e; // 롤백 트리거
+    }
+}
+```
+
+#### **10. UI 설계 규칙** ⭐NEW (2025-11-12 업데이트)
 
 **목적**: 사용자가 직관적으로 이해하고 사용할 수 있는 인터페이스 제공
 
@@ -1134,12 +1316,14 @@ function showConfirmModal() {
 | 비밀번호 검증 | `/counsel/detail/{id}/unlock` | POST | 공개 | ✅ |
 | 글쓰기 폼 | `/counsel/write` | GET | 공개 | ✅ |
 | 글 등록 | `/counsel` | POST | 공개 | ✅ |
-| **글 수정 폼** | `/counsel/edit/{id}` | GET | 비밀번호 검증 | ✅ **NEW** |
-| **글 수정 처리** | `/counsel/edit/{id}` | POST | 비밀번호 검증 | ✅ **NEW** |
-| **글 삭제 (Soft Delete)** | `/counsel/delete/{id}` | POST | 비밀번호 검증 | ✅ **NEW** |
-| 댓글 등록 | `/counsel/detail/{postId}/comments` | POST | 공개 | ✅ |
+| 글 수정 폼 | `/counsel/edit/{id}` | GET | 비밀번호 검증 | ✅ |
+| 글 수정 처리 | `/counsel/edit/{id}` | POST | 비밀번호 검증 | ✅ |
+| 글 삭제 (Soft Delete) | `/counsel/delete/{id}` | POST | 비밀번호 검증 | ✅ |
+| **댓글 등록 (AJAX)** | `/counsel/detail/{postId}/comments` | POST | 공개 | ✅ |
 | 댓글 삭제 | `/counsel/detail/{postId}/comments/{commentId}/delete` | POST | 비밀번호 검증 | ✅ |
-| **파일 다운로드** | `/counsel/download/{fileId}` | GET | 공개 | ✅ **NEW** |
+| **좋아요 토글 (AJAX)** | `/counsel/detail/{id}/like` | POST | 로그인 필요 | ✅ **NEW** |
+| **좋아요 목록 조회** | `/counsel/detail/{id}/likes` | GET | 공개 | ✅ **NEW** |
+| 파일 다운로드 | `/counsel/download/{fileId}` | GET | 공개 | ✅ |
 
 #### **공개/비공개 기준**
 
@@ -1283,14 +1467,77 @@ public void incrementViewCount(Long postId) {
 
 #### **기능 목록**
 
-| 기능 | URL | HTTP Method | 상태 |
-|------|-----|-------------|------|
-| 공지사항 목록 | `/community/list?subject=notice` | GET | ✅ |
-| 공지사항 상세 | `/community/detail/{id}?subject=notice` | GET | ✅ |
-| 검색 | `/community/list?subject=notice&type=title&keyword=이벤트` | GET | ✅ |
+| 기능 | URL | HTTP Method | 권한 | 상태 |
+|------|-----|-------------|------|------|
+| 공지사항 목록 | `/community/list?subject=notice` | GET | 공개 | ✅ |
+| 공지사항 상세 | `/community/detail/{id}?subject=notice` | GET | 공개 | ✅ |
+| 검색 | `/community/list?subject=notice&type=title&keyword=이벤트` | GET | 공개 | ✅ |
+| 글쓰기 | `/community/write` | POST | 관리자만 | ✅ |
+| 글 수정 | `/community/edit/{id}` | POST | 관리자만 | ✅ |
+| 글 삭제 | `/community/delete/{id}` | POST | 관리자만 | ✅ |
+| **좋아요 토글 (AJAX)** | `/community/detail/{id}/like` | POST | 로그인 필요 | ✅ |
+| **좋아요 목록 조회** | `/community/detail/{id}/likes` | GET | 공개 | ✅ |
 
 **초기 데이터**:
 - 공지사항 3개 + 더미 103개 = 총 106개
+
+**권한 규칙**:
+- 글 작성/수정/삭제: 관리자만 가능 (`ROLE_ADMIN`)
+- 조회/검색/좋아요: 모든 사용자 가능
+
+---
+
+### 7.3 포토게시판
+
+#### **기능 목록**
+
+| 기능 | URL | HTTP Method | 권한 | 상태 |
+|------|-----|-------------|------|------|
+| 목록 조회 | `/photo/list` | GET | 공개 | ✅ |
+| 상세 조회 | `/photo/detail/{id}` | GET | 공개 | ✅ |
+| 검색 | `/photo/list?type=title&keyword=강아지` | GET | 공개 | ✅ |
+| 글쓰기 | `/photo/write` | POST | 로그인 필요 | ✅ |
+| 글 수정 | `/photo/edit/{id}` | POST | 작성자만 | ✅ |
+| 글 삭제 | `/photo/delete/{id}` | POST | 작성자만 | ✅ |
+| **댓글 등록 (AJAX)** | `/photo/detail/{postId}/comments` | POST | 공개 | ✅ |
+| 댓글 삭제 | `/photo/detail/{postId}/comments/{commentId}/delete` | POST | 작성자만 | ✅ |
+| **좋아요 토글 (AJAX)** | `/photo/detail/{id}/like` | POST | 로그인 필요 | ✅ |
+| **좋아요 목록 조회** | `/photo/detail/{id}/likes` | GET | 공개 | ✅ |
+
+**특징**:
+- 썸네일 이미지 필수 (URL 또는 파일 업로드)
+- Quill 에디터 사용 (본문 작성)
+- 댓글 트리 구조 (무제한 depth)
+- 좋아요 기능 (로그인 사용자만)
+
+**초기 데이터**:
+- 랜덤 이미지 + 내용으로 구성된 112개 게시글
+
+---
+
+### 7.4 자주묻는질문 (FAQ)
+
+#### **기능 목록**
+
+| 기능 | URL | HTTP Method | 권한 | 상태 |
+|------|-----|-------------|------|------|
+| FAQ 목록 | `/faq/list` | GET | 공개 | ✅ |
+| FAQ 상세 | `/faq/detail/{id}` | GET | 공개 | ✅ |
+| 카테고리별 검색 | `/faq/list?category=진료` | GET | 공개 | ✅ |
+| FAQ 등록 | `/faq/write` | POST | 관리자만 | ✅ |
+| FAQ 수정 | `/faq/edit/{id}` | POST | 관리자만 | ✅ |
+| FAQ 삭제 | `/faq/delete/{id}` | POST | 관리자만 | ✅ |
+
+**카테고리**:
+- 전체, 일반, 진료, 예약, 수술, 기타
+
+**특징**:
+- 관리자만 작성/수정/삭제 가능
+- 모든 사용자 조회 가능 (로그인 불필요)
+- Quill 에디터 사용
+
+**초기 데이터**:
+- 카테고리별 랜덤 분배 11개
 
 ---
 
@@ -1423,42 +1670,9 @@ private CounselStatus randomStatus() {
 
 ---
 
-## 10. 향후 개발 계획
+## 10. 부록
 
-### 10.1 미구현 기능
-
-| 기능 | 우선순위 | 예상 개발 기간 |
-|------|---------|---------------|
-| **로그인/회원가입** | 🔴 높음 | 2주 |
-| **관리자 권한 관리** | 🔴 높음 | 1주 |
-| **파일 다운로드** | 🟡 중간 | 3일 |
-| **대댓글 트리 구조** | 🟡 중간 | 1주 |
-| **게시글 수정/삭제** | 🟡 중간 | 3일 |
-| **조회수 중복 방지** | 🟢 낮음 | 2일 |
-| **좋아요 기능** | 🟢 낮음 | 3일 |
-
-### 10.2 성능 최적화 계획
-
-1. **N+1 문제 해결**
-   - `@EntityGraph` 또는 `fetch join` 사용
-   - 댓글 조회 시 게시글 정보 함께 로드
-
-2. **Redis 캐싱 도입**
-   - 조회수가 높은 게시글 캐싱
-   - 세션 관리를 Redis로 이전
-
-3. **DB 인덱스 최적화**
-   - 검색 쿼리 분석 후 추가 인덱스 생성
-
-4. **파일 서빙 최적화**
-   - CDN 도입 검토
-   - 이미지 썸네일 자동 생성
-
----
-
-## 부록
-
-### A. QueryDSL Q클래스 생성
+### 10.1 QueryDSL Q클래스 생성
 
 ```bash
 # Gradle 빌드 시 자동 생성
@@ -1475,7 +1689,7 @@ src/main/generated/org/springframework/samples/petclinic/
 │   └── ...
 ```
 
-### B. Thymeleaf 레이아웃 구조
+### 10.2 Thymeleaf 레이아웃 구조
 
 ```
 templates/
@@ -1492,10 +1706,21 @@ templates/
 ├── community/
 │   ├── noticeList.html       # 공지사항 목록
 │   └── noticeDetail.html     # 공지사항 상세
+├── photo/
+│   ├── photoList.html        # 포토게시판 목록
+│   ├── photoDetail.html      # 포토게시판 상세
+│   └── photo-write.html      # 포토게시판 작성
+├── faq/
+│   ├── faqList.html          # FAQ 목록
+│   └── faqDetail.html        # FAQ 상세
+├── user/
+│   ├── login.html            # 로그인
+│   ├── register.html         # 회원가입
+│   └── mypage.html           # 마이페이지
 └── welcome.html              # 홈 페이지
 ```
 
-### C. 개발 환경 설정
+### 10.3 개발 환경 설정
 
 **필수 프로그램**:
 - JDK 17
@@ -1527,6 +1752,131 @@ gradlew.bat bootRun
 
 ---
 
-**문서 버전**: 1.0  
-**최종 수정**: 2025-11-05  
+## 9. 최근 업데이트 내역
+
+### 📅 2025-12-03 (현재 세션)
+
+#### ✅ 완료된 작업
+1. **댓글/대댓글 트리 구조 고도화**
+   - 무제한 depth 지원 (기존 1-depth → 무제한)
+   - `depth` 컬럼 추가로 계층 구조 명확화
+   - 댓글 작성 AJAX 방식으로 전환 (페이지 새로고침 없음)
+
+2. **좋아요 기능 UI 개선**
+   - 아코디언 방식 적용 (Counsel, Community, Photo)
+   - 하트 클릭: 좋아요 토글
+   - 화살표 클릭: 좋아요 목록 패널 펼침/접힘
+   - 상호 배타적 아코디언 (답변 ↔ 좋아요)
+
+3. **데이터베이스 안정화**
+   - `ddl-auto: update` 전환 (기존 create-drop 방식)
+   - Enum 타입 → VARCHAR 변경 (ALTER 오류 방지)
+   - 외래키 제약 조건 최적화
+
+4. **패키지 추가 및 완성**
+   - **faq**: 자주묻는질문 게시판
+   - **photo**: 포토게시판 (썸네일, 댓글, 좋아요)
+   - **user**: 회원 관리 (회원가입, 로그인, 마이페이지)
+   - **security**: Spring Security 기반 인증/권한
+
+---
+
+### 📅 2025-11-28
+
+#### ✅ 주요 변경
+1. **좋아요 기능 추가**
+   - Counsel, Community, Photo 3개 게시판 적용
+   - AJAX 기반 비동기 처리
+   - 로그인 사용자만 좋아요 가능
+   - 중복 방지 (UNIQUE 제약)
+
+2. **UI 일관성 개선**
+   - 버튼 크기 통일 (height: 42px)
+   - 아코디언 화살표 회전 애니메이션
+   - 모달 팝업 사용 (alert 제거)
+
+---
+
+### 📅 2025-11-27
+
+#### ✅ 주요 변경
+1. **Phase 3-7 완료**
+   - 게시글 수정 시 첨부파일 관리
+   - 파일 다운로드 권한 검증
+   - 검색 기능 강화 (QueryDSL)
+   - ACID 트랜잭션 적용
+
+---
+
+### 📅 2025-11-26
+
+#### ✅ 주요 변경
+1. **Attachment 구조 통합**
+   - `counsel.model.Attachment` → `common.table.Attachment` 마이그레이션
+   - 공통 첨부파일 구조로 통합
+
+2. **GlobalExceptionHandler 추가**
+   - 모든 Controller 예외 한 곳에서 처리
+   - API 요청: JSON 응답
+   - 화면 요청: Thymeleaf 에러 페이지
+
+3. **클래스 문서화 규칙 추가**
+   - 모든 클래스에 상세 주석 추가
+   - Service/Repository/DTO/Mapper 주석 완료
+
+---
+
+### 📅 2025-11-25
+
+#### ✅ 주요 변경
+1. **포토게시판 추가**
+   - 썸네일 이미지 업로드
+   - Quill 에디터 적용
+   - 댓글 트리 구조
+
+2. **Toast 알림 시스템 추가**
+   - 사용자 액션 피드백
+   - 성공/실패 메시지 표시
+
+3. **Thymeleaf 보안 정책 강화**
+   - `data-*` 속성 활용
+   - inline script 최소화
+
+---
+
+### 📅 2025-11-20
+
+#### ✅ 주요 변경
+1. **Uppy 파일 업로드 UI 개선**
+   - 로컬 번들 방식으로 전환 (CDN 제거)
+   - 드래그앤드롭 새 창 열림 방지
+   - 프로그레스바 실시간 표시
+   - 스크롤 개선
+
+---
+
+## 🔜 향후 계획
+
+### 미완료 작업
+1. **이메일 인증 기능** (Phase 6)
+   - 회원가입 시 이메일 인증
+   - 비밀번호 찾기 이메일 발송
+
+2. **관리자 대시보드 고도화**
+   - 통계 차트 (Chart.js)
+   - 실시간 모니터링
+
+3. **알림 기능**
+   - 댓글 작성 시 알림
+   - 좋아요 알림
+
+4. **성능 최적화**
+   - Redis 캐싱 도입
+   - N+1 문제 해결 (@EntityGraph)
+   - DB 인덱스 최적화
+
+---
+
+**문서 버전**: 4.0.0  
+**최종 수정**: 2025-12-03  
 **작성자**: Jeongmin Lee

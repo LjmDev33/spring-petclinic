@@ -14,6 +14,24 @@
   <link rel="stylesheet" th:href="@{/css/petclinic.css}" />
 <!--  <link th:href="@{/webjars/bootstrap/dist/css/bootstrap.css}" rel="stylesheet">-->
   <style>
+    /* 네비게이션바 z-index 설정 */
+    .navbar {
+      position: relative;
+      z-index: 1050;
+    }
+
+    /* 드롭다운 부모 요소에 position 설정 (Stacking Context 생성) */
+    .nav-item.dropdown {
+      position: relative;
+      z-index: 1055;
+    }
+
+    /* 드롭다운 메뉴 z-index 설정 */
+    .dropdown-menu {
+      z-index: 1070 !important;
+      position: absolute !important;
+    }
+
     .nav-item.dropdown:hover .dropdown-menu {
       display: block;
       margin-top: 0;
