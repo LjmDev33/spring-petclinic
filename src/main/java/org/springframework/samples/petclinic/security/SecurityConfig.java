@@ -69,7 +69,7 @@ public class SecurityConfig {
 				// FAQ (공개)
 				.requestMatchers("/faq", "/faq/list", "/faq/detail/**").permitAll()
 				// 포토게시판 (공개)
-				.requestMatchers("/photo/list", "/photo/detail/**").permitAll()
+				.requestMatchers("/photo/list", "/photo/detail/**", "/animal/**").permitAll()
 				// 관리자 전용
 				.requestMatchers("/admin/**").hasRole("ADMIN")
 				// 소개 (공개)
