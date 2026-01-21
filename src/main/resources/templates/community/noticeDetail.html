@@ -29,7 +29,7 @@
     /* 패널 높이 변경 애니메이션 (부드럽게) */
     .collapse {
       transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-      overflow: hidden; /* 애니메이션 중 내용 숨김 */
+      /*overflow: hidden; !* 애니메이션 중 내용 숨김 *! 상단바 메뉴 또한 hidden으로 바뀜, 좋아요/댓글 요소에도 적용되는 스타일 없는 것으로 보아 주석처리 */
     }
 
     .collapse.show {
