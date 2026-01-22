@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS `users` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `UK_users_username` (`username`),
   UNIQUE KEY `UK_users_nickname` (`nickname`)
-  );
+  )
 
 -- 2. 사용자 권한 (User Roles)
 CREATE TABLE IF NOT EXISTS `user_roles` (
@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS `user_roles` (
                                           `role` varchar(255) DEFAULT NULL,
   KEY `IDX_user_roles_user_id` (`user_id`),
   CONSTRAINT `FK_user_roles_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
-  );
+  )
 
 -- 3. 비밀번호 재설정 토큰 (Password Reset Tokens)
 CREATE TABLE IF NOT EXISTS `password_reset_tokens` (
@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS `password_reset_tokens` (
   UNIQUE KEY `UK_pwd_token` (`token`),
   KEY `IDX_pwd_token_user_id` (`user_id`),
   CONSTRAINT `FK_pwd_token_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
-  );
+  )
 
 -- 4. 시스템 설정 (System Config) - 독립 테이블
 CREATE TABLE IF NOT EXISTS `system_config` (
@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS `system_config` (
   `updated_at` datetime(6) NOT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `UK_system_config_key` (`property_key`)
-  );
+  )
 
 -- 5. 첨부파일 (Attachment) - 여러 게시판에서 참조
 CREATE TABLE IF NOT EXISTS `attachment` (
@@ -78,7 +78,7 @@ CREATE TABLE IF NOT EXISTS `attachment` (
   UNIQUE KEY `UQ_attachment_store_alive` (`stored_filename`,`del_flag`),
   KEY `IDX_attachment_created` (`created_at` DESC),
   KEY `IDX_attachment_del_flag` (`del_flag`)
-  );
+  )
 
 -- 6. FAQ 게시판 (Faq Posts) - 독립 테이블
 CREATE TABLE IF NOT EXISTS `faq_posts` (
@@ -91,7 +91,7 @@ CREATE TABLE IF NOT EXISTS `faq_posts` (
   `created_at` datetime(6) NOT NULL,
   `updated_at` datetime(6) DEFAULT NULL,
   PRIMARY KEY (`id`)
-  );
+  )
 
 -- ==========================================
 -- 7. 커뮤니티 게시판 (Community Post)
@@ -113,7 +113,7 @@ CREATE TABLE IF NOT EXISTS `community_post` (
   PRIMARY KEY (`id`),
   KEY `IDX_community_author_id` (`author_id`),
   CONSTRAINT `FK_community_author_id` FOREIGN KEY (`author_id`) REFERENCES `users` (`id`)
-  );
+  )
 
 CREATE TABLE IF NOT EXISTS `community_post_attachment` (
                                                          `id` bigint NOT NULL AUTO_INCREMENT,
@@ -124,7 +124,7 @@ CREATE TABLE IF NOT EXISTS `community_post_attachment` (
   KEY `IDX_community_attach_id` (`attachment_id`),
   CONSTRAINT `FK_community_attach_post` FOREIGN KEY (`community_post_id`) REFERENCES `community_post` (`id`),
   CONSTRAINT `FK_community_attach_file` FOREIGN KEY (`attachment_id`) REFERENCES `attachment` (`id`)
-  );
+  )
 
 CREATE TABLE IF NOT EXISTS `community_post_likes` (
                                                     `id` bigint NOT NULL AUTO_INCREMENT,
@@ -134,7 +134,7 @@ CREATE TABLE IF NOT EXISTS `community_post_likes` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `UK_community_likes` (`post_id`,`username`),
   CONSTRAINT `FK_community_likes_post` FOREIGN KEY (`post_id`) REFERENCES `community_post` (`id`)
-  );
+  )
 
 -- ==========================================
 -- 8. 온라인 상담 게시판 (Counsel Post)
@@ -161,7 +161,7 @@ CREATE TABLE IF NOT EXISTS `counsel_post` (
   PRIMARY KEY (`id`),
   KEY `IDX_counsel_author_id` (`author_id`),
   CONSTRAINT `FK_counsel_author_id` FOREIGN KEY (`author_id`) REFERENCES `users` (`id`)
-  );
+  )
 
 CREATE TABLE IF NOT EXISTS `counsel_post_attachments` (
                                                         `id` int NOT NULL AUTO_INCREMENT,
@@ -172,7 +172,7 @@ CREATE TABLE IF NOT EXISTS `counsel_post_attachments` (
   KEY `IDX_counsel_attach_file` (`attachment_id`),
   CONSTRAINT `FK_counsel_attach_post` FOREIGN KEY (`counsel_post_id`) REFERENCES `counsel_post` (`id`),
   CONSTRAINT `FK_counsel_attach_file` FOREIGN KEY (`attachment_id`) REFERENCES `attachment` (`id`)
-  );
+  )
 
 CREATE TABLE IF NOT EXISTS `counsel_post_likes` (
                                                   `id` bigint NOT NULL AUTO_INCREMENT,
@@ -182,7 +182,7 @@ CREATE TABLE IF NOT EXISTS `counsel_post_likes` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `UK_counsel_likes` (`post_id`,`username`),
   CONSTRAINT `FK_counsel_likes_post` FOREIGN KEY (`post_id`) REFERENCES `counsel_post` (`id`)
-  );
+  )
 
 CREATE TABLE IF NOT EXISTS `counsel_comment` (
                                                `id` bigint NOT NULL AUTO_INCREMENT,
@@ -203,7 +203,7 @@ CREATE TABLE IF NOT EXISTS `counsel_comment` (
   KEY `IDX_comment_parent` (`parent_id`),
   CONSTRAINT `FK_counsel_comment_post` FOREIGN KEY (`post_id`) REFERENCES `counsel_post` (`id`),
   CONSTRAINT `FK_counsel_comment_parent` FOREIGN KEY (`parent_id`) REFERENCES `counsel_comment` (`id`)
-  );
+  )
 
 CREATE TABLE IF NOT EXISTS `counsel_comment_attachment` (
                                                           `counsel_comment_id` bigint NOT NULL,
@@ -216,7 +216,7 @@ CREATE TABLE IF NOT EXISTS `counsel_comment_attachment` (
   KEY `IDX_comment_attach_comment` (`counsel_comment_id`),
   CONSTRAINT `FK_comment_attach_file` FOREIGN KEY (`attachment_id`) REFERENCES `attachment` (`id`),
   CONSTRAINT `FK_comment_attach_comment` FOREIGN KEY (`counsel_comment_id`) REFERENCES `counsel_comment` (`id`)
-  );
+  )
 
 -- ==========================================
 -- 9. 포토 게시판 (Photo Post)
@@ -239,7 +239,7 @@ CREATE TABLE IF NOT EXISTS `photo_post` (
   KEY `IDX_photo_created` (`created_at` DESC),
   KEY `IDX_photo_author_id` (`author_id`),
   CONSTRAINT `FK_photo_author_id` FOREIGN KEY (`author_id`) REFERENCES `users` (`id`)
-  );
+  )
 
 CREATE TABLE IF NOT EXISTS `photo_post_attachment` (
                                                      `id` bigint NOT NULL AUTO_INCREMENT,
@@ -250,7 +250,7 @@ CREATE TABLE IF NOT EXISTS `photo_post_attachment` (
   KEY `IDX_photo_attach_file` (`attachment_id`),
   CONSTRAINT `FK_photo_attach_post` FOREIGN KEY (`photo_post_id`) REFERENCES `photo_post` (`id`),
   CONSTRAINT `FK_photo_attach_file` FOREIGN KEY (`attachment_id`) REFERENCES `attachment` (`id`)
-  );
+  )
 
 CREATE TABLE IF NOT EXISTS `photo_post_likes` (
                                                 `id` bigint NOT NULL AUTO_INCREMENT,
@@ -262,4 +262,4 @@ CREATE TABLE IF NOT EXISTS `photo_post_likes` (
   KEY `IDX_photo_likes_post` (`post_id`),
   KEY `IDX_photo_likes_username` (`username`),
   CONSTRAINT `FK_photo_likes_post` FOREIGN KEY (`post_id`) REFERENCES `photo_post` (`id`)
-  );
+  )
