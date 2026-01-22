@@ -60,7 +60,7 @@
 <div class="container mt-4">
   <!-- 버튼 그룹 -->
   <div class="d-flex justify-content-between mb-3">
-    <div class="d-flex" style="gap: 8px;">
+    <div class="d-flex" style="gap: 8px;" th:if="${ownerYN == true}">
       <a th:href="@{/photo/edit/{id}(id=${post.id})}" class="btn btn-outline-dark">
         <i class="bi bi-pencil me-1"></i> 수정
       </a>

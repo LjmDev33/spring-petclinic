@@ -60,7 +60,7 @@
   <div class="container-fluid px-0">
     <!-- 버튼 그룹 -->
     <div class="d-flex justify-content-between mb-3">
-      <div class="d-flex" style="gap: 8px;">
+      <div class="d-flex" style="gap: 8px;" th:if="${ownerYN == true}">
         <!-- 수정 버튼 -->
         <a th:href="@{/counsel/edit/{id}(id=${post.id})}" class="custom-btn custom-btn-warning">
           <i class="bi bi-pencil me-1"></i> 수정

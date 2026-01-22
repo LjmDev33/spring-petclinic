@@ -4,6 +4,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.samples.petclinic.common.dto.PageResponse;
 import org.springframework.samples.petclinic.photo.table.PhotoPost;
 
+import java.util.List;
+
 /**
  * Project : spring-petclinic
  * File    : PhotoPostRepositoryCustom.java
@@ -43,6 +45,13 @@ public interface PhotoPostRepositoryCustom {
 	 * @param limit 조회할 개수
 	 * @return 인기 게시글 목록
 	 */
-	java.util.List<PhotoPost> findPopularPosts(int limit);
+	List<PhotoPost> findPopularPosts(int limit);
+
+	/**
+	 * 작성자 아이디 조회
+	 * @param id 게시판 아이디
+	 * @return 작성자 아이디
+	 */
+    String getBoardOnwerId(long id);
 }
 

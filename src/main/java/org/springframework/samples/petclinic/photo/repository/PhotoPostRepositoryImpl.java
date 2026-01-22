@@ -1,7 +1,6 @@
 package org.springframework.samples.petclinic.photo.repository;
 
 import com.querydsl.core.types.dsl.BooleanExpression;
-import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -190,6 +189,15 @@ public class PhotoPostRepositoryImpl implements PhotoPostRepositoryCustom {
 				return photoPost.title.containsIgnoreCase(trimmedKeyword)
 					.or(photoPost.content.containsIgnoreCase(trimmedKeyword));
 		}
+	}
+
+	@Override
+	public String getBoardOnwerId(long id) {
+		return queryFactory
+			.select(photoPost.user.username)
+			.from(photoPost)
+			.where(photoPost.id.eq(id))
+			.fetchOne();
 	}
 }
 

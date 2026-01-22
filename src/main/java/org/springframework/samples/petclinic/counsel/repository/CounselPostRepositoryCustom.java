@@ -5,6 +5,7 @@ import org.springframework.samples.petclinic.common.dto.PageResponse;
 import org.springframework.samples.petclinic.community.table.CommunityPost;
 import org.springframework.samples.petclinic.counsel.table.CounselPost;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 /*
@@ -61,8 +62,15 @@ public interface CounselPostRepositoryCustom {
 		String type,
 		String keyword,
 		String status,
-		java.time.LocalDateTime startDate,
-		java.time.LocalDateTime endDate,
+		LocalDateTime startDate,
+		LocalDateTime endDate,
 		Pageable pageable
 	);
+
+	/**
+	 * 기본 검색 (작성자)
+	 * @param id 게시글 아이디
+	 * @return 게시글 작성자 아이디
+	 */
+    String getBoardOnwerId(long id);
 }

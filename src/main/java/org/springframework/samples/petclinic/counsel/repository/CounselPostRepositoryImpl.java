@@ -87,6 +87,7 @@ import java.util.List;
 public class CounselPostRepositoryImpl implements CounselPostRepositoryCustom{
 
 	private final JPAQueryFactory queryFactory;
+	QCounselPost counselPost = QCounselPost.counselPost;
 
 	public CounselPostRepositoryImpl(JPAQueryFactory queryFactory) {
 		this.queryFactory = queryFactory;
@@ -94,41 +95,40 @@ public class CounselPostRepositoryImpl implements CounselPostRepositoryCustom{
 
 	@Override
 	public PageResponse<CounselPost> search(String type, String keyword, Pageable pageable) {
-		QCounselPost post = QCounselPost.counselPost;
 
 		BooleanBuilder builder = new BooleanBuilder();
 		if (keyword != null && !keyword.isBlank()) {
 			switch (type == null ? "" : type) {
 				case "title":
-					builder.and(post.title.containsIgnoreCase(keyword));
+					builder.and(counselPost.title.containsIgnoreCase(keyword));
 					break;
 				case "content":
-					builder.and(post.content.containsIgnoreCase(keyword));
+					builder.and(counselPost.content.containsIgnoreCase(keyword));
 					break;
 				case "author":
 				case "authorName":
-					builder.and(post.authorName.containsIgnoreCase(keyword));
+					builder.and(counselPost.authorName.containsIgnoreCase(keyword));
 					break;
 				default:
 					builder.and(
-						post.title.containsIgnoreCase(keyword)
-							.or(post.content.containsIgnoreCase(keyword))
-							.or(post.authorName.containsIgnoreCase(keyword))
+						counselPost.title.containsIgnoreCase(keyword)
+							.or(counselPost.content.containsIgnoreCase(keyword))
+							.or(counselPost.authorName.containsIgnoreCase(keyword))
 					);
 			}
 		}
 
 		List<CounselPost> content = queryFactory
-			.selectFrom(post)
+			.selectFrom(counselPost)
 			.where(builder)
 			.offset(pageable.getOffset())
 			.limit(pageable.getPageSize())
-			.orderBy(post.id.asc())
+			.orderBy(counselPost.id.asc())
 			.fetch();
 
 		Long total = queryFactory
-			.select(post.count())
-			.from(post)
+			.select(counselPost.count())
+			.from(counselPost)
 			.where(builder)
 			.fetchOne();
 
@@ -163,27 +163,26 @@ public class CounselPostRepositoryImpl implements CounselPostRepositoryCustom{
 		LocalDateTime endDate,
 		Pageable pageable) {
 
-		QCounselPost post = QCounselPost.counselPost;
 		BooleanBuilder builder = new BooleanBuilder();
 
 		// 1. 키워드 검색 (기존 로직)
 		if (keyword != null && !keyword.isBlank()) {
 			switch (type == null ? "" : type) {
 				case "title":
-					builder.and(post.title.containsIgnoreCase(keyword));
+					builder.and(counselPost.title.containsIgnoreCase(keyword));
 					break;
 				case "content":
-					builder.and(post.content.containsIgnoreCase(keyword));
+					builder.and(counselPost.content.containsIgnoreCase(keyword));
 					break;
 				case "author":
 				case "authorName":
-					builder.and(post.authorName.containsIgnoreCase(keyword));
+					builder.and(counselPost.authorName.containsIgnoreCase(keyword));
 					break;
 				default:
 					builder.and(
-						post.title.containsIgnoreCase(keyword)
-							.or(post.content.containsIgnoreCase(keyword))
-							.or(post.authorName.containsIgnoreCase(keyword))
+						counselPost.title.containsIgnoreCase(keyword)
+							.or(counselPost.content.containsIgnoreCase(keyword))
+							.or(counselPost.authorName.containsIgnoreCase(keyword))
 					);
 			}
 		}
@@ -192,7 +191,7 @@ public class CounselPostRepositoryImpl implements CounselPostRepositoryCustom{
 		if (status != null && !status.isBlank()) {
 			try {
 				CounselStatus counselStatus = CounselStatus.valueOf(status.toUpperCase());
-				builder.and(post.status.eq(counselStatus));
+				builder.and(counselPost.status.eq(counselStatus));
 			} catch (IllegalArgumentException e) {
 				// 잘못된 상태값이면 무시 (전체 조회)
 			}
@@ -200,31 +199,40 @@ public class CounselPostRepositoryImpl implements CounselPostRepositoryCustom{
 
 		// 3. 날짜 범위 필터링 (Phase 7: 추가)
 		if (startDate != null) {
-			builder.and(post.createdAt.goe(startDate)); // Greater or Equal (>=)
+			builder.and(counselPost.createdAt.goe(startDate)); // Greater or Equal (>=)
 		}
 		if (endDate != null) {
 			// endDate는 해당 날짜의 23:59:59까지 포함
 			LocalDateTime endOfDay = endDate.plusDays(1).withHour(0).withMinute(0).withSecond(0).withNano(0);
-			builder.and(post.createdAt.lt(endOfDay)); // Less Than (<)
+			builder.and(counselPost.createdAt.lt(endOfDay)); // Less Than (<)
 		}
 
 		// 4. 데이터 조회
 		List<CounselPost> content = queryFactory
-			.selectFrom(post)
+			.selectFrom(counselPost)
 			.where(builder)
 			.offset(pageable.getOffset())
 			.limit(pageable.getPageSize())
-			.orderBy(post.createdAt.desc()) // 최신순 정렬
+			.orderBy(counselPost.createdAt.desc()) // 최신순 정렬
 			.fetch();
 
 		// 5. COUNT 쿼리
 		Long total = queryFactory
-			.select(post.count())
-			.from(post)
+			.select(counselPost.count())
+			.from(counselPost)
 			.where(builder)
 			.fetchOne();
 
 		Page<CounselPost> page = new PageImpl<>(content, pageable, total == null ? 0L : total);
 		return new PageResponse<>(page);
+	}
+
+	@Override
+	public String getBoardOnwerId(long id) {
+		return queryFactory
+			.select(counselPost.user.username)
+			.from(counselPost)
+			.where(counselPost.id.eq(id))
+			.fetchOne();
 	}
 }

@@ -73,11 +73,16 @@ public class PhotoController {
 		long likeCount = photoService.getLikeCount(id);
 		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 		boolean isLiked = photoService.isLikedByUser(id, authentication);
+		// 작성자 검증 추가
+		String userName = authentication.getName();
+		String ownerUserId = photoService.getBoardOnwerId(id);
+		boolean ownerYN = userName.equals(ownerUserId);
 
 		model.addAttribute("post", post);
 		model.addAttribute("likeCount", likeCount);
 		model.addAttribute("isLiked", isLiked);
 		model.addAttribute("template", "photo/photoDetail");
+		model.addAttribute("ownerYN", ownerYN);
 
 		return "fragments/layout";
 	}

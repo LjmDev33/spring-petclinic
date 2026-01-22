@@ -870,6 +870,22 @@ public class CounselService {
 		}
 	}
 
+	/**
+	 * 게시글 작성자 아이디 조회
+	 *
+	 * @param postId 게시글 ID
+	 * @return username 작성자 ID
+	 */
+	public String getBoardOnwerId(Long postId) {
+		try {
+			return repository.getBoardOnwerId(postId);
+
+		} catch (Exception e) {
+			log.error("❌ Failed to get board ownerId : postId={}, error={}", postId, e.getMessage(), e);
+			return "";
+		}
+	}
+
 	// ==================== 좋아요 기능 ====================
 
 	/**

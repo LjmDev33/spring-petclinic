@@ -207,12 +207,18 @@ public class CounselController {
 		// 좋아요 누른 사용자 정보 조회 (username → User 객체)
 		List<User> likedUsers = likedUsernames.isEmpty() ? Collections.emptyList() : userRepository.findByUsernameIn(likedUsernames);
 
+		// 작성자 검증 추가
+		String userName = authentication.getName();
+		String ownerUserId = counselService.getBoardOnwerId(id);
+		boolean ownerYN = userName.equals(ownerUserId);
+
 		model.addAttribute("post", post);
 		model.addAttribute("comments", comments);
 		model.addAttribute("likeCount", likeCount);
 		model.addAttribute("isLiked", isLiked);
 		model.addAttribute("likedUsers", likedUsers);
 		model.addAttribute("template", "counsel/counselDetail");
+		model.addAttribute("ownerYN", ownerYN);
 		return "fragments/layout";
 	}
 

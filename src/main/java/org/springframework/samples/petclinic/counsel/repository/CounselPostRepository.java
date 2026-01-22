@@ -27,4 +27,11 @@ public interface CounselPostRepository extends JpaRepository<CounselPost, Long>,
 	 * @return 게시글 페이지
 	 */
 	Page<CounselPost> findByAuthorNameOrderByCreatedAtDesc(String authorName, Pageable pageable);
+
+	/**
+	 * 작성자 아이디 조회
+	 * @param id 게시판 아이디
+	 * @return 작성자 아이디
+	 */
+	String getBoardOnwerId(long id);
 }
