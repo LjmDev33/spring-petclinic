@@ -6,6 +6,7 @@ import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.springframework.samples.petclinic.common.entity.BaseEntity;
+import org.springframework.samples.petclinic.user.table.User;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -36,6 +37,10 @@ import java.util.List;
 @SQLDelete(sql = "UPDATE photo_post SET del_flag=1, deleted_at=NOW() WHERE id=?")
 @SQLRestriction("del_flag = 0")
 public class PhotoPost extends BaseEntity {
+
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "author_id")
+	private User user;
 
 	/** 게시글 제목 */
 	@Column(nullable = false, length = 200)
@@ -197,6 +202,17 @@ public class PhotoPost extends BaseEntity {
 	public void removeAttachment(PhotoPostAttachment attachment) {
 		this.attachments.remove(attachment);
 		attachment.setPhotoPost(null);
+	}
+
+	public User getUser() {
+		return user;
+	}
+
+	public void setUser(User user) {
+		this.user = user;
+		if(user != null){
+			this.author = user.getNickname();
+		}
 	}
 }
 

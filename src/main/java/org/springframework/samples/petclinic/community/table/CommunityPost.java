@@ -4,8 +4,8 @@ import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
-import org.hibernate.annotations.UpdateTimestamp;
 import org.springframework.samples.petclinic.common.entity.BaseEntity;
+import org.springframework.samples.petclinic.user.table.User;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -35,15 +35,19 @@ import java.util.List;
 @SQLRestriction("del_flag = 0")
 public class CommunityPost extends BaseEntity {
 
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "author_id")
+	private User user;
+
+	@Column(nullable = false, length = 100)
+	private String author;
+
 	@Column(nullable = false, length = 255)
 	private String title;
 
 	@Lob
 	@Column(columnDefinition = "TEXT", nullable = false)
 	private String content;
-
-	@Column(nullable = false, length = 100)
-	private String author;
 
 	@CreationTimestamp
 	@Column(name = "created_at", nullable = false, updatable = false)
@@ -183,5 +187,16 @@ public class CommunityPost extends BaseEntity {
 	public void removeAttachment(CommunityPostAttachment attachment) {
 		this.attachments.remove(attachment);
 		attachment.setCommunityPost(null);
+	}
+
+	public User getUser() {
+		return user;
+	}
+
+	public void setUser(User user) {
+		this.user = user;
+		if(user != null){
+			this.author = user.getNickname();
+		}
 	}
 }

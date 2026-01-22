@@ -5,7 +5,7 @@ import jakarta.persistence.Table;
 import org.hibernate.annotations.*;
 import org.springframework.samples.petclinic.common.entity.BaseEntity;
 import org.springframework.samples.petclinic.counsel.CounselStatus;
-import org.springframework.samples.petclinic.counsel.table.CounselPostAttachment;
+import org.springframework.samples.petclinic.user.table.User;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -45,6 +45,10 @@ import java.util.List;
 @SQLDelete(sql = "UPDATE counsel_post SET del_flag=1, deleted_at=NOW() WHERE id=?")
 @SQLRestriction("del_flag = 0")
 public class CounselPost  extends BaseEntity {
+
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "author_id")
+	private User user;
 
 	@Column(nullable = false, length = 255)
 	private String title; // 게시글 제목
@@ -242,5 +246,16 @@ public class CounselPost  extends BaseEntity {
 	public void addAttachment(org.springframework.samples.petclinic.counsel.table.CounselPostAttachment attachment) {
 		this.attachments.add(attachment);
 		attachment.setCounselPost(this);
+	}
+
+	public User getUser() {
+		return user;
+	}
+
+	public void setUser(User user) {
+		this.user = user;
+		if(user != null){
+			this.authorName = user.getNickname();
+		}
 	}
 }

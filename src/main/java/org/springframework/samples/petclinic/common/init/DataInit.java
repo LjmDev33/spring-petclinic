@@ -24,10 +24,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 
 /*
@@ -65,7 +62,7 @@ public class DataInit {
 										org.springframework.samples.petclinic.counsel.repository.CounselPostLikeRepository counselLikeRepo,
 										org.springframework.samples.petclinic.photo.repository.PhotoPostLikeRepository photoLikeRepo){
 		return args -> {
-			// 시스템 설정 초기화
+			// 1. 시스템 설정 초기화
 			if (systemConfigRepo.count() == 0) {
 				initSystemConfig(systemConfigRepo);
 			}
@@ -75,33 +72,41 @@ public class DataInit {
 				initAdminUser(userRepo, passwordEncoder);
 			}
 
-			// 커뮤니티 데이터 초기화
- 			if(communityPostRepo.count() == 0){
-				initCommunityPosts(communityPostRepo);
+			// [중요] DB에 저장된 실제 유저 리스트를 가져옵니다.
+			List<User> realUsers = userRepo.findAll();
+			if (realUsers.isEmpty()) {
+				System.err.println("❌ 유저 데이터가 없어 게시글 작성자를 할당할 수 없습니다.");
+				return;
 			}
 
-			// 커뮤니티 좋아요 초기 데이터
+			// 3. 커뮤니티 데이터 초기화 (실제 유저 매핑)
+			if(communityPostRepo.count() == 0){
+				initCommunityPosts(communityPostRepo, realUsers);
+			}
+
+			// 커뮤니티 좋아요 초기 데이터 (실제 유저 매핑)
 			if(communityLikeRepo.count() == 0 && communityPostRepo.count() > 0){
-				initCommunityLikes(communityPostRepo, communityLikeRepo, userRepo);
+				initCommunityLikes(communityPostRepo, communityLikeRepo, realUsers);
 			}
 
-			// 온라인상담 데이터 초기화
+			// 4. 온라인상담 데이터 초기화 (실제 유저 매핑)
 			long postCount = counselPostRepo.count();
 			long commentCount = counselCommentRepo.count();
 			if(postCount == 0){
-				initCounselDataRandom(counselPostRepo, counselCommentRepo, contentStorage);
+				initCounselDataRandom(counselPostRepo, counselCommentRepo, contentStorage, realUsers);
 			} else if (postCount > 0 && commentCount == 0) {
+				// 기존 데이터가 있다면 댓글만 생성 (실제 유저 매핑은 생략됨)
 				generateCommentsForExistingPosts(counselPostRepo, counselCommentRepo);
 			}
 
-			// 포토게시판 데이터 초기화
+			// 5. 포토게시판 데이터 초기화 (실제 유저 매핑)
 			if(photoPostRepo.count() == 0){
-				initPhotoData(photoPostRepo);
+				initPhotoData(photoPostRepo, realUsers);
 			}
 
-			// 포토게시판 좋아요 초기 데이터
+			// 포토게시판 좋아요 초기 데이터 (실제 유저 매핑)
 			if(photoLikeRepo.count() == 0 && photoPostRepo.count() > 0){
-				initPhotoLikes(photoPostRepo, photoLikeRepo, userRepo);
+				initPhotoLikes(photoPostRepo, photoLikeRepo, realUsers);
 			}
 
 			// FAQ 게시판 데이터 초기화
@@ -152,40 +157,49 @@ public class DataInit {
 	 * 관리자 계정 초기화
 	 */
 	private void initAdminUser(UserRepository repo, PasswordEncoder passwordEncoder) {
-		// 관리자 계정
+		List<User> users = new ArrayList<>();
+
+		// 1. 관리자
 		User admin = new User();
 		admin.setUsername("admin");
 		admin.setPassword(passwordEncoder.encode("admin1234"));
 		admin.setEmail("admin@petclinic.com");
 		admin.setName("관리자");
-		admin.setNickname("관리자"); // 닉네임 추가
+		admin.setNickname("관리자");
 		admin.setPhone("010-0000-0000");
 		admin.setEnabled(true);
+		admin.setRoles(Set.of("ROLE_ADMIN", "ROLE_USER"));
+		users.add(admin);
 
-		Set<String> adminRoles = new HashSet<>();
-		adminRoles.add("ROLE_ADMIN");
-		adminRoles.add("ROLE_USER");
-		admin.setRoles(adminRoles);
+		// 2. 일반 유저 1
+		User user1 = new User();
+		user1.setUsername("user");
+		user1.setPassword(passwordEncoder.encode("user1234"));
+		user1.setEmail("user@petclinic.com");
+		user1.setName("홍길동");
+		user1.setNickname("홍길동");
+		user1.setPhone("010-1111-1111");
+		user1.setEnabled(true);
+		user1.setRoles(Set.of("ROLE_USER"));
+		users.add(user1);
 
-		repo.save(admin);
+		// 3. 추가 유저 생성 (user2 ~ user5)
+		for (int i = 2; i <= 5; i++) {
+			User u = new User();
+			u.setUsername("user" + i);
+			u.setPassword(passwordEncoder.encode("user1234"));
+			u.setEmail("user" + i + "@petclinic.com");
+			u.setName("사용자" + i);
+			u.setNickname("닉네임" + i);
+			u.setPhone("010-1234-560" + i);
+			u.setEnabled(true);
+			u.setRoles(Set.of("ROLE_USER"));
+			users.add(u);
+		}
 
-		// 테스트 사용자 계정
-		User user = new User();
-		user.setUsername("user");
-		user.setPassword(passwordEncoder.encode("user1234"));
-		user.setEmail("user@petclinic.com");
-		user.setName("일반사용자");
-		user.setNickname("테스트유저"); // 닉네임 추가
-		user.setPhone("010-1111-1111");
-		user.setEnabled(true);
+		repo.saveAll(users);
+		System.out.println("✅ 사용자 계정 초기화 완료: 총 " + users.size() + "명 (admin, user, user2~user5)");
 
-		Set<String> userRoles = new HashSet<>();
-		userRoles.add("ROLE_USER");
-		user.setRoles(userRoles);
-
-		repo.save(user);
-
-		System.out.println("✅ 사용자 계정 초기화 완료:");
 		System.out.println("   - 관리자: admin / admin1234 (닉네임: 관리자)");
 		System.out.println("   - 일반사용자: user / user1234 (닉네임: 테스트유저)");
 	}
@@ -216,89 +230,71 @@ public class DataInit {
 	}
 
 	/**
-	 * 커뮤니티 게시판 초기 데이터 생성
+	 * 커뮤니티 게시판 초기 데이터 생성 (Real User 적용)
 	 * - 공지사항 3개 + 더미 데이터 103개 (총 106개)
 	 * - 더미 데이터는 다양한 주제로 생성
 	 */
-	private void initCommunityPosts(CommunityPostRepository communityPostRepo) {
+	private void initCommunityPosts(CommunityPostRepository communityPostRepo, List<User> realUsers) {
 		LocalDateTime now = LocalDateTime.now();
 		List<CommunityPost> allPosts = new ArrayList<>();
 
-	// 공지사항 3개
-	CommunityPost post1 = new CommunityPost();
-	post1.setTitle("📢 공지사항");
-	post1.setContent("이 커뮤니티는 개발자들이 자유롭게 의견을 나누는 공간입니다.");
-	post1.setAuthor("관리자");
-	post1.setCreatedAt(now.minusDays(100));
-	post1.setUpdatedAt(now.minusDays(100)); // updated_at 명시적 설정
-	post1.setViewCount(199);
-	post1.setLikeCount(0);
-	post1.setAttachFlag(false);
-	post1.setDelFlag(false);
-	post1.setDeletedBy(null);
-	allPosts.add(post1);
+		// 관리자 계정 찾기 (없으면 리스트 첫번째 사용)
+		User adminUser = realUsers.stream()
+			.filter(u -> u.getUsername().equals("admin"))
+			.findFirst()
+			.orElse(realUsers.get(0));
 
-	CommunityPost post2 = new CommunityPost();
-	post2.setTitle("💬 자유게시판 안내");
-	post2.setContent("잡담, 질문, 공유하고 싶은 자료를 자유롭게 올려주세요.");
-	post2.setAuthor("운영팀");
-	post2.setCreatedAt(now.minusDays(90));
-	post2.setUpdatedAt(now.minusDays(90)); // updated_at 명시적 설정
-	post2.setViewCount(240);
-	post2.setLikeCount(1);
-	post2.setAttachFlag(false);
-	post2.setDelFlag(false);
-	post2.setDeletedBy(null);
-	allPosts.add(post2);
+		// 공지사항 3개 (작성자: 실제 관리자)
+		createNotice(allPosts, now, "📢 공지사항", "이 커뮤니티는 개발자들이 자유롭게 의견을 나누는 공간입니다.", adminUser);
+		createNotice(allPosts, now, "💬 자유게시판 안내", "잡담, 질문, 공유하고 싶은 자료를 자유롭게 올려주세요.", adminUser);
+		createNotice(allPosts, now, "🎉 첫 이벤트 안내", "다음 달에 열리는 개발자 밋업 이벤트에 많은 참여 바랍니다!", adminUser);
 
-	CommunityPost post3 = new CommunityPost();
-	post3.setTitle("🎉 첫 이벤트 안내");
-	post3.setContent("다음 달에 열리는 개발자 밋업 이벤트에 많은 참여 바랍니다!");
-	post3.setAuthor("운영팀");
-	post3.setCreatedAt(now.minusDays(80));
-	post3.setUpdatedAt(now.minusDays(80)); // updated_at 명시적 설정
-	post3.setViewCount(278);
-	post3.setLikeCount(1);
-	post3.setAttachFlag(false);
-	post3.setDelFlag(false);
-	post3.setDeletedBy(null);
-	allPosts.add(post3);
-
-		// 더미 데이터 103개 (다양한 주제)
+		// 더미 데이터 103개 (작성자: 실제 유저 중 랜덤)
 		String[] categories = {"🔧 기술", "💡 팁", "🎓 학습", "🔥 핫이슈", "🎮 잡담"};
-		String[] topics = {
-			"프로젝트 구조 설계",
-			"코드 리뷰 요청",
-			"버그 수정 후기",
-			"성능 최적화 팁",
-			"라이브러리 추천",
-			"개발 환경 설정",
-			"테스트 코드 작성법",
-			"디자인 패턴 적용",
-			"알고리즘 풀이",
-			"커리어 고민"
-		};
+		String[] topics = {"프로젝트 구조 설계", "코드 리뷰 요청", "버그 수정 후기", "성능 최적화 팁", "라이브러리 추천"};
 
-	for (int i = 0; i < 103; i++) {
-		CommunityPost dummyPost = new CommunityPost();
-		String category = categories[i % categories.length];
-		String topic = topics[i % topics.length];
-		LocalDateTime postDate = now.minusDays(70 - (i % 70));
-		dummyPost.setTitle(category + " " + topic + " #" + (i + 1));
-		dummyPost.setContent("게시글 내용입니다. " + topic + "에 대한 내용을 공유합니다.");
-		dummyPost.setAuthor("회원" + (i % 20 + 1));
-		dummyPost.setCreatedAt(postDate);
-		dummyPost.setUpdatedAt(postDate); // updated_at 명시적 설정
-		dummyPost.setViewCount(ThreadLocalRandom.current().nextInt(1, 500));
-		dummyPost.setLikeCount(ThreadLocalRandom.current().nextInt(0, 50));
-		dummyPost.setAttachFlag(i % 10 == 0); // 10%는 첨부파일 있음
-		dummyPost.setDelFlag(false);
-		dummyPost.setDeletedBy(null);
-		allPosts.add(dummyPost);
-	}
+		for (int i = 0; i < 103; i++) {
+			// 랜덤 유저 선택
+			User randomUser = realUsers.get(ThreadLocalRandom.current().nextInt(realUsers.size()));
+
+			CommunityPost dummyPost = new CommunityPost();
+			String category = categories[i % categories.length];
+			String topic = topics[i % topics.length];
+			LocalDateTime postDate = now.minusDays(70 - (i % 70));
+
+			dummyPost.setTitle(category + " " + topic + " #" + (i + 1));
+			dummyPost.setContent("내용입니다.");
+
+			// [핵심] 실제 유저 할당
+			dummyPost.setUser(randomUser);
+			dummyPost.setAuthor(randomUser.getNickname()); // 닉네임 동기화
+
+			dummyPost.setCreatedAt(postDate);
+			dummyPost.setUpdatedAt(postDate);
+			dummyPost.setViewCount(ThreadLocalRandom.current().nextInt(1, 500));
+			dummyPost.setLikeCount(0);
+			dummyPost.setAttachFlag(i % 10 == 0);
+			dummyPost.setDelFlag(false);
+			allPosts.add(dummyPost);
+		}
 
 		communityPostRepo.saveAll(allPosts);
-		System.out.println("✅ 커뮤니티 게시판 초기 데이터 생성 완료: " + allPosts.size() + "개");
+		System.out.println("✅ 커뮤니티 게시판 생성 완료 (작성자 매핑됨)");
+	}
+
+	// 공지사항 생성 헬퍼
+	private void createNotice(List<CommunityPost> posts, LocalDateTime now, String title, String content, User admin) {
+		CommunityPost p = new CommunityPost();
+		p.setTitle(title);
+		p.setContent(content);
+		p.setUser(admin); // [핵심]
+		p.setAuthor(admin.getNickname());
+		p.setCreatedAt(now.minusDays(100));
+		p.setUpdatedAt(now.minusDays(100));
+		p.setViewCount(200);
+		p.setAttachFlag(false);
+		p.setDelFlag(false);
+		posts.add(p);
 	}
 
 	/**
@@ -311,32 +307,24 @@ public class DataInit {
 	 * - 공개글(secret=false)은 passwordHash=null, 비공개글(secret=true)은 BCrypt 해시 저장
 	 */
 	private void initCounselDataRandom(CounselPostRepository postRepo,
-										CounselCommentRepository commentRepo,
-										CounselContentStorage contentStorage) throws Exception {
+									   CounselCommentRepository commentRepo,
+									   CounselContentStorage contentStorage,
+									   List<User> realUsers) throws Exception {
 		List<CounselPost> posts = new ArrayList<>();
 		int total = 112;
 
-		// 1단계: 모든 게시글 생성 (상태 랜덤 분배)
 		for (int i = 0; i < total; i++) {
-			// WAIT, COMPLETE, END 중 랜덤 선택
 			CounselStatus status = randomStatus();
-
-			// 공개/비공개 랜덤
 			boolean secret = ThreadLocalRandom.current().nextBoolean();
+			LocalDate created = LocalDate.of(2025, ThreadLocalRandom.current().nextInt(6, 11), 1);
 
-			// 생성일 랜덤 (2025년 6~10월)
-			LocalDate created = LocalDate.of(
-				2025,
-				ThreadLocalRandom.current().nextInt(6, 11),
-				ThreadLocalRandom.current().nextInt(1, 28)
-			);
-			int views = ThreadLocalRandom.current().nextInt(0, 250);
+			// 랜덤 유저 선택
+			User randomUser = realUsers.get(ThreadLocalRandom.current().nextInt(realUsers.size()));
 
-			CounselPost p = buildPost("온라인 상담 #" + (i+1), "사용자" + (i+1), created, views, secret, status, contentStorage);
+			CounselPost p = buildPost("온라인 상담 #" + (i+1), randomUser, created, 0, secret, status, contentStorage);
 			posts.add(p);
 		}
 
-		// 게시글 먼저 저장 (ID 생성 필요)
 		postRepo.saveAll(posts);
 
 		// 2단계: COMPLETE(답변완료) 상태 게시글에 트리 구조 댓글 생성
@@ -439,21 +427,20 @@ public class DataInit {
 	}
 
 	/** 게시글 생성 헬퍼: 공개/비공개, 상태에 따른 필드/비밀번호 처리 포함 */
-	private CounselPost buildPost(String title, String author,
-								 LocalDate createdDate, int views,
-								 boolean secret, CounselStatus status,
-								 CounselContentStorage contentStorage) throws Exception {
+	private CounselPost buildPost(String title, User author, // String author -> User author 변경
+								  LocalDate createdDate, int views,
+								  boolean secret, CounselStatus status,
+								  CounselContentStorage contentStorage) throws Exception {
 		CounselPost p = new CounselPost();
 		p.setTitle(title);
-		p.setAuthorName(author);
-		p.setAuthorEmail(null);
+
+		// [핵심] 실제 유저 할당
+		p.setUser(author);
+		p.setAuthorName(author.getNickname()); // 이름 동기화
+		p.setAuthorEmail(author.getEmail());   // 이메일 동기화
+
 		p.setSecret(secret);
-		if (secret) {
-			// 비밀번호 해시 (테스트용: "1234")
-			p.setPasswordHash(BCrypt.hashpw("1234", BCrypt.gensalt()));
-		} else {
-			p.setPasswordHash(null);
-		}
+		p.setPasswordHash(secret ? BCrypt.hashpw("1234", BCrypt.gensalt()) : null);
 		p.setViewCount(views);
 		p.setStatus(status);
 		LocalDateTime created = createdDate.atStartOfDay();
@@ -492,7 +479,7 @@ public class DataInit {
 	 * - 썸네일은 /images/sample/ 경로의 샘플 이미지 사용
 	 * - 본문에는 Quill 에디터 포맷으로 이미지와 텍스트 포함
 	 */
-	private void initPhotoData(PhotoPostRepository photoPostRepo) {
+	private void initPhotoData(PhotoPostRepository photoPostRepo, List<User> realUsers) {
 		LocalDateTime now = LocalDateTime.now();
 		List<PhotoPost> posts = new ArrayList<>();
 
@@ -552,10 +539,13 @@ public class DataInit {
 			);
 			post.setContent(content);
 
-			post.setAuthor(authors[i % authors.length]);
+			// [핵심] 실제 유저 랜덤 할당
+			User randomUser = realUsers.get(ThreadLocalRandom.current().nextInt(realUsers.size()));
+			post.setUser(randomUser);
+			post.setAuthor(randomUser.getNickname());
 			post.setCreatedAt(now.minusDays(15 - i)); // 최신순으로 정렬되도록
 			post.setViewCount(ThreadLocalRandom.current().nextInt(10, 300));
-			post.setLikeCount(ThreadLocalRandom.current().nextInt(0, 50));
+			post.setLikeCount(0);
 			post.setDelFlag(false);
 
 			posts.add(post);
@@ -720,68 +710,49 @@ public class DataInit {
 	}
 
 	/**
-	 * 커뮤니티 게시판 좋아요 초기 데이터 생성
-	 * - 상위 20개 게시글에 대해 랜덤으로 좋아요 생성
-	 * - 관리자(admin) 계정이 좋아요를 누른 것으로 설정
-	 * - 좋아요 개수는 0~10개 사이로 랜덤 생성
+	 * [리팩토링] 커뮤니티 좋아요 생성 (실제 유저만 사용)
+	 * - 중복 방지를 위해 리스트를 Shuffle해서 앞에서부터 뽑아씀
 	 */
 	private void initCommunityLikes(CommunityPostRepository postRepo,
 									org.springframework.samples.petclinic.community.repository.CommunityPostLikeRepository likeRepo,
-									UserRepository userRepo) {
+									List<User> realUsers) { // 인자 변경: UserRepo -> List<User>
 		try {
-			// 모든 게시글 조회
 			List<CommunityPost> allPosts = postRepo.findAll();
-			if (allPosts.isEmpty()) {
-				System.out.println("⚠️ 커뮤니티 게시글이 없어 좋아요 데이터를 생성하지 않습니다.");
-				return;
-			}
+			if (allPosts.isEmpty()) return;
 
-			// 상위 20개 게시글만 선택
-			List<CommunityPost> posts = allPosts.size() > 20
-				? allPosts.subList(0, 20)
-				: allPosts;
-
-			// 관리자 계정 조회
-			User admin = userRepo.findByUsername("admin")
-				.orElseGet(() -> {
-					// 관리자가 없으면 임시로 "admin" username 사용
-					System.out.println("⚠️ 관리자 계정을 찾을 수 없어 'admin' username을 사용합니다.");
-					return null;
-				});
-
-			String likeUsername = admin != null ? admin.getUsername() : "admin";
-
-			List<org.springframework.samples.petclinic.community.table.CommunityPostLike> likes = new ArrayList<>();
+			List<CommunityPost> posts = allPosts.size() > 20 ? allPosts.subList(0, 20) : allPosts;
 			int totalLikes = 0;
-			int skippedDuplicates = 0;
 
 			for (CommunityPost post : posts) {
-				// 각 게시글마다 0~10개의 좋아요 랜덤 생성
-				int likeCount = ThreadLocalRandom.current().nextInt(0, 11);
+				// 1. 좋아요 개수 랜덤 (0 ~ 유저 수)
+				int likeCount = ThreadLocalRandom.current().nextInt(0, realUsers.size() + 1);
+				if (likeCount == 0) continue;
 
-				for (int i = 0; i < likeCount; i++) {
-					// 사용자는 "admin", "user1", "user2", ... 형식으로 생성
-					String username = i == 0 ? likeUsername : "user" + i;
+				// 2. 유저 리스트를 섞어서 중복 없이 앞에서부터 likeCount만큼 뽑음
+				List<User> shuffledUsers = new ArrayList<>(realUsers);
+				Collections.shuffle(shuffledUsers);
+				List<User> likers = shuffledUsers.subList(0, likeCount);
 
-					// 중복 체크: 이미 존재하는 좋아요는 건너뛰기 (UNIQUE 제약조건 위반 방지)
-					if (likeRepo.existsByPostIdAndUsername(post.getId(), username)) {
-						skippedDuplicates++;
-						continue;
+				// 3. 좋아요 생성
+				List<org.springframework.samples.petclinic.community.table.CommunityPostLike> likes = new ArrayList<>();
+				for (User liker : likers) {
+					// 이미 좋아요가 있는지 체크 (혹시 모를 중복 방지)
+					if (!likeRepo.existsByPostIdAndUsername(post.getId(), liker.getUsername())) {
+						org.springframework.samples.petclinic.community.table.CommunityPostLike like =
+							new org.springframework.samples.petclinic.community.table.CommunityPostLike(post, liker.getUsername());
+						likes.add(like);
+						totalLikes++;
 					}
-
-					org.springframework.samples.petclinic.community.table.CommunityPostLike like =
-						new org.springframework.samples.petclinic.community.table.CommunityPostLike(post, username);
-					likes.add(like);
-					totalLikes++;
+				}
+				if (!likes.isEmpty()) {
+					likeRepo.saveAll(likes);
+					// 게시글 likeCount 업데이트
+					post.setLikeCount(post.getLikeCount() + likes.size());
 				}
 			}
-
-			if (!likes.isEmpty()) {
-				likeRepo.saveAll(likes);
-			}
-			System.out.println("✅ 커뮤니티 좋아요 초기 데이터 생성 완료: " + totalLikes + "개 생성 (중복 " + skippedDuplicates + "개 건너뜀)");
+			postRepo.saveAll(posts); // 카운트 반영
+			System.out.println("✅ 커뮤니티 좋아요 생성 완료: " + totalLikes + "개");
 		} catch (Exception e) {
-			System.err.println("❌ 커뮤니티 좋아요 초기 데이터 생성 실패: " + e.getMessage());
 			e.printStackTrace();
 		}
 	}
@@ -794,56 +765,38 @@ public class DataInit {
 	 */
 	private void initPhotoLikes(PhotoPostRepository postRepo,
 								org.springframework.samples.petclinic.photo.repository.PhotoPostLikeRepository likeRepo,
-								UserRepository userRepo) {
+								List<User> realUsers) { // 인자 변경
 		try {
-			// 모든 포토게시글 조회
 			List<PhotoPost> allPosts = postRepo.findAll();
-			if (allPosts.isEmpty()) {
-				System.out.println("⚠️ 포토게시글이 없어 좋아요 데이터를 생성하지 않습니다.");
-				return;
-			}
+			if (allPosts.isEmpty()) return;
 
-			// 관리자 계정 조회
-			User admin = userRepo.findByUsername("admin")
-				.orElseGet(() -> {
-					// 관리자가 없으면 임시로 "admin" username 사용
-					System.out.println("⚠️ 관리자 계정을 찾을 수 없어 'admin' username을 사용합니다.");
-					return null;
-				});
-
-			String likeUsername = admin != null ? admin.getUsername() : "admin";
-
-			List<org.springframework.samples.petclinic.photo.table.PhotoPostLike> likes = new ArrayList<>();
 			int totalLikes = 0;
-			int skippedDuplicates = 0;
-
 			for (PhotoPost post : allPosts) {
-				// 각 게시글마다 5~20개의 좋아요 랜덤 생성 (포토게시판은 인기가 많음)
-				int likeCount = ThreadLocalRandom.current().nextInt(5, 21);
+				// 포토는 인기가 많으므로 최소 1개 ~ 최대 유저수만큼
+				int maxLikes = realUsers.size();
+				int likeCount = ThreadLocalRandom.current().nextInt(1, maxLikes + 1);
 
-				for (int i = 0; i < likeCount; i++) {
-					// 사용자는 "admin", "user1", "user2", ... 형식으로 생성
-					String username = i == 0 ? likeUsername : "user" + i;
+				List<User> shuffledUsers = new ArrayList<>(realUsers);
+				Collections.shuffle(shuffledUsers);
+				List<User> likers = shuffledUsers.subList(0, likeCount);
 
-					// 중복 체크: 이미 존재하는 좋아요는 건너뛰기 (UNIQUE 제약조건 위반 방지)
-					if (likeRepo.existsByPostIdAndUsername(post.getId(), username)) {
-						skippedDuplicates++;
-						continue;
+				List<org.springframework.samples.petclinic.photo.table.PhotoPostLike> likes = new ArrayList<>();
+				for (User liker : likers) {
+					if (!likeRepo.existsByPostIdAndUsername(post.getId(), liker.getUsername())) {
+						org.springframework.samples.petclinic.photo.table.PhotoPostLike like =
+							new org.springframework.samples.petclinic.photo.table.PhotoPostLike(post, liker.getUsername());
+						likes.add(like);
+						totalLikes++;
 					}
-
-					org.springframework.samples.petclinic.photo.table.PhotoPostLike like =
-						new org.springframework.samples.petclinic.photo.table.PhotoPostLike(post, username);
-					likes.add(like);
-					totalLikes++;
+				}
+				if (!likes.isEmpty()) {
+					likeRepo.saveAll(likes);
+					post.setLikeCount(post.getLikeCount() + likes.size());
 				}
 			}
-
-			if (!likes.isEmpty()) {
-				likeRepo.saveAll(likes);
-			}
-			System.out.println("✅ 포토게시판 좋아요 초기 데이터 생성 완료: " + totalLikes + "개 생성 (중복 " + skippedDuplicates + "개 건너뜀)");
+			postRepo.saveAll(allPosts);
+			System.out.println("✅ 포토게시판 좋아요 생성 완료: " + totalLikes + "개");
 		} catch (Exception e) {
-			System.err.println("❌ 포토게시판 좋아요 초기 데이터 생성 실패: " + e.getMessage());
 			e.printStackTrace();
 		}
 	}
