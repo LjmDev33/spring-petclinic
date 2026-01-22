@@ -1,5 +1,9 @@
 package org.springframework.samples.petclinic.counsel.controller;
 
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import org.jsoup.Jsoup;
 import org.jsoup.safety.Safelist;
 import org.slf4j.Logger;
@@ -12,15 +16,22 @@ import org.springframework.samples.petclinic.counsel.dto.CounselCommentDto;
 import org.springframework.samples.petclinic.counsel.dto.CounselPostDto;
 import org.springframework.samples.petclinic.counsel.dto.CounselPostWriteDto;
 import org.springframework.samples.petclinic.counsel.service.CounselService;
+import org.springframework.samples.petclinic.user.repository.UserRepository;
+import org.springframework.samples.petclinic.user.table.User;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.multipart.MultipartFile;
@@ -50,10 +61,9 @@ public class CounselController {
 
 	private static final Logger log = LoggerFactory.getLogger(CounselController.class);
 	private final CounselService counselService;
-	private final org.springframework.samples.petclinic.user.repository.UserRepository userRepository;
+	private final UserRepository userRepository;
 
-	public CounselController(CounselService counselService,
-							 org.springframework.samples.petclinic.user.repository.UserRepository userRepository) {
+	public CounselController(CounselService counselService, UserRepository userRepository) {
 		this.counselService = counselService;
 		this.userRepository = userRepository;
 	}
@@ -123,10 +133,8 @@ public class CounselController {
 	 */
 	@GetMapping("/detail/{id}")
 	public String detail(@PathVariable Long id, Model model,
-				   @SessionAttribute(value = "counselUnlocked", required = false) java.util.Set<Long> unlocked,
-				   jakarta.servlet.http.HttpSession session,
-				   jakarta.servlet.http.HttpServletRequest request,
-				   jakarta.servlet.http.HttpServletResponse response) {
+				   @SessionAttribute(value = "counselUnlocked", required = false) Set<Long> unlocked,
+				   HttpSession session, HttpServletRequest request, HttpServletResponse response) {
 		// GlobalExceptionHandler 적용: try-catch 제거
 		CounselPostDto post = counselService.getDetail(id);
 
@@ -138,9 +146,9 @@ public class CounselController {
 		// 조회수 중복 방지: 세션 + IP + 쿠키(24시간) 기반
 		// 1. 세션 기반 중복 방지
 		@SuppressWarnings("unchecked")
-		java.util.Set<Long> viewedPosts = (java.util.Set<Long>) session.getAttribute("viewedCounselPosts");
+		Set<Long> viewedPosts = (Set<Long>) session.getAttribute("viewedCounselPosts");
 		if (viewedPosts == null) {
-			viewedPosts = new java.util.HashSet<>();
+			viewedPosts = new HashSet<>();
 		}
 
 		// 2. IP 기반 중복 방지 (세션과 함께 사용)
@@ -148,9 +156,9 @@ public class CounselController {
 		String viewKey = id + "_" + clientIp;
 
 		@SuppressWarnings("unchecked")
-		java.util.Set<String> viewedByIp = (java.util.Set<String>) session.getAttribute("viewedCounselPostsByIp");
+		Set<String> viewedByIp = (Set<String>) session.getAttribute("viewedCounselPostsByIp");
 		if (viewedByIp == null) {
-			viewedByIp = new java.util.HashSet<>();
+			viewedByIp = new HashSet<>();
 		}
 
 		// 3. 쿠키 기반 중복 방지 (24시간 유지, 세션 만료 후에도 유효)
@@ -176,7 +184,7 @@ public class CounselController {
 			session.setAttribute("viewedCounselPostsByIp", viewedByIp);
 
 			// 쿠키 생성 (24시간 유지)
-			jakarta.servlet.http.Cookie viewCookie = new jakarta.servlet.http.Cookie(cookieName, "viewed");
+			Cookie viewCookie = new jakarta.servlet.http.Cookie(cookieName, "viewed");
 			viewCookie.setMaxAge(24 * 60 * 60); // 24시간 (초 단위)
 			viewCookie.setPath("/"); // 전체 경로에서 유효
 			viewCookie.setHttpOnly(true); // XSS 방지
@@ -188,18 +196,16 @@ public class CounselController {
 				id, viewedPosts.contains(id), viewedByIp.contains(viewKey), viewedByCookie);
 		}
 
-		java.util.List<CounselCommentDto> comments = counselService.getCommentsForPost(id);
+		List<CounselCommentDto> comments = counselService.getCommentsForPost(id);
 
 		// 좋아요 정보 추가
 		long likeCount = counselService.getLikeCount(id);
-		org.springframework.security.core.Authentication authentication =
-			org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 		boolean isLiked = counselService.isLikedByUser(id, authentication);
-		java.util.List<String> likedUsernames = counselService.getLikedUsernames(id);
+		List<String> likedUsernames = counselService.getLikedUsernames(id);
 
 		// 좋아요 누른 사용자 정보 조회 (username → User 객체)
-		java.util.List<org.springframework.samples.petclinic.user.table.User> likedUsers =
-			likedUsernames.isEmpty() ? java.util.Collections.emptyList() : userRepository.findByUsernameIn(likedUsernames);
+		List<User> likedUsers = likedUsernames.isEmpty() ? Collections.emptyList() : userRepository.findByUsernameIn(likedUsernames);
 
 		model.addAttribute("post", post);
 		model.addAttribute("comments", comments);
@@ -232,12 +238,11 @@ public class CounselController {
 	 * - 비밀번호가 틀리면 비밀번호 입력 화면으로 다시 리다이렉트하고 실패 플래그를 전달한다.
 	 */
 	@PostMapping("/detail/{id}/unlock")
-	public String unlock(@PathVariable Long id, @RequestParam("password") String password,
-				   jakarta.servlet.http.HttpSession session) {
+	public String unlock(@PathVariable Long id, @RequestParam("password") String password, HttpSession session) {
 		if (counselService.verifyPassword(id, password)) {
 			@SuppressWarnings("unchecked")
-			java.util.Set<Long> set = (java.util.Set<Long>) session.getAttribute("counselUnlocked");
-			if (set == null) { set = new java.util.HashSet<>(); }
+			Set<Long> set = (Set<Long>) session.getAttribute("counselUnlocked");
+			if (set == null) { set = new HashSet<>(); }
 			set.add(id);
 			session.setAttribute("counselUnlocked", set);
 			return "redirect:/counsel/detail/" + id;
@@ -379,7 +384,7 @@ public class CounselController {
 	 */
 	@GetMapping("/edit/{id}")
 	public String editForm(@PathVariable Long id, Model model,
-					 @SessionAttribute(value = "counselUnlocked", required = false) java.util.Set<Long> unlocked) throws IOException {
+					 @SessionAttribute(value = "counselUnlocked", required = false) Set<Long> unlocked) throws IOException {
 		CounselPostDto post = counselService.getDetail(id);
 		boolean unlockedOk = unlocked != null && unlocked.contains(id);
 		if (post.isSecret() && !unlockedOk) {
@@ -398,8 +403,7 @@ public class CounselController {
 	@PostMapping("/edit/{id}")
 	public String updatePost(@PathVariable Long id, @ModelAttribute CounselPostWriteDto form,
 					   @RequestParam(value = "password", required = false) String password,
-					   org.springframework.security.core.Authentication authentication,
-					   RedirectAttributes redirectAttributes) {
+					   Authentication authentication, RedirectAttributes redirectAttributes) {
 		try {
 			boolean updated = counselService.updatePost(id, form, password, authentication);
 			if (updated) {
@@ -423,8 +427,7 @@ public class CounselController {
 	@PostMapping("/delete/{id}")
 	public String deletePost(@PathVariable Long id,
 					   @RequestParam(value = "password", required = false) String password,
-					   org.springframework.security.core.Authentication authentication,
-					   RedirectAttributes redirectAttributes) {
+					   Authentication authentication, RedirectAttributes redirectAttributes) {
 		try {
 			boolean deleted = counselService.deletePost(id, password, authentication);
 			if (deleted) {
@@ -448,8 +451,7 @@ public class CounselController {
 	@PostMapping("/detail/{id}/status")
 	public String updateStatus(@PathVariable Long id,
 							   @RequestParam("status") String status,
-							   org.springframework.security.core.Authentication authentication,
-							   RedirectAttributes redirectAttributes) {
+							   Authentication authentication, RedirectAttributes redirectAttributes) {
 		try {
 			boolean updated = counselService.updatePostStatus(id, status, authentication);
 			if (updated) {
@@ -480,8 +482,7 @@ public class CounselController {
 	 */
 	@PostMapping("/detail/{id}/like")
 	@ResponseBody
-	public ResponseEntity<Map<String, Object>> toggleLike(@PathVariable Long id,
-														   org.springframework.security.core.Authentication authentication) {
+	public ResponseEntity<Map<String, Object>> toggleLike(@PathVariable Long id, Authentication authentication) {
 		Map<String, Object> response = new HashMap<>();
 
 		try {

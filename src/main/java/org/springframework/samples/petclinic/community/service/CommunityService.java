@@ -2,6 +2,10 @@ package org.springframework.samples.petclinic.community.service;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.samples.petclinic.community.repository.CommunityPostLikeRepository;
+import org.springframework.samples.petclinic.community.table.CommunityPostLike;
+import org.springframework.security.core.Authentication;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.data.domain.Page;
@@ -19,6 +23,7 @@ import org.springframework.samples.petclinic.community.repository.CommunityPostA
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -92,13 +97,13 @@ public class CommunityService {
 
 	private final CommunityPostRepository repository;
 	private final CommunityPostRepository communityPostRepository;
-	private final org.springframework.samples.petclinic.community.repository.CommunityPostLikeRepository likeRepository;
+	private final CommunityPostLikeRepository likeRepository;
 	private final AttachmentRepository attachmentRepository;
 	private final CommunityPostAttachmentRepository postAttachmentRepository;
 
 	public CommunityService(CommunityPostRepository repository,
 							CommunityPostRepository communityPostRepository,
-							org.springframework.samples.petclinic.community.repository.CommunityPostLikeRepository likeRepository,
+							CommunityPostLikeRepository likeRepository,
 							AttachmentRepository attachmentRepository,
 							CommunityPostAttachmentRepository postAttachmentRepository) {
 		this.repository = repository;
@@ -298,7 +303,7 @@ public class CommunityService {
 		isolation = Isolation.READ_COMMITTED,
 		rollbackFor = Exception.class
 	)
-	public boolean toggleLike(Long postId, org.springframework.security.core.Authentication authentication) {
+	public boolean toggleLike(Long postId, Authentication authentication) {
 		// === 1. 입력 검증 (Consistency) ===
 		if (authentication == null) {
 			log.warn("Unauthorized like attempt: postId={}, authentication=null", postId);
@@ -321,12 +326,11 @@ public class CommunityService {
 
 		try {
 			// === 3. 좋아요 중복 확인 (Isolation) ===
-			Optional<org.springframework.samples.petclinic.community.table.CommunityPostLike> existingLike =
-				likeRepository.findByPostIdAndUsername(postId, username);
+			Optional<CommunityPostLike> existingLike = likeRepository.findByPostIdAndUsername(postId, username);
 
 			if (existingLike.isPresent()) {
 				// === 4-1. 좋아요 취소 (Atomicity) ===
-				org.springframework.samples.petclinic.community.table.CommunityPostLike like = existingLike.get();
+				CommunityPostLike like = existingLike.get();
 				likeRepository.delete(like);
 				likeRepository.flush();
 
@@ -337,11 +341,9 @@ public class CommunityService {
 
 			} else {
 				// === 4-2. 좋아요 추가 (Atomicity) ===
-				org.springframework.samples.petclinic.community.table.CommunityPostLike newLike =
-					new org.springframework.samples.petclinic.community.table.CommunityPostLike(post, username);
+				CommunityPostLike newLike = new CommunityPostLike(post, username);
 
-				org.springframework.samples.petclinic.community.table.CommunityPostLike savedLike =
-					likeRepository.save(newLike);
+				CommunityPostLike savedLike = likeRepository.save(newLike);
 				likeRepository.flush();
 
 				log.info("✅ [ACID-Atomicity] Like added successfully: postId={}, username={}, likeId={}",
@@ -350,7 +352,7 @@ public class CommunityService {
 				return true;
 			}
 
-		} catch (org.springframework.dao.DataIntegrityViolationException e) {
+		} catch (DataIntegrityViolationException e) {
 			// === 5. 동시성 제어 - UNIQUE 제약 위반 (Consistency) ===
 			log.warn("⚠️ [ACID-Consistency] Duplicate like attempt prevented: postId={}, username={}",
 				postId, username);
@@ -415,7 +417,7 @@ public class CommunityService {
 		readOnly = true,
 		isolation = Isolation.READ_COMMITTED
 	)
-	public boolean isLikedByUser(Long postId, org.springframework.security.core.Authentication authentication) {
+	public boolean isLikedByUser(Long postId, Authentication authentication) {
 		if (authentication == null) {
 			return false;
 		}
@@ -457,14 +459,13 @@ public class CommunityService {
 		readOnly = true,
 		isolation = Isolation.READ_COMMITTED
 	)
-	public java.util.List<String> getLikedUsernames(Long postId) {
+	public List<String> getLikedUsernames(Long postId) {
 		try {
-			java.util.List<org.springframework.samples.petclinic.community.table.CommunityPostLike> likes =
-				likeRepository.findAllByPostIdOrderByCreatedAtAsc(postId);
+			List<CommunityPostLike> likes = likeRepository.findAllByPostIdOrderByCreatedAtAsc(postId);
 
-			java.util.List<String> usernames = likes.stream()
-				.map(org.springframework.samples.petclinic.community.table.CommunityPostLike::getUsername)
-				.collect(java.util.stream.Collectors.toList());
+			List<String> usernames = likes.stream()
+				.map(CommunityPostLike::getUsername)
+				.collect(Collectors.toList());
 
 			log.debug("✅ [Community] Liked usernames retrieved: postId={}, count={}", postId, usernames.size());
 			return usernames;
@@ -472,7 +473,7 @@ public class CommunityService {
 		} catch (Exception e) {
 			log.error("❌ [Community] Failed to get liked usernames: postId={}, error={}",
 				postId, e.getMessage(), e);
-			return java.util.Collections.emptyList();
+			return Collections.emptyList();
 		}
 	}
 }

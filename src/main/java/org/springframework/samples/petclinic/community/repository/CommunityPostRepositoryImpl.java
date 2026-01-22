@@ -78,12 +78,14 @@ package org.springframework.samples.petclinic.community.repository;
 
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.jpa.impl.JPAQueryFactory;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.samples.petclinic.common.dto.PageResponse;
 import org.springframework.samples.petclinic.community.table.CommunityPost;
 import org.springframework.samples.petclinic.community.table.QCommunityPost;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -171,8 +173,8 @@ public class CommunityPostRepositoryImpl implements CommunityPostRepositoryCusto
 	public PageResponse<CommunityPost> advancedSearch(
 		String type,
 		String keyword,
-		java.time.LocalDateTime startDate,
-		java.time.LocalDateTime endDate,
+		LocalDateTime startDate,
+		LocalDateTime endDate,
 		Pageable pageable) {
 
 		QCommunityPost post = QCommunityPost.communityPost;
@@ -205,7 +207,7 @@ public class CommunityPostRepositoryImpl implements CommunityPostRepositoryCusto
 		}
 		if (endDate != null) {
 			// endDate는 해당 날짜의 23:59:59까지 포함
-			java.time.LocalDateTime endOfDay = endDate.plusDays(1).withHour(0).withMinute(0).withSecond(0).withNano(0);
+			LocalDateTime endOfDay = endDate.plusDays(1).withHour(0).withMinute(0).withSecond(0).withNano(0);
 			builder.and(post.createdAt.lt(endOfDay)); // Less Than (<)
 		}
 
@@ -225,7 +227,7 @@ public class CommunityPostRepositoryImpl implements CommunityPostRepositoryCusto
 			.where(builder)
 			.fetchOne();
 
-		org.springframework.data.domain.Page<CommunityPost> page = new PageImpl<>(content, pageable, total == null ? 0L : total);
+		Page<CommunityPost> page = new PageImpl<>(content, pageable, total == null ? 0L : total);
 		return new PageResponse<>(page);
 	}
 }

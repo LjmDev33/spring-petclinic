@@ -11,6 +11,16 @@ import org.springframework.samples.petclinic.photo.service.PhotoService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.multipart.MultipartFile;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Project : spring-petclinic
@@ -61,8 +71,7 @@ public class PhotoController {
 
 		// 좋아요 정보 추가
 		long likeCount = photoService.getLikeCount(id);
-		org.springframework.security.core.Authentication authentication =
-			org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 		boolean isLiked = photoService.isLikedByUser(id, authentication);
 
 		model.addAttribute("post", post);
@@ -141,24 +150,24 @@ public class PhotoController {
 	 */
 	@PostMapping("/upload-temp")
 	@ResponseBody
-	public org.springframework.http.ResponseEntity<?> uploadTemp(@RequestParam("files") org.springframework.web.multipart.MultipartFile[] files) {
+	public ResponseEntity<?> uploadTemp(@RequestParam("files") MultipartFile[] files) {
 		try {
-			java.util.List<java.util.Map<String, String>> uploadedFiles = new java.util.ArrayList<>();
-			java.nio.file.Path tempDir = java.nio.file.Paths.get("uploads/temp");
-			if (!java.nio.file.Files.exists(tempDir)) {
-				java.nio.file.Files.createDirectories(tempDir);
+			List<Map<String, String>> uploadedFiles = new java.util.ArrayList<>();
+			Path tempDir = Paths.get("uploads/temp");
+			if (!Files.exists(tempDir)) {
+				Files.createDirectories(tempDir);
 			}
 
-			for (org.springframework.web.multipart.MultipartFile file : files) {
+			for (MultipartFile file : files) {
 				String originalFilename = file.getOriginalFilename();
 				String extension = originalFilename != null && originalFilename.contains(".")
 					? originalFilename.substring(originalFilename.lastIndexOf("."))
 					: "";
 				String storedFilename = java.util.UUID.randomUUID().toString() + extension;
-				java.nio.file.Path filePath = tempDir.resolve(storedFilename);
+				Path filePath = tempDir.resolve(storedFilename);
 				file.transferTo(filePath.toFile());
 
-				java.util.Map<String, String> fileInfo = new java.util.HashMap<>();
+				Map<String, String> fileInfo = new HashMap<>();
 				fileInfo.put("path", "uploads/temp/" + storedFilename);
 				fileInfo.put("originalName", originalFilename);
 				uploadedFiles.add(fileInfo);
@@ -166,10 +175,10 @@ public class PhotoController {
 				log.info("✅ Photo temp file uploaded: {}", storedFilename);
 			}
 
-			return org.springframework.http.ResponseEntity.ok(uploadedFiles);
+			return ResponseEntity.ok(uploadedFiles);
 		} catch (Exception e) {
 			log.error("❌ Photo temp upload failed: {}", e.getMessage(), e);
-			return org.springframework.http.ResponseEntity.badRequest()
+			return ResponseEntity.badRequest()
 				.body(java.util.Map.of("error", "파일 업로드 중 오류가 발생했습니다: " + e.getMessage()));
 		}
 	}
@@ -179,9 +188,8 @@ public class PhotoController {
 	 */
 	@PostMapping("/detail/{id}/like")
 	@ResponseBody
-	public org.springframework.http.ResponseEntity<java.util.Map<String, Object>> toggleLike(
-		@PathVariable Long id,
-		org.springframework.security.core.Authentication authentication) {
+	public ResponseEntity<java.util.Map<String, Object>> toggleLike(
+		@PathVariable Long id, Authentication authentication) {
 
 		java.util.Map<String, Object> response = new java.util.HashMap<>();
 
@@ -200,18 +208,18 @@ public class PhotoController {
 			log.info("Photo Like toggled: postId={}, username={}, liked={}",
 				id, authentication != null ? authentication.getName() : "anonymous", liked);
 
-			return org.springframework.http.ResponseEntity.ok(response);
+			return ResponseEntity.ok(response);
 		} catch (IllegalStateException e) {
 			// 비로그인 사용자
 			log.warn("Unauthorized photo like attempt: postId={}", id);
 			response.put("success", false);
 			response.put("error", e.getMessage());
-			return org.springframework.http.ResponseEntity.status(401).body(response);
+			return ResponseEntity.status(401).body(response);
 		} catch (Exception e) {
 			log.error("Error toggling photo like: postId={}, error={}", id, e.getMessage(), e);
 			response.put("success", false);
 			response.put("error", "좋아요 처리 중 오류가 발생했습니다.");
-			return org.springframework.http.ResponseEntity.badRequest().body(response);
+			return ResponseEntity.badRequest().body(response);
 		}
 	}
 }

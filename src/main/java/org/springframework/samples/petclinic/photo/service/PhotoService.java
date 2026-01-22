@@ -1,5 +1,9 @@
 package org.springframework.samples.petclinic.photo.service;
 
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.samples.petclinic.photo.repository.PhotoPostLikeRepository;
+import org.springframework.samples.petclinic.photo.table.PhotoPostLike;
+import org.springframework.security.core.Authentication;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.annotation.Isolation;
 import org.slf4j.Logger;
@@ -99,12 +103,12 @@ public class PhotoService {
 	private static final Logger log = LoggerFactory.getLogger(PhotoService.class);
 
 	private final PhotoPostRepository repository;
-	private final org.springframework.samples.petclinic.photo.repository.PhotoPostLikeRepository likeRepository;
+	private final PhotoPostLikeRepository likeRepository;
 	private final AttachmentRepository attachmentRepository;
 	private final PhotoPostAttachmentRepository photoPostAttachmentRepository;
 
 	public PhotoService(PhotoPostRepository repository,
-						org.springframework.samples.petclinic.photo.repository.PhotoPostLikeRepository likeRepository,
+						PhotoPostLikeRepository likeRepository,
 						AttachmentRepository attachmentRepository,
 						PhotoPostAttachmentRepository photoPostAttachmentRepository) {
 		this.repository = repository;
@@ -312,7 +316,7 @@ public class PhotoService {
 		isolation = Isolation.READ_COMMITTED,
 		rollbackFor = Exception.class
 	)
-	public boolean toggleLike(Long postId, org.springframework.security.core.Authentication authentication) {
+	public boolean toggleLike(Long postId, Authentication authentication) {
 		// === 1. 입력 검증 (Consistency) ===
 		if (authentication == null) {
 			log.warn("Unauthorized photo like attempt: postId={}, authentication=null", postId);
@@ -335,12 +339,11 @@ public class PhotoService {
 
 		try {
 			// === 3. 좋아요 중복 확인 (Isolation) ===
-			java.util.Optional<org.springframework.samples.petclinic.photo.table.PhotoPostLike> existingLike =
-				likeRepository.findByPostIdAndUsername(postId, username);
+			java.util.Optional<PhotoPostLike> existingLike = likeRepository.findByPostIdAndUsername(postId, username);
 
 			if (existingLike.isPresent()) {
 				// === 4-1. 좋아요 취소 (Atomicity) ===
-				org.springframework.samples.petclinic.photo.table.PhotoPostLike like = existingLike.get();
+				PhotoPostLike like = existingLike.get();
 				likeRepository.delete(like);
 				likeRepository.flush();
 
@@ -351,11 +354,9 @@ public class PhotoService {
 
 			} else {
 				// === 4-2. 좋아요 추가 (Atomicity) ===
-				org.springframework.samples.petclinic.photo.table.PhotoPostLike newLike =
-					new org.springframework.samples.petclinic.photo.table.PhotoPostLike(post, username);
+				PhotoPostLike newLike = new PhotoPostLike(post, username);
 
-				org.springframework.samples.petclinic.photo.table.PhotoPostLike savedLike =
-					likeRepository.save(newLike);
+				PhotoPostLike savedLike = likeRepository.save(newLike);
 				likeRepository.flush();
 
 				log.info("✅ [ACID-Atomicity] Photo like added successfully: postId={}, username={}, likeId={}",
@@ -364,7 +365,7 @@ public class PhotoService {
 				return true;
 			}
 
-		} catch (org.springframework.dao.DataIntegrityViolationException e) {
+		} catch (DataIntegrityViolationException e) {
 			// === 5. 동시성 제어 - UNIQUE 제약 위반 (Consistency) ===
 			log.warn("⚠️ [ACID-Consistency] Duplicate photo like attempt prevented: postId={}, username={}",
 				postId, username);
@@ -429,7 +430,7 @@ public class PhotoService {
 		readOnly = true,
 		isolation = Isolation.READ_COMMITTED
 	)
-	public boolean isLikedByUser(Long postId, org.springframework.security.core.Authentication authentication) {
+	public boolean isLikedByUser(Long postId, Authentication authentication) {
 		if (authentication == null) {
 			return false;
 		}

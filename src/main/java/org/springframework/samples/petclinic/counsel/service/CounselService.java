@@ -1,5 +1,13 @@
 package org.springframework.samples.petclinic.counsel.service;
 
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.samples.petclinic.common.exception.EntityNotFoundException;
+import org.springframework.samples.petclinic.common.exception.ErrorCode;
+import org.springframework.samples.petclinic.common.exception.FileException;
+import org.springframework.samples.petclinic.counsel.CounselStatus;
+import org.springframework.samples.petclinic.counsel.repository.CounselPostLikeRepository;
+import org.springframework.samples.petclinic.user.repository.UserRepository;
+import org.springframework.samples.petclinic.user.table.User;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.data.domain.Page;
@@ -17,7 +25,9 @@ import org.springframework.stereotype.Service;
 
 
 import java.io.IOException;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.*;
 import java.util.stream.Collectors;
 import org.springframework.samples.petclinic.counsel.dto.CounselCommentDto;
@@ -113,15 +123,15 @@ public class CounselService {
 	private final FileStorageService fileStorageService;
 	private final AttachmentRepository attachmentRepository;
 	private final CounselPostAttachmentRepository postAttachmentRepository;
-	private final org.springframework.samples.petclinic.counsel.repository.CounselPostLikeRepository likeRepository;
-	private final org.springframework.samples.petclinic.user.repository.UserRepository userRepository;
+	private final CounselPostLikeRepository likeRepository;
+	private final UserRepository userRepository;
 
 	public CounselService(CounselPostRepository repository, CounselContentStorage contentStorage,
 						  CounselCommentRepository commentRepository, CounselPostMapper postMapper,
 						  FileStorageService fileStorageService, AttachmentRepository attachmentRepository,
 						  CounselPostAttachmentRepository postAttachmentRepository,
-						  org.springframework.samples.petclinic.counsel.repository.CounselPostLikeRepository likeRepository,
-						  org.springframework.samples.petclinic.user.repository.UserRepository userRepository) {
+						  CounselPostLikeRepository likeRepository,
+						  UserRepository userRepository) {
 		this.repository = repository;
 		this.contentStorage = contentStorage;
 		this.commentRepository = commentRepository;
@@ -196,12 +206,12 @@ public class CounselService {
 
 		try {
 			if (startDateStr != null && !startDateStr.isBlank()) {
-				startDate = java.time.LocalDate.parse(startDateStr).atStartOfDay();
+				startDate = LocalDate.parse(startDateStr).atStartOfDay();
 			}
 			if (endDateStr != null && !endDateStr.isBlank()) {
-				endDate = java.time.LocalDate.parse(endDateStr).atStartOfDay();
+				endDate = LocalDate.parse(endDateStr).atStartOfDay();
 			}
-		} catch (java.time.format.DateTimeParseException e) {
+		} catch (DateTimeParseException e) {
 			log.error("Invalid date format: startDate={}, endDate={}", startDateStr, endDateStr);
 			// 날짜 파싱 실패 시 null로 유지
 		}
@@ -235,7 +245,7 @@ public class CounselService {
 	public CounselPostDto getDetail(Long id) {
 		// EntityNotFoundException 적용
 		CounselPost entity = repository.findById(id)
-			.orElseThrow(() -> org.springframework.samples.petclinic.common.exception.EntityNotFoundException.of("CounselPost", id));
+			.orElseThrow(() -> EntityNotFoundException.of("CounselPost", id));
 
 		CounselPostDto dto = postMapper.toDto(entity);
 
@@ -245,8 +255,7 @@ public class CounselService {
 				String html = contentStorage.loadHtml(dto.getContentPath());
 				dto.setContent(html);
 			} catch (IOException e) {
-				throw new org.springframework.samples.petclinic.common.exception.FileException(
-					org.springframework.samples.petclinic.common.exception.ErrorCode.FILE_READ_ERROR, e);
+				throw new FileException(ErrorCode.FILE_READ_ERROR, e);
 			}
 		}
 		return dto;
@@ -264,8 +273,7 @@ public class CounselService {
 			path = contentStorage.saveHtml(dto.getContent());
 		} catch (IOException e) {
 			log.error("Failed to save content HTML for new post: {}", dto.getTitle(), e);
-			throw new org.springframework.samples.petclinic.common.exception.FileException(
-				org.springframework.samples.petclinic.common.exception.ErrorCode.FILE_WRITE_ERROR, e);
+			throw new FileException(ErrorCode.FILE_WRITE_ERROR, e);
 		}
 
 		// 2. 엔티티 생성 및 기본 정보 설정
@@ -299,8 +307,7 @@ public class CounselService {
 					attachmentRepository.save(attachment);
 
 					// CounselPost와 Attachment 연결
-					org.springframework.samples.petclinic.counsel.table.CounselPostAttachment postAttachment =
-						new org.springframework.samples.petclinic.counsel.table.CounselPostAttachment();
+					CounselPostAttachment postAttachment = new CounselPostAttachment();
 					postAttachment.setCounselPost(entity);
 					postAttachment.setAttachment(attachment);
 					entity.addAttachment(postAttachment);
@@ -332,8 +339,7 @@ public class CounselService {
 					attachmentRepository.save(attachment);
 
 					// CounselPost와 Attachment 연결
-					org.springframework.samples.petclinic.counsel.table.CounselPostAttachment postAttachment =
-						new org.springframework.samples.petclinic.counsel.table.CounselPostAttachment();
+					CounselPostAttachment postAttachment = new CounselPostAttachment();
 					postAttachment.setCounselPost(entity);
 					postAttachment.setAttachment(attachment);
 					entity.addAttachment(postAttachment);
@@ -769,7 +775,7 @@ public class CounselService {
 
 			// User 정보 조회하여 닉네임 비교
 			try {
-				org.springframework.samples.petclinic.user.table.User user = userRepository.findByUsername(username).orElse(null);
+				User user = userRepository.findByUsername(username).orElse(null);
 				if (user != null && post.getAuthorName() != null && post.getAuthorName().equals(user.getNickname())) {
 					log.info("Author authorized to modify post ID: {} (author nickname={}, username={})",
 						post.getId(), user.getNickname(), username);
@@ -842,9 +848,9 @@ public class CounselService {
 				.orElseThrow(() -> new IllegalArgumentException("Invalid post ID: " + postId));
 
 			// 상태값 검증 및 변환
-			org.springframework.samples.petclinic.counsel.CounselStatus status;
+			CounselStatus status;
 			try {
-				status = org.springframework.samples.petclinic.counsel.CounselStatus.valueOf(newStatus.toUpperCase());
+				status = CounselStatus.valueOf(newStatus.toUpperCase());
 			} catch (IllegalArgumentException e) {
 				log.error("Invalid status value: {}", newStatus);
 				throw new IllegalArgumentException("유효하지 않은 상태값입니다. (WAIT/COMPLETE/END만 가능)");
@@ -933,12 +939,11 @@ public class CounselService {
 
 		try {
 			// === 3. 좋아요 중복 확인 (Isolation - READ_COMMITTED) ===
-			Optional<org.springframework.samples.petclinic.counsel.table.CounselPostLike> existingLike =
-				likeRepository.findByPostIdAndUsername(postId, username);
+			Optional<CounselPostLike> existingLike = likeRepository.findByPostIdAndUsername(postId, username);
 
 			if (existingLike.isPresent()) {
 				// === 4-1. 좋아요 취소 (Atomicity - 완전히 삭제되거나 실패) ===
-				org.springframework.samples.petclinic.counsel.table.CounselPostLike like = existingLike.get();
+				CounselPostLike like = existingLike.get();
 				likeRepository.delete(like);
 				likeRepository.flush(); // 즉시 DB 반영 (Durability 보장)
 
@@ -949,11 +954,9 @@ public class CounselService {
 
 			} else {
 				// === 4-2. 좋아요 추가 (Atomicity - 완전히 저장되거나 실패) ===
-				org.springframework.samples.petclinic.counsel.table.CounselPostLike newLike =
-					new org.springframework.samples.petclinic.counsel.table.CounselPostLike(post, username);
+				CounselPostLike newLike = new CounselPostLike(post, username);
 
-				org.springframework.samples.petclinic.counsel.table.CounselPostLike savedLike =
-					likeRepository.save(newLike);
+				CounselPostLike savedLike = likeRepository.save(newLike);
 				likeRepository.flush(); // 즉시 DB 반영 (Durability 보장)
 
 				log.info("✅ [ACID-Atomicity] Like added successfully: postId={}, username={}, likeId={}",
@@ -962,7 +965,7 @@ public class CounselService {
 				return true; // 좋아요 추가됨
 			}
 
-		} catch (org.springframework.dao.DataIntegrityViolationException e) {
+		} catch (DataIntegrityViolationException e) {
 			// === 5. 동시성 제어 - UNIQUE 제약 위반 (Consistency) ===
 			log.warn("⚠️ [ACID-Consistency] Duplicate like attempt prevented: postId={}, username={}, error={}",
 				postId, username, e.getMessage());
@@ -1093,14 +1096,13 @@ public class CounselService {
 		readOnly = true,
 		isolation = Isolation.READ_COMMITTED
 	)
-	public java.util.List<String> getLikedUsernames(Long postId) {
+	public List<String> getLikedUsernames(Long postId) {
 		try {
-			java.util.List<CounselPostLike> likes =
-				likeRepository.findAllByPostIdOrderByCreatedAtAsc(postId);
+			List<CounselPostLike> likes = likeRepository.findAllByPostIdOrderByCreatedAtAsc(postId);
 
-			java.util.List<String> usernames = likes.stream()
+			List<String> usernames = likes.stream()
 				.map(CounselPostLike::getUsername)
-				.collect(java.util.stream.Collectors.toList());
+				.collect(Collectors.toList());
 
 			log.debug("✅ [Counsel] Liked usernames retrieved: postId={}, count={}", postId, usernames.size());
 			return usernames;
@@ -1108,7 +1110,7 @@ public class CounselService {
 		} catch (Exception e) {
 			log.error("❌ [Counsel] Failed to get liked usernames: postId={}, error={}",
 				postId, e.getMessage(), e);
-			return java.util.Collections.emptyList();
+			return Collections.emptyList();
 		}
 	}
 }

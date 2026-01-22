@@ -6,9 +6,11 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.samples.petclinic.common.dto.PageResponse;
+import org.springframework.samples.petclinic.counsel.CounselStatus;
 import org.springframework.samples.petclinic.counsel.table.CounselPost;
 import org.springframework.samples.petclinic.counsel.table.QCounselPost;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -157,8 +159,8 @@ public class CounselPostRepositoryImpl implements CounselPostRepositoryCustom{
 		String type,
 		String keyword,
 		String status,
-		java.time.LocalDateTime startDate,
-		java.time.LocalDateTime endDate,
+		LocalDateTime startDate,
+		LocalDateTime endDate,
 		Pageable pageable) {
 
 		QCounselPost post = QCounselPost.counselPost;
@@ -189,8 +191,7 @@ public class CounselPostRepositoryImpl implements CounselPostRepositoryCustom{
 		// 2. 상태별 필터링 (Phase 7: 추가)
 		if (status != null && !status.isBlank()) {
 			try {
-				org.springframework.samples.petclinic.counsel.CounselStatus counselStatus =
-					org.springframework.samples.petclinic.counsel.CounselStatus.valueOf(status.toUpperCase());
+				CounselStatus counselStatus = CounselStatus.valueOf(status.toUpperCase());
 				builder.and(post.status.eq(counselStatus));
 			} catch (IllegalArgumentException e) {
 				// 잘못된 상태값이면 무시 (전체 조회)
@@ -203,7 +204,7 @@ public class CounselPostRepositoryImpl implements CounselPostRepositoryCustom{
 		}
 		if (endDate != null) {
 			// endDate는 해당 날짜의 23:59:59까지 포함
-			java.time.LocalDateTime endOfDay = endDate.plusDays(1).withHour(0).withMinute(0).withSecond(0).withNano(0);
+			LocalDateTime endOfDay = endDate.plusDays(1).withHour(0).withMinute(0).withSecond(0).withNano(0);
 			builder.and(post.createdAt.lt(endOfDay)); // Less Than (<)
 		}
 

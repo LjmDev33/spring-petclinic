@@ -5,13 +5,29 @@ import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.ResponseEntity;
 import org.springframework.samples.petclinic.common.dto.PageResponse;
 import org.springframework.samples.petclinic.community.dto.CommunityPostDto;
 import org.springframework.samples.petclinic.community.service.CommunityService;
+import org.springframework.samples.petclinic.user.repository.UserRepository;
+import org.springframework.samples.petclinic.user.table.User;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 /*
  * Project : spring-petclinic
@@ -32,10 +48,9 @@ public class CommunityController {
 	private static final Logger log = LoggerFactory.getLogger(CommunityController.class);
 
 	private final CommunityService communityService;
-	private final org.springframework.samples.petclinic.user.repository.UserRepository userRepository;
+	private final UserRepository userRepository;
 
-	public CommunityController(CommunityService communityService,
-							   org.springframework.samples.petclinic.user.repository.UserRepository userRepository) {
+	public CommunityController(CommunityService communityService, UserRepository userRepository) {
 		this.communityService = communityService;
 		this.userRepository = userRepository;
 	}
@@ -82,14 +97,12 @@ public class CommunityController {
 
 		// 좋아요 정보 추가
 		long likeCount = communityService.getLikeCount(id);
-		org.springframework.security.core.Authentication authentication =
-			org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 		boolean isLiked = communityService.isLikedByUser(id, authentication);
-		java.util.List<String> likedUsernames = communityService.getLikedUsernames(id);
+		List<String> likedUsernames = communityService.getLikedUsernames(id);
 
 		// 좋아요 누른 사용자 정보 조회 (username → User 객체)
-		java.util.List<org.springframework.samples.petclinic.user.table.User> likedUsers =
-			likedUsernames.isEmpty() ? java.util.Collections.emptyList() : userRepository.findByUsernameIn(likedUsernames);
+		List<User> likedUsers = likedUsernames.isEmpty() ? Collections.emptyList() : userRepository.findByUsernameIn(likedUsernames);
 
 		model.addAttribute("likeCount", likeCount);
 		model.addAttribute("isLiked", isLiked);
@@ -180,11 +193,10 @@ public class CommunityController {
 	 */
 	@PostMapping("/detail/{id}/like")
 	@ResponseBody
-	public org.springframework.http.ResponseEntity<java.util.Map<String, Object>> toggleLike(
-		@PathVariable Long id,
-		org.springframework.security.core.Authentication authentication) {
+	public ResponseEntity<Map<String, Object>> toggleLike(
+		@PathVariable Long id, Authentication authentication) {
 
-		java.util.Map<String, Object> response = new java.util.HashMap<>();
+		Map<String, Object> response = new HashMap<>();
 
 		try {
 			// 좋아요 토글
@@ -201,18 +213,18 @@ public class CommunityController {
 			log.info("Like toggled: postId={}, username={}, liked={}",
 				id, authentication != null ? authentication.getName() : "anonymous", liked);
 
-			return org.springframework.http.ResponseEntity.ok(response);
+			return ResponseEntity.ok(response);
 		} catch (IllegalStateException e) {
 			// 비로그인 사용자
 			log.warn("Unauthorized like attempt: postId={}", id);
 			response.put("success", false);
 			response.put("error", e.getMessage());
-			return org.springframework.http.ResponseEntity.status(401).body(response);
+			return ResponseEntity.status(401).body(response);
 		} catch (Exception e) {
 			log.error("Error toggling like: postId={}, error={}", id, e.getMessage(), e);
 			response.put("success", false);
 			response.put("error", "좋아요 처리 중 오류가 발생했습니다.");
-			return org.springframework.http.ResponseEntity.badRequest().body(response);
+			return ResponseEntity.badRequest().body(response);
 		}
 	}
 
@@ -232,16 +244,16 @@ public class CommunityController {
 	@PreAuthorize("hasRole('ROLE_ADMIN')")
 	@PostMapping("/upload-temp")
 	@ResponseBody
-	public org.springframework.http.ResponseEntity<?> uploadTemp(
-		@RequestParam("files") org.springframework.web.multipart.MultipartFile[] files) {
+	public ResponseEntity<?> uploadTemp(
+		@RequestParam("files") MultipartFile[] files) {
 
 		log.info("### Community temp upload called: fileCount={}", files != null ? files.length : 0);
 
 		try {
-			java.util.List<java.util.Map<String, String>> uploadedFiles = new java.util.ArrayList<>();
+			List<Map<String, String>> uploadedFiles = new ArrayList<>();
 
 			if (files != null) {
-				for (org.springframework.web.multipart.MultipartFile file : files) {
+				for (MultipartFile file : files) {
 					if (file.isEmpty()) continue;
 
 					// 파일명 생성 (UUID + 원본 확장자)
@@ -250,17 +262,17 @@ public class CommunityController {
 					if (originalFilename != null && originalFilename.contains(".")) {
 						extension = originalFilename.substring(originalFilename.lastIndexOf("."));
 					}
-					String storedFilename = java.util.UUID.randomUUID().toString() + extension;
+					String storedFilename = UUID.randomUUID().toString() + extension;
 
 					// 임시 디렉토리에 저장
-					java.nio.file.Path uploadPath = java.nio.file.Paths.get("uploads/temp");
-					java.nio.file.Files.createDirectories(uploadPath);
+					Path uploadPath = Paths.get("uploads/temp");
+					Files.createDirectories(uploadPath);
 
-					java.nio.file.Path filePath = uploadPath.resolve(storedFilename);
+					Path filePath = uploadPath.resolve(storedFilename);
 					file.transferTo(filePath.toFile());
 
 					// 결과 추가
-					java.util.Map<String, String> fileInfo = new java.util.HashMap<>();
+					Map<String, String> fileInfo = new HashMap<>();
 					fileInfo.put("originalFilename", originalFilename);
 					fileInfo.put("storedFilename", storedFilename);
 					fileInfo.put("path", "uploads/temp/" + storedFilename);
@@ -270,12 +282,12 @@ public class CommunityController {
 				}
 			}
 
-			return org.springframework.http.ResponseEntity.ok(uploadedFiles);
+			return ResponseEntity.ok(uploadedFiles);
 
 		} catch (Exception e) {
 			log.error("❌ Community temp upload failed: {}", e.getMessage(), e);
-			return org.springframework.http.ResponseEntity.badRequest()
-				.body(java.util.Map.of("error", "파일 업로드 중 오류가 발생했습니다: " + e.getMessage()));
+			return ResponseEntity.badRequest()
+				.body(Map.of("error", "파일 업로드 중 오류가 발생했습니다: " + e.getMessage()));
 		}
 	}
 }
