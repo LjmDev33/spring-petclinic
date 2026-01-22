@@ -8,6 +8,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.samples.petclinic.common.dto.PageResponse;
 import org.springframework.samples.petclinic.photo.dto.PhotoPostDto;
 import org.springframework.samples.petclinic.photo.service.PhotoService;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -73,10 +74,11 @@ public class PhotoController {
 		long likeCount = photoService.getLikeCount(id);
 		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 		boolean isLiked = photoService.isLikedByUser(id, authentication);
-		// 작성자 검증 추가
+		// 작성자 및 관리자 검증 추가
+		List<String> roles = authentication.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList();
 		String userName = authentication.getName();
 		String ownerUserId = photoService.getBoardOnwerId(id);
-		boolean ownerYN = userName.equals(ownerUserId);
+		boolean ownerYN = userName.equals(ownerUserId) || roles.contains("ROLE_ADMIN");
 
 		model.addAttribute("post", post);
 		model.addAttribute("likeCount", likeCount);

@@ -19,6 +19,7 @@ import org.springframework.samples.petclinic.counsel.service.CounselService;
 import org.springframework.samples.petclinic.user.repository.UserRepository;
 import org.springframework.samples.petclinic.user.table.User;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -207,10 +208,11 @@ public class CounselController {
 		// 좋아요 누른 사용자 정보 조회 (username → User 객체)
 		List<User> likedUsers = likedUsernames.isEmpty() ? Collections.emptyList() : userRepository.findByUsernameIn(likedUsernames);
 
-		// 작성자 검증 추가
+		// 작성자 및 관리자 검증 추가
+		List<String> roles = authentication.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList();
 		String userName = authentication.getName();
 		String ownerUserId = counselService.getBoardOnwerId(id);
-		boolean ownerYN = userName.equals(ownerUserId);
+		boolean ownerYN = userName.equals(ownerUserId) || roles.contains("ROLE_ADMIN");
 
 		model.addAttribute("post", post);
 		model.addAttribute("comments", comments);
