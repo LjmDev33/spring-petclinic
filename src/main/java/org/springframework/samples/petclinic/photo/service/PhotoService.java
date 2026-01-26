@@ -2,9 +2,15 @@ package org.springframework.samples.petclinic.photo.service;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.samples.petclinic.community.table.CommunityPostLike;
+import org.springframework.samples.petclinic.counsel.mapper.CounselCommentMapper;
+import org.springframework.samples.petclinic.photo.dto.PhotoCommentDto;
+import org.springframework.samples.petclinic.photo.mapper.PhotoCommentMapper;
+import org.springframework.samples.petclinic.photo.repository.PhotoCommentRepository;
 import org.springframework.samples.petclinic.photo.repository.PhotoPostLikeRepository;
+import org.springframework.samples.petclinic.photo.table.PhotoComment;
 import org.springframework.samples.petclinic.photo.table.PhotoPostLike;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.annotation.Isolation;
 import org.slf4j.Logger;
@@ -27,9 +33,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -108,15 +112,17 @@ public class PhotoService {
 	private final PhotoPostLikeRepository likeRepository;
 	private final AttachmentRepository attachmentRepository;
 	private final PhotoPostAttachmentRepository photoPostAttachmentRepository;
+	private final PhotoCommentRepository photoCommentRepository;
 
 	public PhotoService(PhotoPostRepository repository,
 						PhotoPostLikeRepository likeRepository,
 						AttachmentRepository attachmentRepository,
-						PhotoPostAttachmentRepository photoPostAttachmentRepository) {
+						PhotoPostAttachmentRepository photoPostAttachmentRepository, PhotoCommentRepository photoCommentRepository) {
 		this.repository = repository;
 		this.likeRepository = likeRepository;
 		this.attachmentRepository = attachmentRepository;
 		this.photoPostAttachmentRepository = photoPostAttachmentRepository;
+		this.photoCommentRepository = photoCommentRepository;
 	}
 
 	/**
@@ -489,5 +495,132 @@ public class PhotoService {
 			return false;
 		}
 	}
+
+	// =================================================================================
+	//  댓글 (Comment) 기능 - 트리 구조 (Tree Structure) 지원
+	// =================================================================================
+
+	/**
+	 * 게시글의 댓글 목록을 트리 구조(Tree) DTO로 반환합니다.
+	 * - depth 0: 최상위 댓글
+	 * - children: 대댓글 목록
+	 */
+	@Transactional(readOnly = true)
+	public List<PhotoCommentDto> getCommentsForPost(Long postId) {
+		// 생성일 순으로 전체 댓글 조회
+		List<PhotoComment> allComments = photoCommentRepository.findByPost_IdOrderByCreatedAtAsc(postId);
+
+		// Map 활용하여 트리 구조 변환
+		Map<Long, PhotoCommentDto> commentMap = new HashMap<>();
+		List<PhotoCommentDto> rootComments = new ArrayList<>();
+
+		// 1단계: DTO 변환 및 Map 저장
+		for (PhotoComment comment : allComments) {
+			PhotoCommentDto dto = PhotoCommentMapper.toDto(comment);
+
+			// 부모 정보 설정
+			if (comment.getParent() != null) {
+				dto.setParentAuthorName(comment.getParent().getAuthorName());
+				dto.setParentId(comment.getParent().getId());
+			}
+			commentMap.put(dto.getId(), dto);
+		}
+
+		// 2단계: 부모-자식 관계 연결
+		for (PhotoComment comment : allComments) {
+			PhotoCommentDto dto = commentMap.get(comment.getId());
+
+			if (dto == null) continue;
+
+			if (comment.getParent() == null) {
+				// 최상위 댓글
+				dto.setDepth(0);
+				rootComments.add(dto);
+			} else {
+				// 대댓글
+				PhotoCommentDto parent = commentMap.get(comment.getParent().getId());
+				if (parent != null) {
+					parent.getChildren().add(dto);
+					dto.setDepth(parent.getDepth() + 1);
+				} else {
+					// 고아 댓글 처리 (부모가 삭제된 경우 등)
+					dto.setDepth(0);
+					dto.setParentId(null);
+					rootComments.add(dto);
+				}
+			}
+		}
+
+		return rootComments;
+	}
+
+	/**
+	 * 댓글 생성 (대댓글 지원)
+	 */
+	public PhotoCommentDto createComment(Long postId, PhotoCommentDto commentDto) {
+		PhotoPost post = repository.findById(postId)
+			.orElseThrow(() -> new IllegalArgumentException("Invalid post ID: " + postId));
+
+		PhotoComment comment = new PhotoComment();
+		comment.setPost(post);
+		comment.setAuthorName(commentDto.getAuthorName());
+		comment.setContent(commentDto.getContent()); // XSS 처리는 Controller에서 수행됨
+		comment.setStaffReply(false); // 관리자 기능 추가 시 변경 가능
+
+		// 비밀번호 해싱 (선택)
+		if (commentDto.getPassword() != null && !commentDto.getPassword().isBlank()) {
+			comment.setPasswordHash(BCrypt.hashpw(commentDto.getPassword(), BCrypt.gensalt()));
+		}
+
+		// 대댓글 처리 (Parent 설정)
+		if (commentDto.getParentId() != null) {
+			PhotoComment parentComment = photoCommentRepository.findById(commentDto.getParentId())
+				.orElseThrow(() -> new IllegalArgumentException("Invalid parent comment ID: " + commentDto.getParentId()));
+			comment.setParent(parentComment);
+		}
+
+		PhotoComment savedComment = photoCommentRepository.save(comment);
+		return PhotoCommentMapper.toDto(savedComment);
+	}
+
+	/**
+	 * 댓글 삭제
+	 * - 비밀번호 검증
+	 * - 자식 댓글 존재 시 삭제 불가 정책 적용
+	 */
+	public boolean deleteComment(Long commentId, String password) {
+		try {
+			PhotoComment comment = photoCommentRepository.findById(commentId)
+				.orElseThrow(() -> new IllegalArgumentException("Invalid comment ID: " + commentId));
+
+			// 운영자 댓글 보호 (옵션)
+			if (comment.isStaffReply()) {
+				throw new IllegalStateException("운영자 댓글은 삭제할 수 없습니다.");
+			}
+
+			// 비밀번호 검증
+			if (comment.getPasswordHash() != null && !comment.getPasswordHash().isBlank()) {
+				if (!BCrypt.checkpw(password == null ? "" : password, comment.getPasswordHash())) {
+					throw new IllegalArgumentException("비밀번호가 일치하지 않습니다.");
+				}
+			}
+
+			// 자식 댓글 확인 (무결성 유지)
+			List<PhotoComment> children = photoCommentRepository.findByParent_Id(commentId);
+			if (!children.isEmpty()) {
+				throw new IllegalStateException("답글이 있는 댓글은 삭제할 수 없습니다. 먼저 답글을 삭제해주세요.");
+			}
+
+			photoCommentRepository.delete(comment);
+			return true;
+
+		} catch (IllegalStateException | IllegalArgumentException e) {
+			throw e;
+		} catch (Exception e) {
+			log.error("Error deleting comment {}: {}", commentId, e.getMessage());
+			throw new RuntimeException("댓글 삭제 중 오류가 발생했습니다.");
+		}
+	}
+
 }
 

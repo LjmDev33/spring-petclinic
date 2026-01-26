@@ -183,14 +183,158 @@
            style="transition: max-height 0.3s ease;">
         <div class="accordion-body p-4">
 
-          <!-- 댓글 목록 (준비 중) -->
           <div id="commentsContainer">
-            <div class="alert alert-light text-center py-5">
+            <div th:if="${#lists.isEmpty(comments)}" class="alert alert-light text-center py-5">
               <i class="bi bi-chat-text fs-1 text-muted"></i>
-              <p class="mt-3 mb-0 text-muted">댓글 기능은 준비 중입니다.</p>
+              <p class="mt-3 mb-0 text-muted">아직 댓글이 없습니다. 첫 댓글을 작성해보세요!</p>
+            </div>
+
+            <div th:if="${!#lists.isEmpty(comments)}">
+              <div class="comments-container">
+                <th:block th:each="comment : ${comments}">
+                  <th:block th:replace="~{:: renderComment(${comment})}"></th:block>
+                </th:block>
+              </div>
             </div>
           </div>
 
+          <div class="d-flex justify-content-end mt-4">
+            <button type="button" class="btn btn-primary"
+                    data-bs-toggle="modal" data-bs-target="#commentWriteModal"
+                    id="openCommentModalBtn">
+              <i class="bi bi-pencil-square"></i> 댓글 작성
+            </button>
+          </div>
+
+        </div> <th:block th:fragment="renderComment(c)">
+        <div th:if="${c != null}">
+          <div class="comment-item mb-2"
+               th:style="${(c.depth != null && c.depth > 0) ? 'margin-left: ' + (c.depth * 48) + 'px; padding-left: 20px; border-left: 3px solid #e3f2fd;' : ''}">
+
+            <div th:if="${c.depth != null && c.depth > 0 && c.parentAuthorName != null}"
+                 class="reply-target-info mb-1"
+                 style="font-size: 0.75rem; color: #0d6efd; font-weight: 500;">
+              <i class="bi bi-arrow-return-right me-1"></i>
+              <span th:text="'@' + ${c.parentAuthorName} + '님에게 답글'"></span>
+            </div>
+
+            <div class="card shadow-sm border-0"
+                 th:style="${c.staffReply ? 'border-left: 3px solid #198754 !important; border-radius: 6px; background-color: #f0fdf4;' : ((c.depth != null && c.depth > 0) ? 'border-radius: 6px; background-color: #f8f9fa;' : 'border-radius: 6px;')}">
+              <div class="card-body p-2 p-md-3">
+                <div class="d-flex align-items-start mb-2">
+                  <div class="flex-shrink-0">
+                    <div class="avatar-circle text-white d-flex align-items-center justify-content-center"
+                         th:classappend="${(c.depth != null && c.depth > 0) ? 'bg-info' : 'bg-primary'}"
+                         th:style="${(c.depth != null && c.depth > 0) ? 'width: 32px; height: 32px; font-size: 13px;' : 'width: 36px; height: 36px; font-size: 16px;'} + 'border-radius: 50%; font-weight: bold;'">
+                      <span th:text="${#strings.substring(c.authorName, 0, 1)}">작</span>
+                    </div>
+                  </div>
+                  <div class="flex-grow-1 ms-2">
+                    <div class="d-flex justify-content-between align-items-start">
+                      <div>
+                        <strong th:style="${(c.depth != null && c.depth > 0) ? 'font-size: 0.85rem;' : 'font-size: 0.95rem;'}"
+                                th:text="${c.authorName}"></strong>
+                        <span th:if="${c.depth != null && c.depth > 0}" class="badge bg-info ms-1" style="font-size: 0.65rem;">
+                         <i class="bi bi-reply-fill"></i> 답글
+                       </span>
+                        <span th:if="${c.staffReply}" class="badge bg-success ms-1" style="font-size: 0.7rem;">
+                         <i class="bi bi-shield-check"></i> 운영자
+                       </span>
+                      </div>
+                      <small class="text-muted" th:text="${#temporals.format(c.createdAt, 'MM-dd HH:mm')}"></small>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="comment-content ps-0 ps-md-5 mb-2"
+                     th:text="${c.content}"
+                     style="word-break: break-word; white-space: pre-wrap;"></div>
+
+                <div class="d-flex justify-content-end ps-0 ps-md-5 gap-1">
+                  <button type="button" class="btn btn-sm btn-outline-primary reply-btn"
+                          data-bs-toggle="modal" data-bs-target="#commentWriteModal"
+                          th:attr="data-comment-id=${c.id},data-author-name=${c.authorName}">
+                    <i class="bi bi-reply"></i> 답글
+                  </button>
+                  <button type="button" class="btn btn-sm btn-outline-danger delete-comment-btn"
+                          th:if="${!c.staffReply}"
+                          th:attr="data-comment-id=${c.id},data-has-password=${c.passwordHash != null}">
+                    <i class="bi bi-trash"></i> 삭제
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <th:block th:if="${!#lists.isEmpty(c.children)}">
+            <th:block th:each="child : ${c.children}">
+              <th:block th:replace="~{:: renderComment(${child})}"></th:block>
+            </th:block>
+          </th:block>
+        </div>
+      </th:block>
+
+        <div class="modal fade" id="commentWriteModal" tabindex="-1">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-pencil-square"></i> <span id="modalTitle">댓글 작성</span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+              </div>
+              <form id="commentForm" onsubmit="submitCommentAjax(event)">
+                <div class="modal-body">
+                  <div id="replyToInfo" class="alert alert-info" style="display: none;">
+                    <i class="bi bi-reply"></i> <strong><span id="replyToName"></span></strong>님에게 답글 작성 중
+                    <button type="button" class="btn-close float-end" onclick="resetCommentModal()"></button>
+                  </div>
+                  <input type="hidden" id="parentId" name="parentId" value="">
+
+                  <div class="mb-3">
+                    <label class="form-label">이름 <span class="text-danger">*</span></label>
+                    <input type="text" id="commentAuthor" name="authorName" class="form-control"
+                           th:value="${#authentication.name == 'anonymousUser' ? '' : #authentication.principal.nickname}" required>
+                  </div>
+
+                  <div class="mb-3">
+                    <label class="form-label">비밀번호 (선택)</label>
+                    <input type="password" id="commentPassword" name="password" class="form-control" placeholder="삭제 시 필요">
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">내용 <span class="text-danger">*</span></label>
+                    <textarea id="commentContent" name="content" class="form-control" rows="4" required></textarea>
+                  </div>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                  <button type="submit" class="btn btn-primary" id="submitCommentBtn">등록</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal fade" id="deleteCommentModal" tabindex="-1">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title">댓글 삭제</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+              </div>
+              <form id="deleteCommentForm" onsubmit="deleteCommentAjax(event)">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                <div class="modal-body">
+                  <p>정말로 이 댓글을 삭제하시겠습니까?</p>
+                  <div class="mb-3" id="commentPasswordGroup" style="display: none;">
+                    <input type="password" id="commentDeletePassword" name="password" class="form-control" placeholder="비밀번호 입력" >
+                  </div>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                  <button type="submit" class="btn btn-danger">삭제</button>
+                </div>
+              </form>
+            </div>
+          </div>
         </div> <!-- /accordion-body -->
       </div> <!-- /commentAccordionPanel -->
 
@@ -235,6 +379,40 @@
       if (commentIcon) {
         commentIcon.style.transform = 'rotate(0deg)'; // 아래 방향
       }
+    }
+
+    // 답글 버튼 이벤트 위임 (추가 필요)
+    document.addEventListener('click', function(e) {
+      if (e.target.closest('.reply-btn')) {
+        const btn = e.target.closest('.reply-btn');
+        const commentId = btn.getAttribute('data-comment-id');
+        const authorName = btn.getAttribute('data-author-name');
+        setReplyTo(commentId, authorName);
+        const modal = new bootstrap.Modal(document.getElementById('commentWriteModal'));
+        modal.show();
+      }
+
+      // 댓글 삭제 버튼
+      if (e.target.closest('.delete-comment-btn')) {
+        openDeleteCommentModal(e.target.closest('.delete-comment-btn'));
+      }
+    });
+
+    // 댓글 작성 모달이 열릴 때 포커스
+    const commentModal = document.getElementById('commentWriteModal');
+    if (commentModal) {
+      commentModal.addEventListener('show.bs.modal', function() {
+        setTimeout(() => { document.getElementById('commentContent').focus(); }, 100);
+      });
+    }
+
+    // 댓글 작성 모달이 닫힐 때 초기화 (추가 권장)
+    const openCommentModalBtn = document.getElementById('openCommentModalBtn');
+    if (openCommentModalBtn) {
+      openCommentModalBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        resetCommentModal();
+      });
     }
   });
 
@@ -349,8 +527,6 @@
     container.innerHTML = html;
   }
 
-
-
   /**
    * 상호 배타적 아코디언 동작 + 화살표 회전 애니메이션
    * - 좋아요 패널을 열면 답변 패널을 닫음
@@ -434,6 +610,190 @@
       });
     });
   })();
+
+  /**
+   * [추가] 댓글 작성 폼 제출 처리 (AJAX)
+   * - HTML의 onsubmit="submitCommentAjax(event)"에 의해 호출됨
+   */
+  function submitCommentAjax(event) {
+    // 1. 폼의 기본 제출 동작(새로고침) 차단
+    event.preventDefault();
+
+    const form = document.getElementById('commentForm');
+
+    // 유효성 검사
+    const authorName = document.getElementById('commentAuthor').value.trim();
+    const content = document.getElementById('commentContent').value.trim();
+
+    if (!authorName) {
+      TOAST.showError('이름을 입력해주세요.', 3000);
+      return;
+    }
+    if (!content) {
+      TOAST.showError('댓글 내용을 입력해주세요.', 3000);
+      return;
+    }
+
+    const postId = /*[[${post.id}]]*/ '';
+    const csrfToken = document.querySelector('meta[name="_csrf"]').getAttribute('content');
+    const csrfHeader = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');
+
+    const formData = new FormData(form);
+    const submitBtn = document.getElementById('submitCommentBtn');
+
+    // 버튼 비활성화 (중복 클릭 방지)
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> 등록 중...';
+
+    // AJAX 요청 (POST)
+    fetch('/photo/detail/' + postId + '/comments', {
+      method: 'POST',
+      headers: {
+        [csrfHeader]: csrfToken
+      },
+      body: formData
+    })
+      .then(response => {
+        if (!response.ok) return response.text().then(text => Promise.reject(text));
+        return response.text();
+      })
+      .then(() => {
+        // 성공 시 처리
+        const modalEl = document.getElementById('commentWriteModal');
+        const modal = bootstrap.Modal.getInstance(modalEl);
+        modal.hide();
+
+        resetCommentModal();
+        form.reset();
+        TOAST.showSuccess('댓글이 등록되었습니다', 2000);
+
+        // 목록 갱신을 위해 새로고침
+        setTimeout(() => { window.location.reload(); }, 500);
+      })
+      .catch(error => {
+        console.error(error);
+        TOAST.showError('댓글 등록 실패: ' + error, 3000);
+      })
+      .finally(() => {
+        // 버튼 상태 복구
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '등록';
+      });
+  }
+
+  /**
+   * 댓글 삭제 모달 열기
+   * - 비밀번호 설정된 댓글은 비밀번호 입력 필드 표시
+   */
+  function openDeleteCommentModal(button) {
+    const commentId = button.getAttribute('data-comment-id');
+    const hasPassword = button.getAttribute('data-has-password') === 'true';
+    const postId = /*[[${post.id}]]*/ '';
+
+    const form = document.getElementById('deleteCommentForm');
+    form.action = '/photo/detail/' + postId + '/comments/' + commentId + '/delete';
+
+    const passwordGroup = document.getElementById('commentPasswordGroup');
+    const passwordInput = document.getElementById('commentDeletePassword');
+
+    if (hasPassword) {
+      passwordGroup.style.display = 'block';
+      passwordInput.required = true;
+    } else {
+      passwordGroup.style.display = 'none';
+      passwordInput.required = false;
+    }
+
+    const modal = new bootstrap.Modal(document.getElementById('deleteCommentModal'));
+    modal.show();
+  }
+
+  // [기존 함수들] 답글 설정 및 모달 초기화 함수 (필요한 경우 유지/추가)
+  function setReplyTo(parentId, parentAuthor) {
+    document.getElementById('parentId').value = parentId;
+    document.getElementById('replyToName').textContent = parentAuthor;
+    document.getElementById('replyToInfo').style.display = 'block';
+    document.getElementById('modalTitle').textContent = '답글 작성';
+  }
+
+  function resetCommentModal() {
+    document.getElementById('parentId').value = '';
+    document.getElementById('replyToInfo').style.display = 'none';
+    document.getElementById('modalTitle').textContent = '댓글 작성';
+    document.getElementById('commentContent').value = '';
+  }
+
+  /**
+   * [추가] 댓글 삭제 AJAX 처리
+   * - 삭제 후 스크롤 위치를 유지하기 위해 비동기 통신 사용
+   */
+  function deleteCommentAjax(event) {
+    // 1. 폼 기본 제출(페이지 이동) 막기
+    event.preventDefault();
+
+    const form = document.getElementById('deleteCommentForm');
+    const passwordInput = document.getElementById('commentDeletePassword');
+
+    // 비밀번호 입력창이 활성화되어 있는데 비어있다면 경고
+    if (document.getElementById('commentPasswordGroup').style.display !== 'none') {
+      if (!passwordInput.value.trim()) {
+        TOAST.showError('비밀번호를 입력해주세요.', 3000);
+        return;
+      }
+    }
+
+    const csrfToken = document.querySelector('meta[name="_csrf"]').getAttribute('content');
+    const csrfHeader = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');
+
+    // form.action에 이미 삭제 URL이 설정되어 있음 (openDeleteCommentModal 함수에서 설정)
+    const deleteUrl = form.action;
+    const formData = new FormData(form);
+
+    // 버튼 비활성화 (중복 클릭 방지)
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const originalBtnText = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> 삭제 중...';
+
+    fetch(deleteUrl, {
+      method: 'POST',
+      headers: {
+        [csrfHeader]: csrfToken
+      },
+      body: formData
+    })
+      .then(response => {
+        // 리다이렉트 응답이 오더라도 AJAX는 fetch가 처리함
+        // 서버가 "redirect:..."를 반환해도 fetch 입장에서는 200 OK일 수 있음 (페이지 HTML을 반환받음)
+        if (response.ok) {
+          return response.text();
+        } else {
+          return response.text().then(text => Promise.reject(text));
+        }
+      })
+      .then(() => {
+        // 성공 시 모달 닫기
+        const modalEl = document.getElementById('deleteCommentModal');
+        const modal = bootstrap.Modal.getInstance(modalEl);
+        modal.hide();
+
+        form.reset();
+        TOAST.showSuccess('댓글이 삭제되었습니다.', 2000);
+
+        // [핵심] 스크롤 유지를 위해 JS로 새로고침
+        setTimeout(() => { window.location.reload(); }, 500);
+      })
+      .catch(error => {
+        console.error('Delete failed:', error);
+        // 서버에서 에러 메시지를 HTML 전체로 줄 수도 있어서, 간단히 처리
+        TOAST.showError('삭제에 실패했습니다. 비밀번호를 확인해주세요.', 3000);
+      })
+      .finally(() => {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalBtnText;
+      });
+  }
+
 </script>
 
 <!-- 삭제 모달 -->

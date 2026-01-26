@@ -1,11 +1,14 @@
 package org.springframework.samples.petclinic.photo.controller;
 
+import org.jsoup.Jsoup;
+import org.jsoup.safety.Safelist;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.samples.petclinic.common.dto.PageResponse;
+import org.springframework.samples.petclinic.photo.dto.PhotoCommentDto;
 import org.springframework.samples.petclinic.photo.dto.PhotoPostDto;
 import org.springframework.samples.petclinic.photo.service.PhotoService;
 import org.springframework.samples.petclinic.user.repository.UserRepository;
@@ -18,6 +21,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -92,14 +97,61 @@ public class PhotoController {
 		String ownerUserId = photoService.getBoardOnwerId(id);
 		boolean ownerYN = userName.equals(ownerUserId) || roles.contains("ROLE_ADMIN");
 
+		// [추가] 댓글 목록 조회
+		List<PhotoCommentDto> comments = photoService.getCommentsForPost(id);
+
 		model.addAttribute("post", post);
 		model.addAttribute("likeCount", likeCount);
 		model.addAttribute("isLiked", isLiked);
 		model.addAttribute("likedUsers", likedUsers);
+		model.addAttribute("comments", comments); // [추가]
 		model.addAttribute("template", "photo/photoDetail");
 		model.addAttribute("ownerYN", ownerYN);
 
 		return "fragments/layout";
+	}
+
+	/**
+	 * [추가] 댓글 등록 처리
+	 */
+	@PostMapping("/detail/{postId}/comments")
+	public String submitComment(@PathVariable Long postId, @ModelAttribute PhotoCommentDto commentDto, RedirectAttributes redirectAttributes) {
+		try {
+			// XSS 방지: HTML 태그 제거 (Jsoup)
+			String sanitizedContent = Jsoup.clean(commentDto.getContent(), Safelist.basic());
+			commentDto.setContent(sanitizedContent);
+
+			photoService.createComment(postId, commentDto);
+		} catch (Exception e) {
+			log.error("Error creating photo comment: {}", e.getMessage());
+			redirectAttributes.addFlashAttribute("error", "댓글 작성에 실패했습니다.");
+		}
+		return "redirect:/photo/detail/" + postId;
+	}
+
+	/**
+	 * [추가] 댓글 삭제 처리
+	 */
+	@PostMapping("/detail/{postId}/comments/{commentId}/delete")
+	public String deleteComment(@PathVariable Long postId, @PathVariable Long commentId,
+								@RequestParam(value = "password", required = false) String password,
+								RedirectAttributes redirectAttributes) {
+		try {
+			boolean deleted = photoService.deleteComment(commentId, password);
+			if (deleted) {
+				redirectAttributes.addFlashAttribute("message", "댓글이 삭제되었습니다.");
+			}
+		} catch (IllegalStateException e) {
+			log.warn("Comment deletion denied: {}", e.getMessage()); // 대댓글 존재 등
+			redirectAttributes.addFlashAttribute("error", e.getMessage());
+		} catch (IllegalArgumentException e) {
+			log.warn("Comment deletion failed: {}", e.getMessage()); // 비번 불일치
+			redirectAttributes.addFlashAttribute("error", e.getMessage());
+		} catch (Exception e) {
+			log.error("Error deleting comment: {}", e.getMessage(), e);
+			redirectAttributes.addFlashAttribute("error", "댓글 삭제 중 오류가 발생했습니다.");
+		}
+		return "redirect:/photo/detail/" + postId;
 	}
 
 	/**
