@@ -46,7 +46,36 @@
       <div id="editor" style="height: 400px;"></div>
       <textarea name="content" id="content" hidden></textarea>
     </div>
+    <div class="mb-3">
+      <label class="form-label">
+        <i class="bi bi-paperclip"></i> 첨부파일
+      </label>
+      <!-- 실제 서버 전송용 hidden input (Uppy 업로드된 파일 경로, 쉼표 구분) -->
+      <input type="hidden" id="attachmentPaths" name="attachmentPaths">
 
+      <!-- Uppy Dashboard가 렌더링될 영역 -->
+      <div id="uppy-dashboard" class="border rounded p-3" style="min-height: 250px; background-color: #f8f9fa;">
+        <!-- Uppy가 여기에 파일 목록을 렌더링합니다 -->
+      </div>
+
+      <!-- 업로드된 파일 목록 (Uppy Dashboard 외부에 별도 표시) -->
+      <div id="uploaded-files-list" class="mt-3" style="display: none;">
+        <div class="alert alert-info">
+          <i class="bi bi-check-circle-fill me-2"></i>
+          <strong>업로드 완료된 파일:</strong>
+          <span id="uploaded-count">0</span>개
+        </div>
+        <div class="row g-2" id="uploaded-files-cards">
+          <!-- JavaScript로 동적 생성됩니다 -->
+        </div>
+      </div>
+
+      <small class="form-text text-muted d-block mt-2">
+        <i class="bi bi-info-circle"></i>
+        이미지, 문서(PDF, Word, Excel, 한글), 압축 파일을 업로드할 수 있으며,
+        <strong>파일당 최대 10MB</strong>, <strong>최대 5개</strong>까지 업로드할 수 있습니다.
+      </small>
+    </div>
     <!-- hidden subject -->
     <input type="hidden" name="subject" value="notice"/>
 
@@ -62,58 +91,510 @@
   </form>
 </div>
 
-<!-- Quill Editor JS -->
-<script th:src="@{/js/quill/quill.min.js}"></script>
+<!-- 업로드 모달 -->
+<div id="uploadModal" class="upload-modal-overlay" style="display: none;">
+  <div class="upload-modal">
+    <div class="upload-modal-header">
+      <h3 class="upload-modal-title">
+        <span class="upload-spinner"></span>
+        파일 업로드 중
+      </h3>
+      <p class="upload-modal-subtitle" id="uploadModalSubtitle">업로드를 준비하고 있습니다...</p>
+    </div>
+    <div class="upload-modal-body">
+      <div class="upload-modal-progress">
+        <div class="upload-modal-progress-bar">
+          <div class="upload-modal-progress-fill" id="uploadModalProgressFill" style="width: 0%;">
+          </div>
+          <div class="upload-modal-progress-text" id="uploadModalProgressText">0%</div>
+        </div>
+      </div>
+      <div class="upload-modal-status" id="uploadModalStatus">
+        파일을 업로드하고 있습니다...
+      </div>
+    </div>
+  </div>
+</div>
 
-<script>
-  // Quill 에디터 초기화
-  var quill = new Quill('#editor', {
-    theme: 'snow',
-    modules: {
-      toolbar: [
-        [{ 'header': [1, 2, 3, false] }],
-        ['bold', 'italic', 'underline', 'strike'],
-        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-        [{ 'color': [] }, { 'background': [] }],
-        ['link'],
-        ['clean']
-      ]
-    },
-    placeholder: '내용을 입력하세요...'
-  });
+<!-- Quill Editor JS (로컬 내장) -->
+<script th:src="@{/js/quill/quill.js}"></script>
 
-  // 폼 제출 시 에디터 내용을 textarea에 동기화
-  document.getElementById('communityForm').addEventListener('submit', function(e) {
-    const title = document.querySelector('input[name="title"]').value.trim();
-    const author = document.querySelector('input[name="author"]').value.trim();
-    const contentTextarea = document.getElementById('content');
+<!-- Uppy JS (로컬 내장 브라우저 번들) -->
+<script th:src="@{/js/uppy/uppy-browser.js}"></script>
 
-    // 제목 검증
-    if (!title) {
-      e.preventDefault();
-      alert('제목을 입력해주세요.');
-      return false;
+<!-- 오류 알림 시스템 JS -->
+<script th:src="@{/js/error-notification.js}"></script>
+
+<script th:inline="javascript">
+  /**
+   * 파일 크기 포맷팅 (bytes → KB, MB, GB)
+   */
+  function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+  }
+
+  /**
+   * 업로드 속도 포맷팅 (bytes/sec → KB/s, MB/s)
+   */
+  function formatSpeed(bytesPerSec) {
+    if (bytesPerSec === 0) return '0 KB/s';
+    const k = 1024;
+    if (bytesPerSec < k) {
+      return Math.round(bytesPerSec) + ' B/s';
+    } else if (bytesPerSec < k * k) {
+      return Math.round(bytesPerSec / k * 10) / 10 + ' KB/s';
+    } else {
+      return Math.round(bytesPerSec / (k * k) * 10) / 10 + ' MB/s';
     }
+  }
 
-    // 작성자 검증
-    if (!author) {
-      e.preventDefault();
-      alert('작성자를 입력해주세요.');
-      return false;
+  /**
+   * 남은 시간 포맷팅 (초 → 분:초 또는 시:분:초)
+   */
+  function formatTime(seconds) {
+    if (!isFinite(seconds) || seconds < 0) return '계산 중...';
+    if (seconds < 1) return '거의 완료';
+
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = Math.floor(seconds % 60);
+
+    if (h > 0) {
+      return `${h}시간 ${m}분`;
+    } else if (m > 0) {
+      return `${m}분 ${s}초`;
+    } else {
+      return `${s}초`;
     }
+  }
+  
+  /**
+   * Quill Editor 및 Uppy 초기화
+   */
+  document.addEventListener('DOMContentLoaded', function () {
+    // Quill Editor 초기화
+    const quill = new Quill('#editor', {
+      theme: 'snow',
+      modules: {
+        toolbar: [
+          [{'header': [1, 2, 3, false]}],
+          ['bold', 'italic', 'underline', 'strike'],
+          [{'list': 'ordered'}, {'list': 'bullet'}],
+          [{'color': []}, {'background': []}],
+          [{'align': []}],
+          ['link'],
+          ['clean']
+        ]
+      },
+      placeholder: '상담 내용을 입력하세요...'
+    });
 
-    // 에디터 내용 검증
-    const editorContent = quill.root.innerHTML.trim();
-    if (editorContent === '<p><br></p>' || editorContent === '') {
+    // Uppy 객체 확인
+    console.log('Uppy object:', typeof Uppy);
+    console.log('Uppy.Core:', typeof Uppy.Core);
+    console.log('Uppy.Dashboard:', typeof Uppy.Dashboard);
+
+    // Uppy 초기화 (로컬 내장 브라우저 번들 사용)
+    const uppy = new Uppy.Core({
+      autoProceed: false,
+      restrictions: {
+        maxNumberOfFiles: 5,
+        maxFileSize: 10 * 1024 * 1024, // 10MB (문서 파일을 위해 확대)
+        allowedFileTypes: [
+          'image/*', // 모든 이미지
+          '.pdf', // PDF
+          '.doc', '.docx', // MS Word
+          '.xls', '.xlsx', // MS Excel
+          '.hwp', // 한글
+          '.txt', // 텍스트
+          '.zip', '.rar' // 압축 파일
+        ]
+      }
+    });
+
+    console.log('Uppy instance created:', uppy);
+
+    uppy.use(Uppy.Dashboard, {
+      inline: true,
+      target: '#uppy-dashboard',
+      proudlyDisplayPoweredByUppy: false,
+      height: 200,
+      locale: {
+        strings: {
+          dropPasteImportBoth: '파일을 드래그하거나 %{browse}하세요',
+          browse: '선택',
+          uploadXFiles: {
+            0: '%{smart_count}개 파일 업로드',
+            1: '%{smart_count}개 파일 업로드'
+          },
+          uploadingXFiles: {
+            0: '%{smart_count}개 파일 업로드 중',
+            1: '%{smart_count}개 파일 업로드 중'
+          }
+        }
+      }
+    });
+
+    console.log('Uppy Dashboard plugin registered');
+
+    // CSRF 토큰 가져오기
+    const csrfToken = document.querySelector('meta[name="_csrf"]').getAttribute('content');
+    const csrfHeader = document.querySelector('meta[name="_csrf_header"]').getAttribute('content');
+
+    uppy.use(Uppy.XHRUpload, {
+      endpoint: '/community/upload-temp',
+      fieldName: 'files',
+      formData: true,
+      headers: {
+        [csrfHeader]: csrfToken
+      }
+    });
+
+    // 모달 요소 가져오기
+    const uploadModal = document.getElementById('uploadModal');
+    const uploadModalSubtitle = document.getElementById('uploadModalSubtitle');
+    const uploadModalProgressFill = document.getElementById('uploadModalProgressFill');
+    const uploadModalProgressText = document.getElementById('uploadModalProgressText');
+    const uploadModalStatus = document.getElementById('uploadModalStatus');
+
+    // 전체 업로드 진행률 추적 변수
+    let totalFileSize = 0;
+    let totalUploadedSize = 0;
+    let uploadStartTime = 0;
+    const fileProgressMap = new Map(); // 각 파일별 업로드 진행률 추적
+
+    // 파일 추가 시 로딩 인디케이터 표시 및 검증
+    uppy.on('file-added', (file) => {
+      console.log('File added:', file.name, 'size:', file.size);
+
+      // 파일 크기 검증
+      if (file.size > 10 * 1024 * 1024) {
+        ErrorNotification.showToast(
+          '파일 크기 초과',
+          `"${file.name}" 파일이 너무 큽니다. (최대 10MB)`,
+          'warning',
+          5000
+        );
+      }
+
+      // 파일 목록에서 해당 파일 찾아서 로딩 인디케이터 추가
+      setTimeout(() => {
+        const fileItem = document.querySelector(`[data-file-id="${file.id}"]`);
+        if (fileItem) {
+          const fileName = fileItem.querySelector('.uppy-Dashboard-Item-name');
+          if (fileName && !fileName.querySelector('.file-loading-indicator')) {
+            const indicator = document.createElement('span');
+            indicator.className = 'file-loading-indicator';
+            indicator.title = '준비 중...';
+            fileName.appendChild(indicator);
+
+            // 파일 아이템에 애니메이션 추가
+            fileItem.classList.add('file-added-success');
+            setTimeout(() => {
+              fileItem.classList.remove('file-added-success');
+              // 로딩 인디케이터 제거
+              if (indicator.parentNode) {
+                indicator.remove();
+              }
+            }, 800);
+          }
+        }
+      }, 100);
+    });
+
+    // 파일 추가 제한 오류 처리
+    uppy.on('restriction-failed', (file, error) => {
+      console.error('Restriction failed:', file?.name, error);
+
+      let message = '파일을 추가할 수 없습니다.';
+      let details = null;
+
+      if (error.message.includes('exceeds maximum')) {
+        message = `"${file?.name || '파일'}"의 크기가 10MB를 초과합니다.`;
+        details = {
+          title: '파일 크기 제한 초과',
+          message: message,
+          code: 'FILE_SIZE_EXCEEDED',
+          location: '파일 추가',
+          details: {
+            '파일명': file?.name || 'N/A',
+            '파일 크기': formatFileSize(file?.size || 0),
+            '최대 크기': '10MB',
+            '해결 방법': '파일을 압축하거나 크기를 줄여주세요.'
+          }
+        };
+      } else if (error.message.includes('file type')) {
+        message = `"${file?.name || '파일'}"은(는) 지원하지 않는 파일 형식입니다.`;
+        details = {
+          title: '지원하지 않는 파일 형식',
+          message: message,
+          code: 'FILE_TYPE_NOT_ALLOWED',
+          location: '파일 추가',
+          details: {
+            '파일명': file?.name || 'N/A',
+            '파일 형식': file?.type || 'N/A',
+            '허용 형식': '이미지, PDF, Word, Excel, 한글, TXT, ZIP',
+            '해결 방법': '허용된 파일 형식으로 변환해주세요.'
+          }
+        };
+      } else if (error.message.includes('maximum number')) {
+        message = '최대 5개의 파일만 업로드할 수 있습니다.';
+        details = {
+          title: '파일 개수 제한 초과',
+          message: message,
+          code: 'MAX_FILES_EXCEEDED',
+          location: '파일 추가',
+          details: {
+            '최대 개수': '5개',
+            '해결 방법': '기존 파일을 삭제한 후 다시 시도해주세요.'
+          }
+        };
+      }
+
+      ErrorNotification.showToast('파일 추가 실패', message, 'warning', 5000, details);
+    });
+
+    // 업로드 시작 시 모달 표시 및 초기화
+    uppy.on('upload-start', (files) => {
+      console.log('Upload started:', files.length, 'files');
+
+      // 전체 파일 크기 계산
+      totalFileSize = 0;
+      totalUploadedSize = 0;
+      uploadStartTime = Date.now();
+      fileProgressMap.clear();
+
+      files.forEach(file => {
+        totalFileSize += file.size;
+        fileProgressMap.set(file.id, 0);
+      });
+
+      uploadModal.style.display = 'flex';
+      uploadModalSubtitle.textContent = `${files.length}개 파일 업로드 시작 (총 ${formatFileSize(totalFileSize)})`;
+      uploadModalProgressFill.style.width = '0%';
+      uploadModalProgressText.textContent = '0%';
+      uploadModalStatus.textContent = '파일을 업로드하고 있습니다...';
+    });
+
+    // 실시간 진행률 업데이트 (개별 파일 + 전체 진행률)
+    uppy.on('upload-progress', (file, progress) => {
+      // 개별 파일 진행률 업데이트
+      const currentFileProgress = progress.bytesUploaded;
+      const previousFileProgress = fileProgressMap.get(file.id) || 0;
+      const uploadedDelta = currentFileProgress - previousFileProgress;
+
+      // 전체 업로드 크기 갱신
+      totalUploadedSize += uploadedDelta;
+      fileProgressMap.set(file.id, currentFileProgress);
+
+      // 전체 진행률 계산
+      const totalPercent = totalFileSize > 0
+        ? Math.round((totalUploadedSize / totalFileSize) * 100)
+        : 0;
+
+      // 개별 파일 진행률 계산
+      const filePercent = Math.round((progress.bytesUploaded / progress.bytesTotal) * 100);
+
+      // 업로드 속도 및 남은 시간 계산
+      const elapsedTime = (Date.now() - uploadStartTime) / 1000; // 초 단위
+      const uploadSpeed = elapsedTime > 0 ? totalUploadedSize / elapsedTime : 0; // bytes/sec
+      const remainingBytes = totalFileSize - totalUploadedSize;
+      const remainingTime = uploadSpeed > 0 ? remainingBytes / uploadSpeed : 0; // 초
+
+      // UI 업데이트
+      uploadModalProgressFill.style.width = totalPercent + '%';
+      uploadModalProgressText.textContent = totalPercent + '%';
+
+      // 상태 메시지 (파일명, 개별 진행률, 속도, 남은 시간)
+      const speedText = formatSpeed(uploadSpeed);
+      const timeText = formatTime(remainingTime);
+      uploadModalStatus.textContent =
+        `${file.name} (${filePercent}%) - ${speedText} - 남은 시간: ${timeText}`;
+
+      console.log(`Progress: ${file.name} ${filePercent}%, Total: ${totalPercent}%, Speed: ${speedText}`);
+    });
+
+    uppy.on('complete', (result) => {
+      console.log('Uppy upload complete:', result);
+
+      const successCount = result.successful ? result.successful.length : 0;
+      const failCount = result.failed ? result.failed.length : 0;
+      const totalCount = successCount + failCount;
+
+      // 성공/실패 메시지 표시
+      if (failCount === 0) {
+        uploadModalSubtitle.textContent = `업로드 완료! (${successCount}/${totalCount} 성공)`;
+        uploadModalProgressFill.style.width = '100%';
+        uploadModalProgressText.textContent = '100%';
+        uploadModalStatus.textContent = '모든 파일이 성공적으로 업로드되었습니다.';
+      } else {
+        uploadModalSubtitle.textContent = `업로드 완료 (${successCount}/${totalCount} 성공, ${failCount}개 실패)`;
+        uploadModalProgressFill.style.width = '100%';
+        uploadModalProgressText.textContent = '100%';
+        uploadModalStatus.innerHTML = `
+          <span style="color: #28a745;">${successCount}개 성공</span>,
+          <span style="color: #dc3545;">${failCount}개 실패</span>
+        `;
+
+        // 실패한 파일 목록 로그
+        if (result.failed) {
+          result.failed.forEach(file => {
+            console.error('Failed file:', file.name, file.error);
+          });
+        }
+      }
+
+      // 2초 후 모달 숨김
+      setTimeout(() => {
+        uploadModal.style.display = 'none';
+
+        // TOAST 알림 표시
+        if (failCount > 0 && successCount > 0) {
+          // 일부 성공, 일부 실패
+          TOAST.showWarning(`${successCount}개 파일 업로드 성공, ${failCount}개 실패`, 5000);
+        } else if (failCount > 0) {
+          // 모두 실패
+          TOAST.showError(`${failCount}개 파일 업로드에 실패했습니다.`, 5000);
+        } else if (successCount > 0) {
+          // 모두 성공
+          TOAST.showSuccess(`${successCount}개 파일이 업로드되었습니다.`, 3000);
+        }
+      }, 2000);
+
+      // 업로드 성공한 파일 경로들을 hidden 필드에 저장
+      if (result.successful && result.successful.length > 0) {
+        const filePaths = [];
+        result.successful.forEach(file => {
+          // 서버 응답에서 파일 정보 추출
+          if (file.response && file.response.body && file.response.body.files) {
+            file.response.body.files.forEach(f => {
+              if (f.path) {
+                filePaths.push(f.path);
+              }
+            });
+          }
+        });
+
+        if (filePaths.length > 0) {
+          document.getElementById('attachmentPaths').value = filePaths.join(',');
+          console.log('Uploaded file paths:', filePaths);
+        }
+      }
+    });
+
+    // 개별 파일 업로드 에러 처리
+    uppy.on('upload-error', (file, error, response) => {
+      console.error('Upload error for file:', file.name, error, response);
+
+      // 에러 상세 메시지 표시
+      const errorMsg = error.message || '알 수 없는 오류';
+      uploadModalStatus.innerHTML = `
+        <span style="color: #dc3545;">
+          <i class="bi bi-exclamation-triangle"></i>
+          ${file.name} 업로드 실패: ${errorMsg}
+        </span>
+      `;
+
+      // ErrorNotification으로 상세 오류 표시
+      ErrorNotification.handleFileUploadError({
+        message: errorMsg,
+        status: response?.status || 'N/A',
+        code: error.code || 'UPLOAD_ERROR',
+        fileSize: file.size
+      }, file.name);
+    });
+
+    // 폼 제출 시 Uppy 업로드 먼저 수행
+    const form = document.getElementById('communityForm');
+    const submitBtn = document.getElementById('submitBtn');
+
+    form.addEventListener('submit', function (e) {
       e.preventDefault();
-      alert('내용을 입력해주세요.');
-      return false;
-    }
 
-    // 에디터 내용을 textarea에 동기화
-    contentTextarea.value = quill.root.innerHTML;
+      // 필수 필드 검증
+      const title = document.querySelector('input[name="title"]').value.trim();
+      const author = document.querySelector('input[name="author"]').value.trim();
 
-    return true;
+      if (!title) {
+        ErrorNotification.showToast('입력 오류', '제목을 입력해주세요.', 'warning', 3000);
+        return;
+      }
+
+      if (!author) {
+        ErrorNotification.showToast('입력 오류', '이름을 입력해주세요.', 'warning', 3000);
+        return;
+      }
+
+      // Quill 에디터 내용을 hidden textarea에 동기화
+      const contentTextarea = document.getElementById('content');
+      if (contentTextarea && quill) {
+        const editorContent = quill.root.innerHTML.trim();
+        if (editorContent === '<p><br></p>' || editorContent === '') {
+          ErrorNotification.showToast('입력 오류', '내용을 입력해주세요.', 'warning', 3000);
+          return;
+        }
+        contentTextarea.value = quill.root.innerHTML;
+      }
+
+      // Uppy에 파일이 있으면 업로드 먼저 수행
+      if (uppy.getFiles().length > 0) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>업로드 중...';
+
+        uppy.upload().then((result) => {
+          console.log('Upload result:', result);
+
+          // 업로드 실패한 파일이 있으면 경고
+          if (result.failed && result.failed.length > 0) {
+            const failedFiles = result.failed.map(f => f.name).join(', ');
+            ErrorNotification.showToast(
+              '일부 파일 업로드 실패',
+              `${result.failed.length}개 파일 업로드에 실패했습니다: ${failedFiles}`,
+              'warning',
+              5000
+            );
+          }
+
+          // 성공한 파일이 있으면 제출
+          if (result.successful && result.successful.length > 0) {
+            form.submit();
+          } else {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="bi bi-send me-1"></i> 작성완료';
+            ErrorNotification.showToast(
+              '업로드 실패',
+              '파일 업로드에 실패하여 게시글을 작성할 수 없습니다.',
+              'error',
+              5000
+            );
+          }
+        }).catch((error) => {
+          console.error('Upload error:', error);
+
+          ErrorNotification.handleNetworkError({
+            message: error.message || '파일 업로드 중 네트워크 오류가 발생했습니다.'
+          });
+
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = '<i class="bi bi-send me-1"></i> 작성완료';
+        });
+      } else {
+        // 첨부파일이 없으면 바로 제출
+        try {
+          form.submit();
+        } catch (error) {
+          console.error('Form submit error:', error);
+          ErrorNotification.handlePostSubmitError({
+            message: error.message || '게시글 작성 중 오류가 발생했습니다.',
+            code: 'FORM_SUBMIT_ERROR'
+          }, '작성');
+        }
+      }
+    });
   });
 </script>
 
