@@ -17,7 +17,6 @@ import org.springframework.samples.petclinic.counsel.dto.CounselPostDto;
 import org.springframework.samples.petclinic.counsel.dto.CounselPostWriteDto;
 import org.springframework.samples.petclinic.counsel.service.CounselService;
 import org.springframework.samples.petclinic.user.repository.UserRepository;
-import org.springframework.samples.petclinic.user.table.User;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -27,7 +26,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -62,11 +60,9 @@ public class CounselController {
 
 	private static final Logger log = LoggerFactory.getLogger(CounselController.class);
 	private final CounselService counselService;
-	private final UserRepository userRepository;
 
 	public CounselController(CounselService counselService, UserRepository userRepository) {
 		this.counselService = counselService;
-		this.userRepository = userRepository;
 	}
 
 	/**
@@ -199,14 +195,7 @@ public class CounselController {
 
 		List<CounselCommentDto> comments = counselService.getCommentsForPost(id);
 
-		// 좋아요 정보 추가
-		long likeCount = counselService.getLikeCount(id);
 		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-		boolean isLiked = counselService.isLikedByUser(id, authentication);
-		List<String> likedUsernames = counselService.getLikedUsernames(id);
-
-		// 좋아요 누른 사용자 정보 조회 (username → User 객체)
-		List<User> likedUsers = likedUsernames.isEmpty() ? Collections.emptyList() : userRepository.findByUsernameIn(likedUsernames);
 
 		// 작성자 및 관리자 검증 추가
 		List<String> roles = authentication.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList();
@@ -216,9 +205,6 @@ public class CounselController {
 
 		model.addAttribute("post", post);
 		model.addAttribute("comments", comments);
-		model.addAttribute("likeCount", likeCount);
-		model.addAttribute("isLiked", isLiked);
-		model.addAttribute("likedUsers", likedUsers);
 		model.addAttribute("template", "counsel/counselDetail");
 		model.addAttribute("ownerYN", ownerYN);
 		return "fragments/layout";
@@ -480,47 +466,6 @@ public class CounselController {
 			redirectAttributes.addFlashAttribute("error", "상태 변경 중 오류가 발생했습니다.");
 		}
 		return "redirect:/counsel/detail/" + id;
-	}
-
-	/**
-	 * 게시글 좋아요 토글 (AJAX)
-	 * - 로그인한 사용자만 좋아요를 누를 수 있다.
-	 * - 이미 좋아요를 눌렀으면 취소하고, 안 눌렀으면 추가한다.
-	 * - JSON 응답으로 좋아요 상태와 개수를 반환한다.
-	 */
-	@PostMapping("/detail/{id}/like")
-	@ResponseBody
-	public ResponseEntity<Map<String, Object>> toggleLike(@PathVariable Long id, Authentication authentication) {
-		Map<String, Object> response = new HashMap<>();
-
-		try {
-			// 좋아요 토글
-			boolean liked = counselService.toggleLike(id, authentication);
-
-			// 좋아요 개수 조회
-			long likeCount = counselService.getLikeCount(id);
-
-			response.put("success", true);
-			response.put("liked", liked);
-			response.put("likeCount", likeCount);
-			response.put("message", liked ? "좋아요를 눌렀습니다." : "좋아요를 취소했습니다.");
-
-			log.info("Like toggled: postId={}, username={}, liked={}",
-				id, authentication != null ? authentication.getName() : "anonymous", liked);
-
-			return ResponseEntity.ok(response);
-		} catch (IllegalStateException e) {
-			// 비로그인 사용자
-			log.warn("Unauthorized like attempt: postId={}", id);
-			response.put("success", false);
-			response.put("error", e.getMessage());
-			return ResponseEntity.status(401).body(response);
-		} catch (Exception e) {
-			log.error("Error toggling like: postId={}, error={}", id, e.getMessage(), e);
-			response.put("success", false);
-			response.put("error", "좋아요 처리 중 오류가 발생했습니다.");
-			return ResponseEntity.badRequest().body(response);
-		}
 	}
 
 	/**

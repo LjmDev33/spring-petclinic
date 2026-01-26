@@ -135,28 +135,6 @@
         <!-- 탭 헤더 (콘텐츠 크기에 맞게 왼쪽 정렬) -->
         <div class="border rounded-top" id="tabContainer" style="background-color: #f8f9fa; display: inline-flex; position: relative; z-index: 1;">
 
-          <!-- 좋아요 헤더 -->
-          <div class="accordion-header d-flex align-items-center p-3"
-               id="likeAccordionHeader"
-               style="cursor: pointer; transition: background-color 0.3s ease; min-width: 150px; border-right: 1px solid #dee2e6; gap: 8px;"
-               aria-expanded="false" aria-controls="likeAccordionPanel">
-
-            <!-- 좋아요 하트 아이콘 (클릭 시 토글) -->
-            <span id="likeButton" style="cursor: pointer; font-size: 1.2rem;"
-                  onclick="toggleLike(event)"
-                  title="좋아요를 누르려면 로그인하세요">
-              <i id="likeIcon" th:class="${isLiked} ? 'fa fa-heart text-danger' : 'fa fa-heart-o'"></i>
-            </span>
-
-            <!-- 텍스트 -->
-            <span class="fw-bold">좋아요 (<span id="likeCountTab" th:text="${likeCount}">0</span>)</span>
-
-            <!-- 아코디언 화살표 (오른쪽 끝) -->
-            <span class="accordion-toggle-icon" style="display: inline-flex; align-items: center; transition: transform 0.3s ease; margin-left: auto;">
-              <i class="fa fa-chevron-down"></i>
-            </span>
-          </div>
-
           <!-- 답변 헤더 -->
           <div class="accordion-header d-flex align-items-center p-3"
                id="commentAccordionHeader"
@@ -175,46 +153,6 @@
             </span>
           </div>
         </div>
-
-        <!-- 좋아요 패널 -->
-        <div class="collapse border border-top-0 rounded-bottom" id="likeAccordionPanel"
-             style="transition: max-height 0.3s ease;">
-          <div class="accordion-body p-4 bg-light">
-                <!-- 비로그인 사용자 안내 -->
-                <div sec:authorize="!isAuthenticated()" class="alert alert-info text-center mb-4">
-                  <i class="fa fa-info-circle me-2"></i>좋아요를 누르려면 로그인이 필요합니다.
-                </div>
-
-                <!-- 좋아요 누른 사용자 목록 -->
-                <div th:if="${likedUsers != null and !likedUsers.isEmpty()}">
-                  <h5 class="mb-3 fw-bold text-center">📌 이 글에 공감한 사용자</h5>
-                  <div style="display: flex; flex-wrap: wrap; gap: 12px;">
-                    <!-- 사용자 목록 -->
-                    <div th:each="user : ${likedUsers}" style="flex: 0 1 auto;">
-                      <div class="d-flex align-items-center p-2 border rounded bg-white">
-                        <!-- 프로필 이미지 또는 이니셜 아바타 -->
-                        <div th:if="${user.hasProfileImage()}"
-                             class="rounded-circle me-2 flex-shrink-0"
-                             th:style="'width: 36px; height: 36px; background-image: url(' + ${user.profileImageUrl} + '); background-size: cover; background-position: center;'">
-                        </div>
-                        <div th:unless="${user.hasProfileImage()}"
-                             class="rounded-circle me-2 flex-shrink-0 d-flex align-items-center justify-content-center text-white fw-bold"
-                             th:style="'width: 36px; height: 36px; background-color: ' + ${user.avatarColor} + '; font-size: 14px;'"
-                             th:text="${user.initial}">
-                        </div>
-                        <!-- 닉네임 -->
-                        <span class="fw-bold text-truncate" th:text="${user.nickname}" th:title="${user.nickname}">사용자</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- 좋아요 없을 때 안내 -->
-                <div th:if="${likedUsers == null or likedUsers.isEmpty()}" class="alert alert-light text-center">
-                  <i class="fa fa-heart-o me-2"></i>아직 좋아요를 누른 사용자가 없습니다.
-                </div>
-          </div> <!-- /accordion-body -->
-        </div> <!-- /likeAccordionPanel -->
 
         <!-- 답변 패널 (초기 상태: 열림) -->
         <div class="collapse show border border-top-0 rounded-bottom" id="commentAccordionPanel"
@@ -773,20 +711,10 @@
    * - 스크롤 위치 유지 (페이지 점프 방지)
    */
   (function initAccordionBehavior() {
-    const likePanel = document.getElementById('likeAccordionPanel');
-    const likeHeader = document.getElementById('likeAccordionHeader');
-    const likeToggleIcon = likeHeader.querySelector('.accordion-toggle-icon i');
 
     const commentPanel = document.getElementById('commentAccordionPanel');
     const commentHeader = document.getElementById('commentAccordionHeader');
     const commentToggleIcon = commentHeader.querySelector('.accordion-toggle-icon i');
-
-    // === 헤더 클릭 시 스크롤 방지 + 수동 토글 ===
-    likeHeader.addEventListener('click', function(e) {
-      e.preventDefault(); // 기본 동작 방지 (스크롤 점프 방지)
-      const likeCollapse = bootstrap.Collapse.getOrCreateInstance(likePanel);
-      likeCollapse.toggle(); // 수동 토글
-    });
 
     commentHeader.addEventListener('click', function(e) {
       e.preventDefault(); // 기본 동작 방지 (스크롤 점프 방지)
@@ -794,39 +722,11 @@
       commentCollapse.toggle(); // 수동 토글
     });
 
-    // === 좋아요 패널 이벤트 ===
-    likePanel.addEventListener('show.bs.collapse', function() {
-      // 좋아요 패널 열기 → 화살표 아래 방향 (0deg)
-      if (likeToggleIcon) {
-        likeToggleIcon.style.transform = 'rotate(0deg)';
-      }
-
-      // 답변 패널 닫기 (다른 패널이 열려있을 때만)
-      if (commentPanel.classList.contains('show')) {
-        const commentCollapse = bootstrap.Collapse.getOrCreateInstance(commentPanel);
-        commentCollapse.hide();
-      }
-    });
-
-    likePanel.addEventListener('hide.bs.collapse', function() {
-      // 좋아요 패널 닫기 → 화살표 위 방향 (180deg)
-      if (likeToggleIcon) {
-        likeToggleIcon.style.transform = 'rotate(180deg)';
-      }
-      // 다른 패널은 건드리지 않음 (그대로 유지)
-    });
-
     // === 답변 패널 이벤트 ===
     commentPanel.addEventListener('show.bs.collapse', function() {
       // 답변 패널 열기 → 화살표 아래 방향 (0deg)
       if (commentToggleIcon) {
         commentToggleIcon.style.transform = 'rotate(0deg)';
-      }
-
-      // 좋아요 패널 닫기 (다른 패널이 열려있을 때만)
-      if (likePanel.classList.contains('show')) {
-        const likeCollapse = bootstrap.Collapse.getOrCreateInstance(likePanel);
-        likeCollapse.hide();
       }
     });
 
@@ -839,7 +739,7 @@
     });
 
     // === 헤더 호버 효과 ===
-    [likeHeader, commentHeader].forEach(header => {
+    [commentHeader].forEach(header => {
       header.addEventListener('mouseenter', function() {
         this.style.backgroundColor = '#e9ecef';
       });
