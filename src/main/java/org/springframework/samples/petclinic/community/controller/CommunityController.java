@@ -28,6 +28,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /*
  * Project : spring-petclinic
@@ -187,7 +188,7 @@ public class CommunityController {
 	}
 
 	/**
-	 * 게시글 좋아요 토글 (AJAX)
+	 * 게시글 좋아요 토글 (AJAX) - 사용자 목록 실시간 반환 추가
 	 * - 로그인한 사용자만 좋아요를 누를 수 있다.
 	 * - 이미 좋아요를 눌렀으면 취소하고, 안 눌렀으면 추가한다.
 	 * - JSON 응답으로 좋아요 상태와 개수를 반환한다.
@@ -206,9 +207,26 @@ public class CommunityController {
 			// 좋아요 개수 조회
 			long likeCount = communityService.getLikeCount(id);
 
+			// 3. [추가] 갱신된 좋아요 사용자 목록 조회 및 변환 (PhotoController와 동일 로직)
+			List<String> likedUsernames = communityService.getLikedUsernames(id);
+			// likedUsernames가 비어있어도 빈 리스트 반환됨
+			List<User> users = likedUsernames.isEmpty() ? Collections.emptyList() : userRepository.findByUsernameIn(likedUsernames);
+
+			// User 엔티티 -> 화면용 간소화된 데이터(Map)로 변환
+			List<Map<String, Object>> userListDto = users.stream().map(u -> {
+				Map<String, Object> map = new HashMap<>();
+				map.put("nickname", u.getNickname());
+				map.put("hasProfileImage", u.hasProfileImage());
+				map.put("profileImageUrl", u.getProfileImageUrl());
+				map.put("avatarColor", u.getAvatarColor());
+				map.put("initial", u.getInitial());
+				return map;
+			}).collect(Collectors.toList());
+
 			response.put("success", true);
 			response.put("liked", liked);
 			response.put("likeCount", likeCount);
+			response.put("likedUsers", userListDto); // [핵심] 갱신된 목록 전달
 			response.put("message", liked ? "좋아요를 눌렀습니다." : "좋아요를 취소했습니다.");
 
 			log.info("Like toggled: postId={}, username={}, liked={}",

@@ -127,6 +127,7 @@
               </div>
 
               <!-- 좋아요 누른 사용자 목록 -->
+            <div id="likedUsersContainer">
               <div th:if="${likedUsers != null and !likedUsers.isEmpty()}">
                 <h5 class="mb-3 fw-bold text-center">📌 이 글에 공감한 사용자</h5>
                 <div class="row g-2">
@@ -149,6 +150,7 @@
                   </div>
                 </div>
               </div>
+            </div>
 
               <!-- 좋아요 없을 때 안내 -->
               <div th:if="${likedUsers == null or likedUsers.isEmpty()}" class="alert alert-light text-center">
@@ -216,7 +218,7 @@
   });
 
   /**
-   * 좋아요 토글 (AJAX)
+   * 좋아요 토글 (AJAX) - Community 버전
    * - 로그인한 사용자만 가능
    * - 하트 아이콘 및 개수 업데이트
    * - 아코디언 펼침/접힘과 독립적으로 동작
@@ -255,6 +257,9 @@
         // 좋아요 개수 업데이트 (탭만)
         document.getElementById('likeCountTab').textContent = data.likeCount;
 
+        // [추가] 목록 실시간 업데이트
+        updateLikedUsersList(data.likedUsers);
+
         // Toast 알림
         TOAST.showSuccess(data.message, 2000);
       } else {
@@ -266,6 +271,54 @@
       console.error('Like toggle error:', error);
       TOAST.showError('좋아요 처리 중 오류가 발생했습니다.', 3000);
     });
+  }
+
+  /**
+   * [추가] 사용자 목록 DOM 재구성 함수 (Photo와 로직 동일)
+   */
+  function updateLikedUsersList(users) {
+    const container = document.getElementById('likedUsersContainer');
+    if (!container) return;
+
+    if (!users || users.length === 0) {
+      container.innerHTML = `
+        <div class="alert alert-light text-center">
+          <i class="fa fa-heart-o me-2"></i>아직 좋아요를 누른 사용자가 없습니다.
+        </div>
+      `;
+      return;
+    }
+
+    let html = `
+      <h5 class="mb-3 fw-bold text-center">📌 이 글에 공감한 사용자</h5>
+      <div class="row g-2">
+    `;
+
+    users.forEach(user => {
+      let profileHtml = '';
+      if (user.hasProfileImage) {
+        profileHtml = `<div class="rounded-circle me-2 flex-shrink-0"
+             style="width: 36px; height: 36px; background-image: url('${user.profileImageUrl}'); background-size: cover; background-position: center;">
+        </div>`;
+      } else {
+        profileHtml = `<div class="rounded-circle me-2 flex-shrink-0 d-flex align-items-center justify-content-center text-white fw-bold"
+             style="width: 36px; height: 36px; background-color: ${user.avatarColor}; font-size: 14px;">
+             ${user.initial}
+        </div>`;
+      }
+
+      html += `
+        <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+          <div class="d-flex align-items-center p-2 border rounded bg-light">
+            ${profileHtml}
+            <span class="fw-bold text-truncate" title="${user.nickname}">${user.nickname}</span>
+          </div>
+        </div>
+      `;
+    });
+
+    html += `</div>`;
+    container.innerHTML = html;
   }
 
   /**
