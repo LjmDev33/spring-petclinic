@@ -174,16 +174,6 @@ CREATE TABLE IF NOT EXISTS `counsel_post_attachments` (
   CONSTRAINT `FK_counsel_attach_file` FOREIGN KEY (`attachment_id`) REFERENCES `attachment` (`id`)
   )
 
-CREATE TABLE IF NOT EXISTS `counsel_post_likes` (
-                                                  `id` bigint NOT NULL AUTO_INCREMENT,
-                                                  `post_id` bigint NOT NULL,
-                                                  `username` varchar(50) NOT NULL,
-  `created_at` datetime(6) NOT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `UK_counsel_likes` (`post_id`,`username`),
-  CONSTRAINT `FK_counsel_likes_post` FOREIGN KEY (`post_id`) REFERENCES `counsel_post` (`id`)
-  )
-
 CREATE TABLE IF NOT EXISTS `counsel_comment` (
                                                `id` bigint NOT NULL AUTO_INCREMENT,
                                                `post_id` bigint NOT NULL,

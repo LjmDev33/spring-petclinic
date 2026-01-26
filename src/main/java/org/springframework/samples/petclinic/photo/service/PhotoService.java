@@ -1,6 +1,7 @@
 package org.springframework.samples.petclinic.photo.service;
 
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.samples.petclinic.community.table.CommunityPostLike;
 import org.springframework.samples.petclinic.photo.repository.PhotoPostLikeRepository;
 import org.springframework.samples.petclinic.photo.table.PhotoPostLike;
 import org.springframework.security.core.Authentication;
@@ -27,6 +28,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -424,6 +426,24 @@ public class PhotoService {
 			log.error("❌ [ACID-Error] Failed to get photo like count: postId={}, error={}",
 				postId, e.getMessage(), e);
 			return 0L;
+		}
+	}
+
+	public List<String> getLikedUsernames(Long postId) {
+		try {
+			List<PhotoPostLike> likes = likeRepository.findAllByPostIdOrderByCreatedAtAsc(postId);
+
+			List<String> usernames = likes.stream()
+				.map(PhotoPostLike::getUsername)
+				.collect(Collectors.toList());
+
+			log.debug("✅ [Photo] Liked usernames retrieved: postId={}, count={}", postId, usernames.size());
+			return usernames;
+
+		} catch (Exception e) {
+			log.error("❌ [Photo] Failed to get liked usernames: postId={}, error={}",
+				postId, e.getMessage(), e);
+			return Collections.emptyList();
 		}
 	}
 

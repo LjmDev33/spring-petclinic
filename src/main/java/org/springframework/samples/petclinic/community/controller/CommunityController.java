@@ -84,6 +84,7 @@ public class CommunityController {
 		return "fragments/layout";
 	}
 
+	// 공지사항 게시글 상세
 	@GetMapping("detail/{id}")
 	public String detail(@PathVariable("id") Long id,
 						 @RequestParam(value = "subject", required = true) String subject,

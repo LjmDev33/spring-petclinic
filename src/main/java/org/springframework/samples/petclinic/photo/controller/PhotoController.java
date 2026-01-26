@@ -8,6 +8,8 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.samples.petclinic.common.dto.PageResponse;
 import org.springframework.samples.petclinic.photo.dto.PhotoPostDto;
 import org.springframework.samples.petclinic.photo.service.PhotoService;
+import org.springframework.samples.petclinic.user.repository.UserRepository;
+import org.springframework.samples.petclinic.user.table.User;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -19,9 +21,11 @@ import org.springframework.web.multipart.MultipartFile;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Project : spring-petclinic
@@ -39,9 +43,11 @@ public class PhotoController {
 	private static final Logger log = LoggerFactory.getLogger(PhotoController.class);
 
 	private final PhotoService photoService;
+	private final UserRepository userRepository;
 
-	public PhotoController(PhotoService photoService) {
+	public PhotoController(PhotoService photoService, UserRepository userRepository) {
 		this.photoService = photoService;
+		this.userRepository = userRepository;
 	}
 
 	/**
@@ -74,6 +80,12 @@ public class PhotoController {
 		long likeCount = photoService.getLikeCount(id);
 		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 		boolean isLiked = photoService.isLikedByUser(id, authentication);
+
+		// [추가] 좋아요 누른 사용자 정보 조회 (username → User 객체)
+		// 전제: PhotoService에 getLikedUsernames(id) 메소드가 구현되어 있다고 가정
+		List<String> likedUsernames = photoService.getLikedUsernames(id);
+		List<User> likedUsers = likedUsernames.isEmpty() ? Collections.emptyList() : userRepository.findByUsernameIn(likedUsernames);
+
 		// 작성자 및 관리자 검증 추가
 		List<String> roles = authentication.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList();
 		String userName = authentication.getName();
@@ -83,6 +95,7 @@ public class PhotoController {
 		model.addAttribute("post", post);
 		model.addAttribute("likeCount", likeCount);
 		model.addAttribute("isLiked", isLiked);
+		model.addAttribute("likedUsers", likedUsers);
 		model.addAttribute("template", "photo/photoDetail");
 		model.addAttribute("ownerYN", ownerYN);
 
@@ -207,9 +220,25 @@ public class PhotoController {
 			// 좋아요 개수 조회
 			long likeCount = photoService.getLikeCount(id);
 
+			List<String> likedUsernames = photoService.getLikedUsernames(id);
+			List<User> users = userRepository.findByUsernameIn(likedUsernames);
+
+			// User 엔티티 -> 화면용 간소화된 데이터(Map)로 변환 (보안 및 전송 최적화)
+			List<Map<String, Object>> userListDto = users.stream().map(u -> {
+				Map<String, Object> map = new HashMap<>();
+				map.put("nickname", u.getNickname());
+				// User 클래스에 해당 메소드들이 있다고 가정 (없으면 getter 사용)
+				map.put("hasProfileImage", u.hasProfileImage());
+				map.put("profileImageUrl", u.getProfileImageUrl());
+				map.put("avatarColor", u.getAvatarColor());
+				map.put("initial", u.getInitial());
+				return map;
+			}).collect(Collectors.toList());
+
 			response.put("success", true);
 			response.put("liked", liked);
 			response.put("likeCount", likeCount);
+			response.put("likedUsers", userListDto);
 			response.put("message", liked ? "좋아요를 눌렀습니다." : "좋아요를 취소했습니다.");
 
 			log.info("Photo Like toggled: postId={}, username={}, liked={}",

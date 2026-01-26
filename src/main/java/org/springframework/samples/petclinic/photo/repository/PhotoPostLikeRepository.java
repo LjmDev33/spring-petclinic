@@ -1,6 +1,7 @@
 package org.springframework.samples.petclinic.photo.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.samples.petclinic.community.table.CommunityPostLike;
 import org.springframework.samples.petclinic.photo.table.PhotoPostLike;
 import org.springframework.stereotype.Repository;
 
@@ -106,5 +107,15 @@ public interface PhotoPostLikeRepository extends JpaRepository<PhotoPostLike, Lo
 	 * @param postId 게시글 ID
 	 */
 	void deleteByPostId(Long postId);
+
+	/**
+	 * 특정 게시글에 좋아요를 누른 모든 사용자 조회 (좋아요 패널용)
+	 *
+	 * @param postId 게시글 ID
+	 * @return 좋아요 엔티티 리스트 (생성일시 기준 오름차순)
+	 */
+	@org.springframework.data.jpa.repository.Query("SELECT cl FROM PhotoPostLike cl WHERE cl.post.id = :postId ORDER BY cl.createdAt ASC")
+	java.util.List<PhotoPostLike> findAllByPostIdOrderByCreatedAtAsc(@org.springframework.data.repository.query.Param("postId") Long postId);
+
 }
 

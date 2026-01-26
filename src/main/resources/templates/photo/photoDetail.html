@@ -149,9 +149,31 @@
             <i class="fa fa-info-circle me-2"></i>좋아요를 누르려면 로그인이 필요합니다.
           </div>
 
-          <!-- 좋아요 누른 사용자 목록 (Photo는 준비 중) -->
-          <div class="alert alert-light text-center">
-            <i class="fa fa-heart-o me-2"></i>좋아요 사용자 목록 기능은 준비 중입니다.
+          <!-- 좋아요 누른 사용자 목록 -->
+          <div id="likedUsersContainer">
+            <div th:if="${likedUsers != null and !likedUsers.isEmpty()}">
+              <h5 class="mb-3 fw-bold text-center">📌 이 글에 공감한 사용자</h5>
+              <div class="row g-2">
+                <div th:each="user : ${likedUsers}" class="col-12 col-sm-6 col-md-4 col-lg-3">
+                  <div class="d-flex align-items-center p-2 border rounded bg-light">
+                    <div th:if="${user.hasProfileImage()}"
+                         class="rounded-circle me-2 flex-shrink-0"
+                         th:style="'width: 36px; height: 36px; background-image: url(' + ${user.profileImageUrl} + '); background-size: cover; background-position: center;'">
+                    </div>
+                    <div th:unless="${user.hasProfileImage()}"
+                         class="rounded-circle me-2 flex-shrink-0 d-flex align-items-center justify-content-center text-white fw-bold"
+                         th:style="'width: 36px; height: 36px; background-color: ' + ${user.avatarColor} + '; font-size: 14px;'"
+                         th:text="${user.initial}">
+                    </div>
+                    <span class="fw-bold text-truncate" th:text="${user.nickname}" th:title="${user.nickname}">사용자</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div th:if="${likedUsers == null or likedUsers.isEmpty()}" class="alert alert-light text-center">
+            <i class="fa fa-heart-o me-2"></i>아직 좋아요를 누른 사용자가 없습니다.
           </div>
         </div> <!-- /accordion-body -->
       </div> <!-- /likeAccordionPanel -->
@@ -253,8 +275,11 @@
           likeIcon.className = 'fa fa-heart-o';
         }
 
-        // 좋아요 개수 업데이트 (탭만)
+        // 좋아요 개수 업데이트
         document.getElementById('likeCountTab').textContent = data.likeCount;
+
+        // 3. [핵심] 사용자 목록 UI 실시간 업데이트
+        updateLikedUsersList(data.likedUsers);
 
         // Toast 알림
         TOAST.showSuccess(data.message, 2000);
@@ -268,6 +293,63 @@
       TOAST.showError('좋아요 처리 중 오류가 발생했습니다.', 3000);
     });
   }
+
+  /**
+   * [추가] 좋아요 사용자 목록 DOM 재구성 함수
+   * - 서버에서 받은 JSON 데이터를 기반으로 HTML을 다시 그립니다.
+   */
+  function updateLikedUsersList(users) {
+    const container = document.getElementById('likedUsersContainer');
+    if (!container) return;
+
+    // 목록이 비어있으면 '안내 메시지' 출력
+    if (!users || users.length === 0) {
+      container.innerHTML = `
+        <div class="alert alert-light text-center">
+          <i class="fa fa-heart-o me-2"></i>아직 좋아요를 누른 사용자가 없습니다.
+        </div>
+      `;
+      return;
+    }
+
+    // 목록이 있으면 Grid 생성
+    let html = `
+      <h5 class="mb-3 fw-bold text-center">📌 이 글에 공감한 사용자</h5>
+      <div class="row g-2">
+    `;
+
+    // 사용자별 HTML 조립
+    users.forEach(user => {
+      // 이미지/아바타 분기 처리
+      let profileHtml = '';
+      if (user.hasProfileImage) {
+        profileHtml = `<div class="rounded-circle me-2 flex-shrink-0"
+             style="width: 36px; height: 36px; background-image: url('${user.profileImageUrl}'); background-size: cover; background-position: center;">
+        </div>`;
+      } else {
+        profileHtml = `<div class="rounded-circle me-2 flex-shrink-0 d-flex align-items-center justify-content-center text-white fw-bold"
+             style="width: 36px; height: 36px; background-color: ${user.avatarColor}; font-size: 14px;">
+             ${user.initial}
+        </div>`;
+      }
+
+      html += `
+        <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+          <div class="d-flex align-items-center p-2 border rounded bg-light">
+            ${profileHtml}
+            <span class="fw-bold text-truncate" title="${user.nickname}">${user.nickname}</span>
+          </div>
+        </div>
+      `;
+    });
+
+    html += `</div>`; // row 닫기
+
+    // 컨테이너 내용 교체
+    container.innerHTML = html;
+  }
+
+
 
   /**
    * 상호 배타적 아코디언 동작 + 화살표 회전 애니메이션
