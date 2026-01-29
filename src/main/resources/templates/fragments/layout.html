@@ -118,26 +118,27 @@
                 <li><a class="dropdown-item" th:href="@{/introduce/greetings}">인사말</a></li>
                 <li><a class="dropdown-item" th:href="@{/introduce/staff}">의료진소개</a></li>
                 <li><a class="dropdown-item" th:href="@{/introduce/medicalphilosophy}">진료철학</a></li>
+                <li><a class="dropdown-item" th:href="@{/introduce/special}">특별함</a></li>
                 <li><a class="dropdown-item" th:href="@{/introduce/operatinghours}">운영시간</a></li>
                 <li><a class="dropdown-item" th:href="@{/introduce/tourhospital}">병원 둘러보기</a></li>
                 <li><a class="dropdown-item" th:href="@{/introduce/directions}">찾아오시는길</a></li>
               </ul>
             </li>
             <li class="nav-item dropdown">
-              <a class="nav-link dropdown-toggle" style="font-size: 16px;" aria-current="page" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">일반클리닉</a>
+              <a class="nav-link dropdown-toggle" style="font-size: 16px;" aria-current="page" href="#" role="button" th:onclick="|location.href='@{/general/internalmedicineclinic}'|" data-bs-toggle="dropdown" aria-expanded="false">일반클리닉</a>
               <ul class="dropdown-menu">
-                <li><a class="dropdown-item" href="#">내과 클리닉</a></li>
-                <li><a class="dropdown-item" href="#">외과 클리닉</a></li>
-                <li><a class="dropdown-item" href="#">고양이 클리닉</a></li>
-                <li><a class="dropdown-item" href="#">Skin & Ear 클리닉</a></li>
-                <li><a class="dropdown-item" href="#">예방의학 클리닉</a></li>
+                <li><a class="dropdown-item" th:href="@{/general/internalmedicineclinic}">내과 클리닉</a></li>
+                <li><a class="dropdown-item" th:href="@{/general/surgicalclinic}">외과 클리닉</a></li>
+                <li><a class="dropdown-item" th:href="@{/general/catclinic}">고양이 클리닉</a></li>
+                <li><a class="dropdown-item" th:href="@{/general/skinandearclinic}">Skin & Ear 클리닉</a></li>
+                <li><a class="dropdown-item" th:href="@{/general/preventivemedicineclinic}">예방의학 클리닉</a></li>
               </ul>
             </li>
             <li class="nav-item dropdown">
-              <a class="nav-link dropdown-toggle" style="font-size: 16px;" aria-current="page" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">특화클리닉</a>
+              <a class="nav-link dropdown-toggle" style="font-size: 16px;" aria-current="page" href="#" role="button" th:onclick="|location.href='@{/specialization/heartdisease}'|" data-bs-toggle="dropdown" aria-expanded="false">특화클리닉</a>
               <ul class="dropdown-menu">
-                <li><a class="dropdown-item" href="#">심장질환전문</a></li>
-                <li><a class="dropdown-item" href="#">관절&척추전문</a></li>
+                <li><a class="dropdown-item" th:href="@{/specialization/heartdisease}">심장질환전문</a></li>
+                <li><a class="dropdown-item" th:href="@{/specialization/jointandvertebrae}">관절&척추전문</a></li>
                 <li><a class="dropdown-item" href="#">골절전문</a></li>
                 <li><a class="dropdown-item" href="#">치과전문</a></li>
                 <li><a class="dropdown-item" href="#">내시경전문</a></li>

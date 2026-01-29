@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+  <title>관절&척추전문 - Spring PetClinic</title>
+  <link rel="stylesheet" th:href="@{/css/custom-buttons.css}">
+  <link rel="stylesheet" th:href="@{/css/error-notification.css}">
+  <style>
+    /* 탭 메뉴 스타일 (이전과 동일) */
+    .special-nav {
+      border-bottom: 0;
+      justify-content: center;
+      margin-top: 20px;
+    }
+    .special-nav .nav-item {
+      flex: 1;
+      text-align: center;
+      min-width: 100px;
+    }
+    .special-nav .nav-link {
+      border-radius: 0;
+      background-color: #f1f1f1;
+      color: #333;
+      font-weight: bold;
+      padding: 15px 5px;
+      border: 1px solid #ddd;
+      margin-right: -1px;
+    }
+    .special-nav .nav-link.active {
+      background-color: #0099e5;
+      color: white;
+      border-color: #0099e5;
+    }
+    .special-nav .nav-link:hover:not(.active) {
+      background-color: #e2e2e2;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container mt-4">
+  <div class="d-flex flex-column justify-content-center align-items-center mb-4">
+    <h2 class="mb-0" style="font-weight: bold; font-size: 32pt;">
+      <i class="bi bi-geo-alt-fill"></i> 관절&척추전문
+    </h2>
+    <div style="width: 120px; height: 3px; background-color: #000; margin-top: 30px;"></div>
+  </div>
+
+  <ul class="nav nav-pills special-nav mb-4" id="pills-tab" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active w-100" id="pills-1-tab" data-bs-toggle="pill" data-bs-target="#pills-1" type="button" role="tab" aria-selected="true">고관절이형성증</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link w-100" id="pills-2-tab" data-bs-toggle="pill" data-bs-target="#pills-2" type="button" role="tab" aria-selected="false">디스크질환</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link w-100" id="pills-3-tab" data-bs-toggle="pill" data-bs-target="#pills-3" type="button" role="tab" aria-selected="false">슬개골탈구</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link w-100" id="pills-4-tab" data-bs-toggle="pill" data-bs-target="#pills-4" type="button" role="tab" aria-selected="false">십자인대파열</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link w-100" id="pills-5-tab" data-bs-toggle="pill" data-bs-target="#pills-5" type="button" role="tab" aria-selected="false">요천추협착증</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link w-100" id="pills-6-tab" data-bs-toggle="pill" data-bs-target="#pills-6" type="button" role="tab" aria-selected="false">환축추불안정성</button>
+    </li>
+  </ul>
+</div>
+
+<div class="container-fluid mt-3">
+  <div class="tab-content" id="pills-tabContent">
+
+    <div class="tab-pane fade show active" id="pills-1" role="tabpanel" aria-labelledby="pills-1-tab">
+
+      <div class="row">
+        <div class="col-12 text-center px-0">
+          <img th:src="@{/images/joint_vertebrae1.jpg}" alt="고관절1" style="width: 100%; max-width: 1600px;">
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-12 text-center px-0">
+          <img th:src="@{/images/joint_vertebrae2.jpg}" alt="고관절2" style="width: 100%; max-width: 1600px;">
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-12 text-center px-0">
+          <img th:src="@{/images/joint_vertebrae3.jpg}" alt="고관절3" style="width: 100%; max-width: 1600px;">
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-12 text-center px-0">
+          <img th:src="@{/images/joint_vertebrae4.jpg}" alt="고관절4" style="width: 100%; max-width: 1600px;">
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-12 text-center px-0">
+          <img th:src="@{/images/joint_vertebrae5.jpg}" alt="고관절5" style="width: 100%; max-width: 1600px;">
+        </div>
+      </div>
+
+    </div>
+    <div class="tab-pane fade" id="pills-2" role="tabpanel" aria-labelledby="pills-2-tab">
+      <div class="text-center py-5">
+        <h4>디스크질환 상세 안내 준비중입니다.</h4>
+      </div>
+    </div>
+
+
+    <div class="tab-pane fade" id="pills-3" role="tabpanel" aria-labelledby="pills-3-tab">
+      <div class="text-center py-5">
+        <h4>슬개골탈구 상세 안내 준비중입니다.</h4>
+      </div>
+    </div>
+
+
+    <div class="tab-pane fade" id="pills-4" role="tabpanel" aria-labelledby="pills-4-tab">
+      <div class="text-center py-5">
+        <h4>십자인대파열 상세 안내 준비중입니다.</h4>
+      </div>
+    </div>
+
+
+    <div class="tab-pane fade" id="pills-5" role="tabpanel" aria-labelledby="pills-5-tab">
+      <div class="text-center py-5">
+        <h4>요천추협착증 상세 안내 준비중입니다.</h4>
+      </div>
+    </div>
+
+
+    <div class="tab-pane fade" id="pills-6" role="tabpanel" aria-labelledby="pills-6-tab">
+      <div class="text-center py-5">
+        <h4>환축추불안정성 상세 안내 준비중입니다.</h4>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>
