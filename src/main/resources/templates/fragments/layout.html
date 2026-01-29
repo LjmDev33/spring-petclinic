@@ -117,11 +117,10 @@
               <ul class="dropdown-menu">
                 <li><a class="dropdown-item" th:href="@{/introduce/greetings}">인사말</a></li>
                 <li><a class="dropdown-item" th:href="@{/introduce/staff}">의료진소개</a></li>
-                <li><a class="dropdown-item" href="#">진료철학</a></li>
-                <li><a class="dropdown-item" href="#">특별함</a></li>
-                <li><a class="dropdown-item" href="#">운영시간</a></li>
-                <li><a class="dropdown-item" href="#">병원 둘러보기</a></li>
-                <li><a class="dropdown-item" href="#">찾아오시는길</a></li>
+                <li><a class="dropdown-item" th:href="@{/introduce/medicalphilosophy}">진료철학</a></li>
+                <li><a class="dropdown-item" th:href="@{/introduce/operatinghours}">운영시간</a></li>
+                <li><a class="dropdown-item" th:href="@{/introduce/tourhospital}">병원 둘러보기</a></li>
+                <li><a class="dropdown-item" th:href="@{/introduce/directions}">찾아오시는길</a></li>
               </ul>
             </li>
             <li class="nav-item dropdown">
@@ -186,7 +185,7 @@
 
 <div class="container-fluid">
     <th:block th:insert="~{${template}}" />
-    <div class="pt-4 pb-5" style="background: #DDDDDD; text-align: center;" >
+    <div class="pt-4 pb-5 mt-5" style="background: #DDDDDD; text-align: center;" >
       <div class="row">
         <div class="col-12 text-center mb-3">
           <img src="../static/images/copyright.png"
