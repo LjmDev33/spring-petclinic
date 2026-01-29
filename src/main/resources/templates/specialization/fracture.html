@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+  <title>골절전문 - Spring PetClinic</title>
+  <link rel="stylesheet" th:href="@{/css/custom-buttons.css}">
+  <link rel="stylesheet" th:href="@{/css/error-notification.css}">
+</head>
+<body>
+
+<div class="container mt-4">
+  <div class="d-flex flex-column justify-content-center align-items-center mb-4">
+    <h2 class="mb-0" style="font-weight: bold; font-size: 32pt;">
+      <i class="bi bi-geo-alt-fill"></i> 골절전문
+    </h2>
+    <div style="width: 120px; height: 3px; background-color: #000; margin-top: 30px;"></div>
+  </div>
+</div>
+
+<div class="container-fluid mt-3">
+  <div class="row">
+    <div class="col-12 text-center px-0"> <img th:src="@{/images/fracture1.jpg}" alt="fracture1"
+                                               class="thumbnail-preview"
+                                               onerror="this.style.display='none';"
+                                               style="width: 100%; max-width: 1600px;">
+    </div>
+  </div>
+  <div class="col-12 text-center px-0"> <img th:src="@{/images/fracture2.jpg}" alt="fracture2"
+                                             class="thumbnail-preview"
+                                             onerror="this.style.display='none';"
+                                             style="width: 100%; max-width: 1600px;">
+  </div>
+</div>
+<div class="col-12 text-center px-0"> <img th:src="@{/images/fracture3.jpg}" alt="fracture3"
+                                           class="thumbnail-preview"
+                                           onerror="this.style.display='none';"
+                                           style="width: 100%; max-width: 1600px;">
+</div>
+<div class="col-12 text-center px-0"> <img th:src="@{/images/fracture4.jpg}" alt="fracture4"
+                                           class="thumbnail-preview"
+                                           onerror="this.style.display='none';"
+                                           style="width: 100%; max-width: 1600px;">
+</div>
+
+</body>
+</html>
