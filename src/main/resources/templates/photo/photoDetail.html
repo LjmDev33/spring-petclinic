@@ -131,7 +131,7 @@
           <i class="bi bi-chat-dots"></i>
 
           <!-- 텍스트 -->
-          <span class="fw-bold">답변 (<span id="commentCount">0</span>)</span>
+          <span class="fw-bold">답변 (<span th:text="${#lists.size(comments)}">0</span>)</span>
 
           <!-- 아코디언 화살표 (오른쪽 끝) -->
           <span class="accordion-toggle-icon" style="display: inline-flex; align-items-center; transition: transform 0.3s ease; margin-left: auto;">

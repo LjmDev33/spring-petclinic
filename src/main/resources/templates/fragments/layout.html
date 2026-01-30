@@ -152,14 +152,14 @@
 <!--              </ul>-->
 <!--            </li>-->
             <li class="nav-item dropdown">
-              <a class="nav-link dropdown-toggle" style="font-size: 16px;" aria-current="page" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">최소침습시술</a>
+              <a class="nav-link dropdown-toggle" style="font-size: 16px;" aria-current="page" href="#" role="button" th:onclick="|location.href='@{/minimal/minimallyinvasive}'|" data-bs-toggle="dropdown" aria-expanded="false">최소침습시술</a>
               <ul class="dropdown-menu">
-                <li><a class="dropdown-item" href="#">복강경중성화수술</a></li>
-                <li><a class="dropdown-item" href="#">단두종호흡부전증후군</a></li>
+                <li><a class="dropdown-item" th:href="@{/minimal/minimallyinvasive}">복강경중성화수술</a></li>
+                <li><a class="dropdown-item" th:href="@{/minimal/brachycephalic}">단두종호흡부전증후군</a></li>
               </ul>
             </li>
             <li class="nav-item dropdown">
-              <a class="nav-link dropdown-toggle" style="font-size: 16px;" aria-current="page" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">온라인상담</a>
+              <a class="nav-link dropdown-toggle" style="font-size: 16px;" aria-current="page" href="#" role="button" th:onclick="|location.href='@{/counsel/list}'|" data-bs-toggle="dropdown" aria-expanded="false">온라인상담</a>
               <ul class="dropdown-menu">
                 <!-- 로그인/권한(관리자) 제어는 추후 구현 예정 -->
                 <li><a class="dropdown-item" th:href="@{/counsel/list}">온라인상담</a></li>
@@ -167,7 +167,7 @@
               </ul>
             </li>
             <li class="nav-item dropdown">
-              <a class="nav-link dropdown-toggle" style="font-size: 16px;" aria-current="page" role="button" data-bs-toggle="dropdown" aria-expanded="false">커뮤니티</a>
+              <a class="nav-link dropdown-toggle" style="font-size: 16px;" aria-current="page" role="button" th:onclick="|location.href='@{/community/list(subject='notice')}'|" data-bs-toggle="dropdown" aria-expanded="false">커뮤니티</a>
               <ul class="dropdown-menu">
                 <li><a class="dropdown-item" th:href="@{/community/list(subject='notice')}">공지사항</a></li>
                 <li><a class="dropdown-item" th:href="@{/photo/list}">고객포토</a></li>

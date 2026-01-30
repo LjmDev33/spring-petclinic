@@ -118,6 +118,8 @@
 
 <!-- Quill Editor JS (로컬 내장) -->
 <script th:src="@{/js/quill/quill.js}"></script>
+<script th:src="@{/js/quill/quill_tooltip.js}"></script>
+<script th:src="@{/js/quill/quill_image_resize.min.js}"></script>
 
 <!-- Uppy JS (로컬 내장 브라우저 번들) -->
 <script th:src="@{/js/uppy/uppy-browser.js}"></script>
@@ -180,18 +182,31 @@
     const quill = new Quill('#editor', {
       theme: 'snow',
       modules: {
+        imageResize: {
+          displaySize: true // 이미지 위에 픽셀 크기(예: 300x200) 표시 여부
+        },
         toolbar: [
-          [{'header': [1, 2, 3, false]}],
+          // 1. [추가] 폰트 및 크기 설정 (헤더와는 다른 개념)
+          // false는 기본값(Normal)을 의미합니다.
+          [{ 'size': ['small', false, 'large', 'huge'] }],
+          // 2. [변경] 헤더 (H1~H4까지 확장하여 구조화 지원)
+          [{ 'header': [1, 2, 3, 4, false] }],
+          // 인용구 및 코드블럭
+          ['blockquote'],
           ['bold', 'italic', 'underline', 'strike'],
-          [{'list': 'ordered'}, {'list': 'bullet'}],
-          [{'color': []}, {'background': []}],
-          [{'align': []}],
-          ['link'],
+          [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+          [{ 'indent': '-1'}, { 'indent': '+1' }], // 들여쓰기/내어쓰기
+          // 6. 색상 및 정렬
+          [{ 'color': [] }, { 'background': [] }],
+          [{ 'align': [] }],
+          ['link', 'image', 'video'],
           ['clean']
         ]
       },
       placeholder: '상담 내용을 입력하세요...'
     });
+
+    addToolbarTooltips();
 
     // Uppy 객체 확인
     console.log('Uppy object:', typeof Uppy);
