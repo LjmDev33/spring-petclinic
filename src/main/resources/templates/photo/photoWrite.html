@@ -98,37 +98,45 @@
 <script th:src="@{/js/quill/quill.js}"></script>
 <script th:src="@{/js/quill/quill_tooltip.js}"></script>
 <script th:src="@{/js/quill/quill_image_resize.min.js}"></script>
+<script th:src="@{/js/quill/quill_common.js}"></script>
 
 <script>
   // Quill 에디터 초기화
-  var quill = new Quill('#editor', {
+  const quill = new Quill('#editor', {
     theme: 'snow',
     modules: {
       imageResize: {
-        displaySize: true // 이미지 위에 픽셀 크기(예: 300x200) 표시 여부
+        displaySize: true
       },
-      toolbar: [
-        // 1. [추가] 폰트 및 크기 설정 (헤더와는 다른 개념)
-        // false는 기본값(Normal)을 의미합니다.
-        [{ 'size': ['small', false, 'large', 'huge'] }],
-        // 2. [변경] 헤더 (H1~H4까지 확장하여 구조화 지원)
-        [{ 'header': [1, 2, 3, 4, false] }],
-        // 인용구 및 코드블럭
-        ['blockquote'],
-        ['bold', 'italic', 'underline', 'strike'],
-        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-        [{ 'indent': '-1'}, { 'indent': '+1' }], // 들여쓰기/내어쓰기
-        // 6. 색상 및 정렬
-        [{ 'color': [] }, { 'background': [] }],
-        [{ 'align': [] }],
-        ['link', 'image', 'video'],
-        ['clean']
-      ]
+      // [중요] 배열([...])이 아니라 객체({ ... })로 변경
+      toolbar: {
+        // 1. 기존 툴바 구성을 여기(container)에 넣습니다.
+        container: [
+          [{ 'size': ['small', false, 'large', 'huge'] }],
+          [{ 'header': [1, 2, 3, 4, false] }],
+          ['blockquote'],
+          ['bold', 'italic', 'underline', 'strike'],
+          [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+          [{ 'indent': '-1'}, { 'indent': '+1' }],
+          [{ 'color': [] }, { 'background': [] }],
+          [{ 'align': [] }],
+          ['link', 'image', 'video'], // 여기 있는 'image' 버튼이 아래 핸들러와 연결됩니다.
+          ['clean']
+        ],
+        // 2. 핸들러 설정 (단축 문법에서는 불가능했던 부분)
+        handlers: {
+          // quill_common.js에 있는 함수 호출
+          'image': getQuillImageHandler('photo')
+        }
+      }
     },
-    placeholder: '내용을 입력하세요...'
+    placeholder: '상담 내용을 입력하세요...'
   });
 
-  addToolbarTooltips();
+  // 툴팁 적용 (quill_tooltips.js가 있다면)
+  if (typeof addToolbarTooltips === 'function') {
+    addToolbarTooltips();
+  }
 
   // 썸네일 파일 선택 시 처리 (TODO: 파일 업로드 기능 구현 필요)
   document.getElementById('thumbnailFile').addEventListener('change', function(e) {

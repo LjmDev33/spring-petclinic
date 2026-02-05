@@ -328,7 +328,7 @@ public class CounselService {
 
 				try {
 					// 파일 저장
-					String storedFilePath = fileStorageService.storeFile(file);
+					String storedFilePath = fileStorageService.storeFile(file, "counsel");
 
 					// Attachment 엔티티 생성 및 저장 (common.table.Attachment)
 					Attachment attachment = new Attachment();
@@ -693,7 +693,7 @@ public class CounselService {
 	public String storeFileTemp(MultipartFile file) {
 		try {
 			// FileStorageService를 통해 파일 저장
-			String filePath = fileStorageService.storeFile(file);
+			String filePath = fileStorageService.storeFile(file , "counsel");
 
 			log.info("Temp file stored: originalName={}, storedPath={}, size={}",
 				file.getOriginalFilename(), filePath, file.getSize());

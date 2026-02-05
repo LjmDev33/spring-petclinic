@@ -39,6 +39,11 @@ spring:
     mode: HTML
     cache: false
 
+  # 업로드 용량 제한 해제
+  servlet:
+    multipart:
+      max-file-size: 10MB     # 파일 하나당 최대 크기(기본 1MB -> 10MB)
+      max-request-size: 10MB  # 요청 전체 최대 크기 (기본 10MB)
   main:
     allow-bean-definition-overriding: true
 
@@ -54,6 +59,6 @@ server:
   port: 8080  # 포트 충돌 방지를 위해 8080로 변경
 
 petclinic:
-  counsel:
-    upload-dir: C:/eGovFrameDev-3.9.0-64bit/petclinic/data/counsel/uploads
-    content-dir: C:/eGovFrameDev-3.9.0-64bit/petclinic/data/counsel/contents
+  file:
+    # 모든 업로드 파일의 뿌리가 되는 경로
+    base-dir: C:/eGovFrameDev-3.9.0-64bit/petclinic/data

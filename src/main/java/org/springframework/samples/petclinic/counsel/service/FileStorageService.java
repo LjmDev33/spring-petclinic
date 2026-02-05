@@ -1,9 +1,11 @@
 package org.springframework.samples.petclinic.counsel.service;
 
+import org.apache.tika.Tika;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-import org.apache.tika.Tika;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -15,201 +17,126 @@ import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-/**
- * Project : spring-petclinic
- * File    : FileStorageService.java
- * Created : 2025-10-24
- * Author  : Jeongmin Lee
- *
- * Description :
- *   파일 저장 및 관리 서비스 (업로드, 삭제, 경로 생성, 유효성 검증)
- *
- * Purpose (만든 이유):
- *   1. 파일 업로드 로직을 중앙 집중화
- *   2. 파일 타입 검증 및 보안 강화 (Apache Tika 사용)
- *   3. 파일명 중복 방지 (UUID 사용)
- *   4. 체계적인 폴더 구조 (날짜별 분류)
- *   5. 파일 크기 제한 및 허용 MIME 타입 관리
- *
- * Key Features (주요 기능):
- *   - 파일 업로드 (MultipartFile → 디스크 저장)
- *   - 파일 삭제 (Soft Delete와 연동하여 물리 삭제)
- *   - 파일명 생성 (UUID + 원본 확장자)
- *   - 디렉토리 자동 생성 (년/월/일 구조)
- *   - MIME 타입 검증 (Apache Tika로 실제 파일 내용 검사)
- *   - 허용 타입: 이미지(JPEG, PNG, GIF 등), 문서(PDF, Word, Excel, HWP 등), 압축(ZIP, RAR)
- *
- * Security (보안):
- *   - Apache Tika로 파일 확장자 위조 방지
- *   - MIME 타입 화이트리스트 방식
- *   - 파일명에 UUID 사용하여 경로 추측 방지
- *   - 업로드 디렉토리 외부 접근 차단
- *
- * File Structure (파일 저장 구조):
- *   {base-dir}/yyyy/MM/dd/{UUID}_{originalFilename}
- *   예: uploads/2025/11/26/a1b2c3d4-e5f6-7890-abcd-ef1234567890_report.pdf
- *
- * Usage Examples (사용 예시):
- *   // 파일 업로드
- *   String storedPath = fileStorageService.storeFile(multipartFile);
- *   // 반환: "2025/11/26/uuid_filename.jpg"
- *
- *   // 파일 삭제
- *   fileStorageService.deleteFile(storedPath);
- *
- * Configuration (설정):
- *   - application-dev.yml:
- *     petclinic.counsel.upload-dir: 업로드 디렉토리 경로
- *
- * Dependencies (의존성):
- *   - Apache Tika: 파일 타입 검증
- *   - MultipartFile: Spring 파일 업로드
- *
- * License :
- *   Copyright (c) 2025 AOF(AllForOne) / All rights reserved.
- */
 @Service
 public class FileStorageService {
 
-    private static final Logger log = LoggerFactory.getLogger(FileStorageService.class);
-    private final Path baseDir;
-    private final Tika tika = new Tika();
+	private static final Logger log = LoggerFactory.getLogger(FileStorageService.class);
+	private final Path baseDir;
+	private final Tika tika = new Tika();
 
-    /**
-     * 허용된 MIME 타입 목록
-     * - 이미지: JPEG, PNG, GIF, BMP, WebP
-     * - 문서: PDF, MS Word, MS Excel, HWP, 텍스트
-     * - 압축: ZIP, RAR
-     */
-    private static final List<String> ALLOWED_MIME_TYPES = Arrays.asList(
-        // 이미지 파일
-        "image/jpeg",
-        "image/png",
-        "image/gif",
-        "image/bmp",
-        "image/webp",
-        // 문서 파일
-        "application/pdf",
-        "application/msword", // .doc
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // .docx
-        "application/vnd.ms-excel", // .xls
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // .xlsx
-        "application/x-hwp", // .hwp
-        "application/haansofthwp", // .hwp (한글 2014 이상)
-        "text/plain", // .txt
-        // 압축 파일
-        "application/zip",
-        "application/x-zip-compressed",
-        "application/x-rar-compressed"
-    );
+	private static final List<String> ALLOWED_MIME_TYPES = Arrays.asList(
+		"image/jpeg", "image/png", "image/gif", "image/bmp", "image/webp",
+		"application/pdf", "application/msword",
+		"application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+		"application/vnd.ms-excel",
+		"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+		"application/x-hwp", "application/haansofthwp", "text/plain",
+		"application/zip", "application/x-zip-compressed", "application/x-rar-compressed"
+	);
 
-    private static final long MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB (문서 파일을 위해 5MB → 10MB로 확대)
+	private static final long MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
-    public FileStorageService(@Value("${petclinic.counsel.upload-dir:C:/eGovFrameDev-3.9.0-64bit/petclinic/data/counsel/uploads}") String uploadDir) {
-        this.baseDir = Paths.get(uploadDir);
-    }
+	// 생성자: yml의 base-dir 하나만 주입받음
+	public FileStorageService(@Value("${petclinic.file.base-dir}") String baseDirPath) {
+		this.baseDir = Paths.get(baseDirPath);
+	}
 
-    /**
-     * MultipartFile을 지정된 경로에 저장합니다.
-     * @param file 저장할 MultipartFile
-     * @return 저장된 파일의 경로
-     * @throws IOException 파일 저장 중 오류 발생 시
-     * @throws IllegalArgumentException 유효하지 않은 파일(MIME 타입, 크기 등)일 경우
-     */
-    public String storeFile(MultipartFile file) {
-        // 1. 파일 유효성 검증
-        try {
-            validateFile(file);
-        } catch (IOException e) {
-            log.error("File validation failed for file: {}", file.getOriginalFilename(), e);
-            throw new RuntimeException("File validation failed.", e);
-        }
+	/**
+	 * 동적 경로 저장 (유지보수 용이성 강화)
+	 * @param file 업로드 파일
+	 * @param domain 도메인명 (counsel, photo, notice 등)
+	 * @return 저장된 상대 경로
+	 */
+	public String storeFile(MultipartFile file, String domain) {
+		try {
+			validateFile(file);
 
-        try {
-            // 2. 저장 경로 생성 (yyyy/MM)
-            LocalDate today = LocalDate.now();
-            String year = today.format(DateTimeFormatter.ofPattern("yyyy"));
-            String month = today.format(DateTimeFormatter.ofPattern("MM"));
-            Path targetDir = baseDir.resolve(year).resolve(month);
+			// 1. 보안 검증: 도메인명에 특수문자 포함 여부 확인 (경로 조작 방지)
+			if (domain == null || !domain.matches("^[a-zA-Z0-9]+$")) {
+				throw new IllegalArgumentException("Invalid domain name: " + domain);
+			}
 
-            // 3. 디렉토리 생성 (존재하지 않을 경우)
-            Files.createDirectories(targetDir);
+			// 2. 동적 경로 생성: {base}/{domain}/uploads
+			// 예: C:/.../data/ + photo + /uploads
+			Path domainPath = baseDir.resolve(domain).resolve("uploads");
 
-            // 4. 파일명 난수화 (UUID) 및 확장자 추출
-            String originalFileName = file.getOriginalFilename();
-            String extension = "";
-            if (originalFileName != null && originalFileName.contains(".")) {
-                extension = originalFileName.substring(originalFileName.lastIndexOf("."));
-            }
-            String storedFileName = UUID.randomUUID().toString() + extension;
+			// 3. 날짜 폴더 생성 (yyyy/MM)
+			LocalDate today = LocalDate.now();
+			String year = today.format(DateTimeFormatter.ofPattern("yyyy"));
+			String month = today.format(DateTimeFormatter.ofPattern("MM"));
 
-            // 5. 경로 역참조 방지
-            Path destination = targetDir.resolve(storedFileName);
-            if (!destination.normalize().startsWith(targetDir.normalize())) {
-                throw new IllegalArgumentException("Invalid file path.");
-            }
+			Path targetDir = domainPath.resolve(year).resolve(month);
 
-            // 6. 파일 저장
-            file.transferTo(destination);
+			// 4. 폴더 없으면 자동 생성
+			Files.createDirectories(targetDir);
 
-            // 7. 상대 경로 반환
-            return Paths.get(year, month, storedFileName).toString().replace('\\', '/');
-        } catch (IOException e) {
-            log.error("Failed to store file {}: {}", file.getOriginalFilename(), e.getMessage());
-            throw new RuntimeException("Failed to store file.", e);
-        }
-    }
+			// 5. 파일 저장
+			String extension = getExtension(file.getOriginalFilename()); // [수정] 아래 헬퍼 함수 사용
+			String storedFileName = UUID.randomUUID().toString() + extension;
 
-    /**
-     * 파일의 유효성을 검증합니다 (MIME 타입, 크기).
-     * @param file 검증할 MultipartFile
-     * @throws IOException 파일 읽기 중 오류 발생 시
-     * @throws IllegalArgumentException 유효성 검증 실패 시
-     */
-    private void validateFile(MultipartFile file) throws IOException {
-        if (file.isEmpty()) {
-            throw new IllegalArgumentException("File is empty.");
-        }
+			Path destination = targetDir.resolve(storedFileName);
 
-        // MIME 타입 검증 (try-with-resources로 InputStream 자동 해제)
-        try (InputStream inputStream = file.getInputStream()) {
-            String mimeType = tika.detect(inputStream);
-            if (!ALLOWED_MIME_TYPES.contains(mimeType)) {
-                log.warn("MIME type validation failed: fileName={}, mimeType={}",
-                    file.getOriginalFilename(), mimeType);
-                throw new IllegalArgumentException("허용되지 않는 파일 형식입니다. (감지된 타입: " + mimeType + ")");
-            }
-        }
+			// 경로 조작 방지 (Normalization check)
+			if (!destination.normalize().startsWith(targetDir.normalize())) {
+				throw new IllegalArgumentException("Invalid file path composition");
+			}
 
-        // 파일 크기 검증
-        if (file.getSize() > MAX_FILE_SIZE) {
-            log.warn("File size validation failed: fileName={}, size={}, maxSize={}",
-                file.getOriginalFilename(), file.getSize(), MAX_FILE_SIZE);
-            throw new IllegalArgumentException("파일 크기가 제한을 초과했습니다. (최대 " +
-                MAX_FILE_SIZE / (1024 * 1024) + "MB)");
-        }
-    }
+			file.transferTo(destination);
 
-    /**
-     * 지정된 경로의 파일을 물리적으로 삭제합니다.
-     * @param filePath 삭제할 파일의 상대 경로
-     */
-    public void deleteFile(String filePath) {
-        try {
-            Path fileToDelete = baseDir.resolve(filePath).normalize();
-            if (Files.exists(fileToDelete)) {
-                Files.delete(fileToDelete);
-                log.info("Successfully deleted physical file: {}", filePath);
-            } else {
-                log.warn("Attempted to delete a non-existent file: {}", filePath);
-            }
-        } catch (IOException e) {
-            log.error("Failed to delete physical file {}: {}", filePath, e.getMessage());
-            // 물리적 파일 삭제 실패가 전체 트랜잭션을 롤백시키지 않도록 예외를 다시 던지지 않을 수 있습니다.
-            // 또는 특정 비즈니스 예외를 던져 처리할 수 있습니다.
-        }
-    }
+			// 6. DB 저장용 상대 경로 반환: {domain}/uploads/{year}/{month}/{filename}
+			// 예: photo/uploads/2026/02/uuid.jpg
+			return Paths.get(domain, "uploads", year, month, storedFileName).toString().replace('\\', '/');
+
+		} catch (IOException e) {
+			log.error("Failed to store file {}: {}", file.getOriginalFilename(), e.getMessage());
+			throw new RuntimeException("Failed to store file", e);
+		}
+	}
+
+	/**
+	 * 파일 유효성 검증
+	 */
+	private void validateFile(MultipartFile file) throws IOException {
+		if (file.isEmpty()) {
+			throw new IllegalArgumentException("File is empty.");
+		}
+
+		try (InputStream inputStream = file.getInputStream()) {
+			String mimeType = tika.detect(inputStream);
+			if (!ALLOWED_MIME_TYPES.contains(mimeType)) {
+				log.warn("MIME type validation failed: {}", mimeType);
+				throw new IllegalArgumentException("허용되지 않는 파일 형식입니다: " + mimeType);
+			}
+		}
+
+		if (file.getSize() > MAX_FILE_SIZE) {
+			throw new IllegalArgumentException("파일 크기 초과 (최대 10MB)");
+		}
+	}
+
+	/**
+	 * [추가된 함수] 확장자 추출 헬퍼 메서드
+	 */
+	private String getExtension(String filename) {
+		if (filename == null || !filename.contains(".")) {
+			return "";
+		}
+		return filename.substring(filename.lastIndexOf("."));
+	}
+
+	/**
+	 * 물리 파일 삭제
+	 */
+	public void deleteFile(String filePath) {
+		try {
+			Path fileToDelete = baseDir.resolve(filePath).normalize();
+			if (Files.exists(fileToDelete)) {
+				Files.delete(fileToDelete);
+				log.info("Deleted physical file: {}", filePath);
+			}
+		} catch (IOException e) {
+			log.error("Failed to delete file: {}", filePath, e);
+		}
+	}
 }
