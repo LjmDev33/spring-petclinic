@@ -1,8 +1,7 @@
 package org.springframework.samples.petclinic.photo.service;
 
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.samples.petclinic.community.table.CommunityPostLike;
-import org.springframework.samples.petclinic.counsel.mapper.CounselCommentMapper;
+import org.springframework.samples.petclinic.common.repository.AttachmentRepository;
 import org.springframework.samples.petclinic.photo.dto.PhotoCommentDto;
 import org.springframework.samples.petclinic.photo.mapper.PhotoCommentMapper;
 import org.springframework.samples.petclinic.photo.repository.PhotoCommentRepository;
@@ -26,7 +25,6 @@ import org.springframework.samples.petclinic.photo.repository.PhotoPostAttachmen
 import org.springframework.samples.petclinic.photo.table.PhotoPost;
 import org.springframework.samples.petclinic.photo.table.PhotoPostAttachment;
 import org.springframework.samples.petclinic.common.table.Attachment;
-import org.springframework.samples.petclinic.counsel.repository.AttachmentRepository;
 import org.springframework.stereotype.Service;
 
 import java.nio.file.Files;

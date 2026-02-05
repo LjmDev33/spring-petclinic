@@ -5,8 +5,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.samples.petclinic.common.dto.UploadResponse;
+import org.springframework.samples.petclinic.common.repository.AttachmentRepository;
 import org.springframework.samples.petclinic.common.table.Attachment;
-import org.springframework.samples.petclinic.counsel.repository.AttachmentRepository; // 저장소 패키지 경로 확인 필요
 import org.springframework.samples.petclinic.counsel.service.FileStorageService; // 서비스 패키지 경로 확인 필요
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PostMapping;
