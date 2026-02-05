@@ -5,6 +5,7 @@ import org.springframework.samples.petclinic.common.exception.EntityNotFoundExce
 import org.springframework.samples.petclinic.common.exception.ErrorCode;
 import org.springframework.samples.petclinic.common.exception.FileException;
 import org.springframework.samples.petclinic.common.repository.AttachmentRepository;
+import org.springframework.samples.petclinic.common.service.CommonHtmlStorage;
 import org.springframework.samples.petclinic.counsel.CounselStatus;
 import org.springframework.samples.petclinic.counsel.repository.CounselPostLikeRepository;
 import org.springframework.samples.petclinic.user.repository.UserRepository;
@@ -117,7 +118,6 @@ public class CounselService {
 
 	private static final Logger log = LoggerFactory.getLogger(CounselService.class);
 	private final CounselPostRepository repository;
-	private final CounselContentStorage contentStorage;
 	private final CounselCommentRepository commentRepository;
 	private final CounselPostMapper postMapper;
 	private final FileStorageService fileStorageService;
@@ -125,15 +125,16 @@ public class CounselService {
 	private final CounselPostAttachmentRepository postAttachmentRepository;
 	private final CounselPostLikeRepository likeRepository;
 	private final UserRepository userRepository;
+	private final CommonHtmlStorage commonHtmlStorage;
 
-	public CounselService(CounselPostRepository repository, CounselContentStorage contentStorage,
+	public CounselService(CounselPostRepository repository,
 						  CounselCommentRepository commentRepository, CounselPostMapper postMapper,
 						  FileStorageService fileStorageService, AttachmentRepository attachmentRepository,
 						  CounselPostAttachmentRepository postAttachmentRepository,
 						  CounselPostLikeRepository likeRepository,
-						  UserRepository userRepository) {
+						  UserRepository userRepository,
+						  CommonHtmlStorage commonHtmlStorage) {
 		this.repository = repository;
-		this.contentStorage = contentStorage;
 		this.commentRepository = commentRepository;
 		this.likeRepository = likeRepository;
 		this.postMapper = postMapper;
@@ -141,6 +142,7 @@ public class CounselService {
 		this.attachmentRepository = attachmentRepository;
 		this.postAttachmentRepository = postAttachmentRepository;
 		this.userRepository = userRepository;
+		this.commonHtmlStorage = commonHtmlStorage;
 	}
 
 	/**
@@ -252,7 +254,7 @@ public class CounselService {
 		// FileException 적용
 		if (dto.getContentPath() != null && !dto.getContentPath().isBlank()) {
 			try {
-				String html = contentStorage.loadHtml(dto.getContentPath());
+				String html = commonHtmlStorage.loadHtml(dto.getContentPath() , "counsel");
 				dto.setContent(html);
 			} catch (IOException e) {
 				throw new FileException(ErrorCode.FILE_READ_ERROR, e);
@@ -270,7 +272,7 @@ public class CounselService {
 		// 1. 본문 저장 (FileException 적용)
 		String path;
 		try {
-			path = contentStorage.saveHtml(dto.getContent());
+			path = commonHtmlStorage.saveHtml(dto.getContent() , "counsel");
 		} catch (IOException e) {
 			log.error("Failed to save content HTML for new post: {}", dto.getTitle(), e);
 			throw new FileException(ErrorCode.FILE_WRITE_ERROR, e);
@@ -537,10 +539,10 @@ public class CounselService {
 				try {
 					// 기존 본문 파일 삭제
 					if (entity.getContentPath() != null && !entity.getContentPath().isBlank()) {
-						contentStorage.deleteHtml(entity.getContentPath());
+						commonHtmlStorage.deleteHtml(entity.getContentPath() , "counsel");
 					}
 					// 새 본문 저장
-					String newPath = contentStorage.saveHtml(dto.getContent());
+					String newPath = commonHtmlStorage.saveHtml(dto.getContent() , "counsel");
 					entity.setContentPath(newPath);
 					entity.setContent("[stored]");
 				} catch (IOException e) {

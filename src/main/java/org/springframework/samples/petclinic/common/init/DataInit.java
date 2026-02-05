@@ -3,6 +3,7 @@ package org.springframework.samples.petclinic.common.init;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.samples.petclinic.common.service.CommonHtmlStorage;
 import org.springframework.samples.petclinic.community.repository.CommunityPostRepository;
 import org.springframework.samples.petclinic.community.table.CommunityPost;
 import org.springframework.samples.petclinic.counsel.CounselStatus;
@@ -12,7 +13,6 @@ import org.springframework.samples.petclinic.faq.repository.FaqPostRepository;
 import org.springframework.samples.petclinic.faq.table.FaqPost;
 import org.springframework.samples.petclinic.counsel.repository.CounselCommentRepository;
 import org.springframework.samples.petclinic.counsel.repository.CounselPostRepository;
-import org.springframework.samples.petclinic.counsel.service.CounselContentStorage;
 import org.springframework.samples.petclinic.counsel.table.CounselComment;
 import org.springframework.samples.petclinic.counsel.table.CounselPost;
 import org.springframework.samples.petclinic.system.repository.SystemConfigRepository;
@@ -31,6 +31,7 @@ import java.util.concurrent.ThreadLocalRandom;
  * Project : spring-petclinic
  * File    : DataInit.java
  * Created : 2025-10-24
+ * Updated : 2026-02-05
  * Author  : Jeongmin Lee
  *
  * Description :
@@ -52,7 +53,7 @@ public class DataInit {
 	CommandLineRunner initCommunityData(CommunityPostRepository communityPostRepo,
 										CounselPostRepository counselPostRepo,
 										CounselCommentRepository counselCommentRepo,
-										CounselContentStorage contentStorage,
+										CommonHtmlStorage commonHtmlStorage,
 										SystemConfigRepository systemConfigRepo,
 										UserRepository userRepo,
 										PasswordEncoder passwordEncoder,
@@ -81,7 +82,8 @@ public class DataInit {
 
 			// 3. 커뮤니티 데이터 초기화 (실제 유저 매핑)
 			if(communityPostRepo.count() == 0){
-				initCommunityPosts(communityPostRepo, realUsers);
+				// [수정] storage 전달
+				initCommunityPosts(communityPostRepo, realUsers, commonHtmlStorage);
 			}
 
 			// 커뮤니티 좋아요 초기 데이터 (실제 유저 매핑)
@@ -93,7 +95,7 @@ public class DataInit {
 			long postCount = counselPostRepo.count();
 			long commentCount = counselCommentRepo.count();
 			if(postCount == 0){
-				initCounselDataRandom(counselPostRepo, counselCommentRepo, contentStorage, realUsers);
+				initCounselDataRandom(counselPostRepo, counselCommentRepo, commonHtmlStorage, realUsers);
 			} else if (postCount > 0 && commentCount == 0) {
 				// 기존 데이터가 있다면 댓글만 생성 (실제 유저 매핑은 생략됨)
 				generateCommentsForExistingPosts(counselPostRepo, counselCommentRepo);
@@ -101,7 +103,8 @@ public class DataInit {
 
 			// 5. 포토게시판 데이터 초기화 (실제 유저 매핑)
 			if(photoPostRepo.count() == 0){
-				initPhotoData(photoPostRepo, realUsers);
+				// [수정] storage 전달
+				initPhotoData(photoPostRepo, realUsers, commonHtmlStorage);
 			}
 
 			// 포토게시판 좋아요 초기 데이터 (실제 유저 매핑)
@@ -233,28 +236,28 @@ public class DataInit {
 	 * 커뮤니티 게시판 초기 데이터 생성 (Real User 적용)
 	 * - 공지사항 3개 + 더미 데이터 103개 (총 106개)
 	 * - 더미 데이터는 다양한 주제로 생성
+	 * [수정] 본문을 파일로 저장하도록 변경
 	 */
-	private void initCommunityPosts(CommunityPostRepository communityPostRepo, List<User> realUsers) {
+	private void initCommunityPosts(CommunityPostRepository communityPostRepo,
+									List<User> realUsers,
+									CommonHtmlStorage commonHtmlStorage) throws Exception { // [수정] Storage 추가
 		LocalDateTime now = LocalDateTime.now();
 		List<CommunityPost> allPosts = new ArrayList<>();
 
-		// 관리자 계정 찾기 (없으면 리스트 첫번째 사용)
 		User adminUser = realUsers.stream()
 			.filter(u -> u.getUsername().equals("admin"))
 			.findFirst()
 			.orElse(realUsers.get(0));
 
-		// 공지사항 3개 (작성자: 실제 관리자)
-		createNotice(allPosts, now, "📢 공지사항", "이 커뮤니티는 개발자들이 자유롭게 의견을 나누는 공간입니다.", adminUser);
-		createNotice(allPosts, now, "💬 자유게시판 안내", "잡담, 질문, 공유하고 싶은 자료를 자유롭게 올려주세요.", adminUser);
-		createNotice(allPosts, now, "🎉 첫 이벤트 안내", "다음 달에 열리는 개발자 밋업 이벤트에 많은 참여 바랍니다!", adminUser);
+		// 공지사항 3개 (storage 전달)
+		createNotice(allPosts, now, "📢 공지사항", "이 커뮤니티는 개발자들이 자유롭게 의견을 나누는 공간입니다.", adminUser, commonHtmlStorage);
+		createNotice(allPosts, now, "💬 자유게시판 안내", "잡담, 질문, 공유하고 싶은 자료를 자유롭게 올려주세요.", adminUser, commonHtmlStorage);
+		createNotice(allPosts, now, "🎉 첫 이벤트 안내", "다음 달에 열리는 개발자 밋업 이벤트에 많은 참여 바랍니다!", adminUser, commonHtmlStorage);
 
-		// 더미 데이터 103개 (작성자: 실제 유저 중 랜덤)
 		String[] categories = {"🔧 기술", "💡 팁", "🎓 학습", "🔥 핫이슈", "🎮 잡담"};
 		String[] topics = {"프로젝트 구조 설계", "코드 리뷰 요청", "버그 수정 후기", "성능 최적화 팁", "라이브러리 추천"};
 
 		for (int i = 0; i < 103; i++) {
-			// 랜덤 유저 선택
 			User randomUser = realUsers.get(ThreadLocalRandom.current().nextInt(realUsers.size()));
 
 			CommunityPost dummyPost = new CommunityPost();
@@ -263,12 +266,14 @@ public class DataInit {
 			LocalDateTime postDate = now.minusDays(70 - (i % 70));
 
 			dummyPost.setTitle(category + " " + topic + " #" + (i + 1));
-			dummyPost.setContent("내용입니다.");
 
-			// [핵심] 실제 유저 할당
+			// [수정] 본문 파일 저장 ("notice" 도메인)
+			String rawContent = "<p>" + category + " 관련 " + topic + " 내용입니다.</p>";
+			String path = commonHtmlStorage.saveHtml(rawContent, "notice");
+			dummyPost.setContent(path); // 경로 저장
+
 			dummyPost.setUser(randomUser);
-			dummyPost.setAuthor(randomUser.getNickname()); // 닉네임 동기화
-
+			dummyPost.setAuthor(randomUser.getNickname());
 			dummyPost.setCreatedAt(postDate);
 			dummyPost.setUpdatedAt(postDate);
 			dummyPost.setViewCount(ThreadLocalRandom.current().nextInt(1, 500));
@@ -279,15 +284,20 @@ public class DataInit {
 		}
 
 		communityPostRepo.saveAll(allPosts);
-		System.out.println("✅ 커뮤니티 게시판 생성 완료 (작성자 매핑됨)");
+		System.out.println("✅ 커뮤니티 게시판 생성 완료 (파일 저장 적용됨)");
 	}
 
-	// 공지사항 생성 헬퍼
-	private void createNotice(List<CommunityPost> posts, LocalDateTime now, String title, String content, User admin) {
+	// [수정] 공지사항 생성 헬퍼 (Storage 파라미터 추가)
+	private void createNotice(List<CommunityPost> posts, LocalDateTime now, String title, String content, User admin, CommonHtmlStorage storage) throws Exception {
 		CommunityPost p = new CommunityPost();
 		p.setTitle(title);
-		p.setContent(content);
-		p.setUser(admin); // [핵심]
+
+		// [수정] 본문 파일 저장
+		String rawHtml = "<p>" + content + "</p>";
+		String path = storage.saveHtml(rawHtml, "notice");
+		p.setContent(path); // 경로 저장
+
+		p.setUser(admin);
 		p.setAuthor(admin.getNickname());
 		p.setCreatedAt(now.minusDays(100));
 		p.setUpdatedAt(now.minusDays(100));
@@ -308,7 +318,7 @@ public class DataInit {
 	 */
 	private void initCounselDataRandom(CounselPostRepository postRepo,
 									   CounselCommentRepository commentRepo,
-									   CounselContentStorage contentStorage,
+									   CommonHtmlStorage commonHtmlStorage,
 									   List<User> realUsers) throws Exception {
 		List<CounselPost> posts = new ArrayList<>();
 		int total = 112;
@@ -321,7 +331,7 @@ public class DataInit {
 			// 랜덤 유저 선택
 			User randomUser = realUsers.get(ThreadLocalRandom.current().nextInt(realUsers.size()));
 
-			CounselPost p = buildPost("온라인 상담 #" + (i+1), randomUser, created, 0, secret, status, contentStorage);
+			CounselPost p = buildPost("온라인 상담 #" + (i+1), randomUser, created, 0, secret, status, commonHtmlStorage);
 			posts.add(p);
 		}
 
@@ -430,7 +440,7 @@ public class DataInit {
 	private CounselPost buildPost(String title, User author, // String author -> User author 변경
 								  LocalDate createdDate, int views,
 								  boolean secret, CounselStatus status,
-								  CounselContentStorage contentStorage) throws Exception {
+								  CommonHtmlStorage commonHtmlStorage) throws Exception {
 		CounselPost p = new CounselPost();
 		p.setTitle(title);
 
@@ -448,7 +458,7 @@ public class DataInit {
 		p.setUpdatedAt(created);
 		// HTML을 전체 문서 형태로 저장하여 Tika가 text/html로 확실히 인식하도록 함
 		String html = "<!DOCTYPE html>\n<html><head><meta charset=\"UTF-8\"></head><body><p>" + title + " 내용입니다.</p></body></html>";
-		String path = contentStorage.saveHtml(html);
+		String path = commonHtmlStorage.saveHtml(html , "counsel");
 		p.setContent("[stored]");
 		p.setContentPath(path);
 		p.setAttachFlag(false);
@@ -479,71 +489,41 @@ public class DataInit {
 	 * - 썸네일은 /images/sample/ 경로의 샘플 이미지 사용
 	 * - 본문에는 Quill 에디터 포맷으로 이미지와 텍스트 포함
 	 */
-	private void initPhotoData(PhotoPostRepository photoPostRepo, List<User> realUsers) {
+	private void initPhotoData(PhotoPostRepository photoPostRepo,
+							   List<User> realUsers,
+							   CommonHtmlStorage commonHtmlStorage) throws Exception { // [수정] Storage 추가
 		LocalDateTime now = LocalDateTime.now();
 		List<PhotoPost> posts = new ArrayList<>();
 
-		// 샘플 이미지 URL (실제 프로젝트에 포함된 이미지 또는 외부 URL)
 		String[] sampleImages = {
-			"/images/sample/dog1.jpg",
-			"/images/sample/cat1.jpg",
-			"/images/sample/dog2.jpg",
-			"/images/sample/cat2.jpg",
-			"/images/sample/pet1.jpg"
+			"/images/sample/dog1.jpg", "/images/sample/cat1.jpg",
+			"/images/sample/dog2.jpg", "/images/sample/cat2.jpg", "/images/sample/pet1.jpg"
 		};
 
-		String[] titles = {
-			"우리 강아지 산책 일상 📷",
-			"고양이 집사의 하루 🐱",
-			"반려견 목욕시키기 🛁",
-			"새로 입양한 아기 고양이",
-			"강아지 미용 비포 애프터",
-			"고양이 장난감 만들기",
-			"반려동물 건강검진 후기",
-			"강아지와 함께한 여행",
-			"고양이 간식 레시피",
-			"펫카페 방문 후기",
-			"우리 집 반려동물 소개",
-			"강아지 훈련 성공기",
-			"고양이 발톱 관리 팁",
-			"반려동물 사진 잘 찍는 법",
-			"펫 용품 추천 리스트"
-		};
-
-		String[] authors = {
-			"강아지러버", "고양이집사", "펫마스터", "동물사랑", "펫케어",
-			"멍멍이맘", "냥냥이아빠", "펫그램", "반려일상", "동물친구"
-		};
+		String[] titles = { "우리 강아지 산책 일상 📷", "고양이 집사의 하루 🐱", "반려견 목욕시키기 🛁", "새로 입양한 아기 고양이", "강아지 미용 비포 애프터", "고양이 장난감 만들기", "반려동물 건강검진 후기", "강아지와 함께한 여행", "고양이 간식 레시피", "펫카페 방문 후기", "우리 집 반려동물 소개", "강아지 훈련 성공기", "고양이 발톱 관리 팁", "반려동물 사진 잘 찍는 법", "펫 용품 추천 리스트" };
 
 		for (int i = 0; i < 15; i++) {
 			PhotoPost post = new PhotoPost();
 			post.setTitle(titles[i]);
-
-			// 썸네일 URL (5개 이미지 순환)
 			String thumbnailUrl = sampleImages[i % sampleImages.length];
 			post.setThumbnailUrl(thumbnailUrl);
 
-			// Quill 에디터 포맷으로 본문 작성
 			String content = String.format(
 				"<h2>%s</h2>" +
-				"<p>안녕하세요! 오늘은 정말 즐거운 하루였어요. 😊</p>" +
-				"<p><img src=\"%s\" alt=\"사진\" style=\"max-width: 100%%; height: auto;\"></p>" +
-				"<p><strong>반려동물</strong>과 함께한 시간은 언제나 행복합니다.</p>" +
-				"<ul>" +
-				"<li>사진 찍기 좋은 날씨</li>" +
-				"<li>건강한 모습</li>" +
-				"<li>즐거운 시간</li>" +
-				"</ul>" +
-				"<p>여러분도 좋은 하루 보내세요! 💕</p>",
+					"<p>안녕하세요! 오늘은 정말 즐거운 하루였어요. 😊</p>" +
+					"<p><img src=\"%s\" alt=\"사진\" style=\"max-width: 100%%; height: auto;\"></p>" +
+					"<p>여러분도 좋은 하루 보내세요! 💕</p>",
 				titles[i], thumbnailUrl
 			);
-			post.setContent(content);
 
-			// [핵심] 실제 유저 랜덤 할당
+			// [수정] 본문 파일 저장 ("photo" 도메인)
+			String path = commonHtmlStorage.saveHtml(content, "photo");
+			post.setContent(path); // 경로 저장
+
 			User randomUser = realUsers.get(ThreadLocalRandom.current().nextInt(realUsers.size()));
 			post.setUser(randomUser);
 			post.setAuthor(randomUser.getNickname());
-			post.setCreatedAt(now.minusDays(15 - i)); // 최신순으로 정렬되도록
+			post.setCreatedAt(now.minusDays(15 - i));
 			post.setViewCount(ThreadLocalRandom.current().nextInt(10, 300));
 			post.setLikeCount(0);
 			post.setDelFlag(false);
@@ -552,7 +532,7 @@ public class DataInit {
 		}
 
 		photoPostRepo.saveAll(posts);
-		System.out.println("✅ 포토게시판 초기 데이터 생성 완료: " + posts.size() + "개");
+		System.out.println("✅ 포토게시판 초기 데이터 생성 완료 (파일 저장 적용됨)");
 	}
 
 	/**

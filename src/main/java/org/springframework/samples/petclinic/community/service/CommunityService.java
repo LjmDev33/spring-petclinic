@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.samples.petclinic.common.repository.AttachmentRepository;
+import org.springframework.samples.petclinic.common.service.CommonHtmlStorage;
 import org.springframework.samples.petclinic.community.repository.CommunityPostLikeRepository;
 import org.springframework.samples.petclinic.community.table.CommunityPostLike;
 import org.springframework.security.core.Authentication;
@@ -101,16 +102,21 @@ public class CommunityService {
 	private final AttachmentRepository attachmentRepository;
 	private final CommunityPostAttachmentRepository postAttachmentRepository;
 
+	// [Refactor] 공통 HTML 저장소 주입
+	private final CommonHtmlStorage commonHtmlStorage;
+
 	public CommunityService(CommunityPostRepository repository,
 							CommunityPostRepository communityPostRepository,
 							CommunityPostLikeRepository likeRepository,
 							AttachmentRepository attachmentRepository,
-							CommunityPostAttachmentRepository postAttachmentRepository) {
+							CommunityPostAttachmentRepository postAttachmentRepository,
+							CommonHtmlStorage commonHtmlStorage) {
 		this.repository = repository;
 		this.communityPostRepository = communityPostRepository;
 		this.likeRepository = likeRepository;
 		this.attachmentRepository = attachmentRepository;
 		this.postAttachmentRepository = postAttachmentRepository;
+		this.commonHtmlStorage = commonHtmlStorage;
 	}
 
 	// 페이지 조회는 DTO로 매핑하여 반환 (규칙: Entity를 직접 노출 금지)
@@ -133,22 +139,57 @@ public class CommunityService {
 			.collect(Collectors.toList());
 	}
 
+	/**
+	 * 게시글 상세 조회
+	 * - [Refactor] 파일 시스템에서 HTML 본문을 로드하여 DTO에 설정
+	 */
 	public CommunityPostDto getPost(Long id) {
-		CommunityPost entity = repository.findById(id).orElseThrow();
-		return CommunityPostMapper.toDto(entity);
+		CommunityPost entity = repository.findById(id)
+			.orElseThrow(() -> new IllegalArgumentException("게시글을 찾을 수 없습니다: " + id));
+
+		CommunityPostDto dto = CommunityPostMapper.toDto(entity);
+
+		// [Refactor] 본문 로드 ("notice" 도메인)
+		try {
+			String content = commonHtmlStorage.loadHtml(entity.getContent(), "notice");
+			dto.setContent(content);
+		} catch (Exception e) {
+			log.error("Failed to load content for community post {}: {}", id, e.getMessage());
+			dto.setContent("<p>내용을 불러올 수 없습니다.</p>");
+		}
+
+		return dto;
 	}
 
+	/**
+	 * 게시글 작성
+	 * - [Refactor] HTML 본문을 파일로 저장하고 경로를 DB에 저장
+	 */
 	public CommunityPostDto createPost(CommunityPostDto dto) {
-		CommunityPost entity = CommunityPostMapper.toEntity(dto);
-		entity.setCreatedAt(LocalDateTime.now());
-		CommunityPost saved = repository.save(entity);
-		return CommunityPostMapper.toDto(saved);
+		try {
+			// [Refactor] HTML 파일 저장 ("notice" 도메인)
+			// XSS 방어 및 경로 생성은 commonHtmlStorage 내부에서 처리됨
+			String filePath = commonHtmlStorage.saveHtml(dto.getContent(), "notice");
+
+			CommunityPost entity = CommunityPostMapper.toEntity(dto);
+			entity.setContent(filePath); // DB에는 파일 경로 저장
+			entity.setCreatedAt(LocalDateTime.now());
+
+			CommunityPost saved = repository.save(entity);
+			log.info("공지사항 작성 완료: ID={}, Path={}", saved.getId(), filePath);
+
+			return CommunityPostMapper.toDto(saved);
+
+		} catch (Exception e) {
+			log.error("공지사항 작성 중 파일 저장 실패", e);
+			throw new RuntimeException("게시글 저장 중 오류가 발생했습니다.");
+		}
 	}
 
 	/**
 	 * 게시글 수정
 	 * - Phase 3: 게시글 첨부파일 관리 기능 완전 구현
-	 *
+	 * - [Refactor] 본문 파일 업데이트 적용
 	 * <p><strong>구현 기능:</strong></p>
 	 * <ul>
 	 *   <li>제목/내용 수정</li>
@@ -163,12 +204,14 @@ public class CommunityService {
 			CommunityPost entity = repository.findById(id)
 				.orElseThrow(() -> new IllegalArgumentException("게시글을 찾을 수 없습니다: " + id));
 
-			// 1. 기본 필드 수정
+			// 1. [Refactor] HTML 파일 저장 및 경로 업데이트 ("notice" 도메인)
+			String filePath = commonHtmlStorage.saveHtml(dto.getContent(), "notice");
+
 			entity.setTitle(dto.getTitle());
-			entity.setContent(dto.getContent());
+			entity.setContent(filePath); // 경로 업데이트
 			entity.setUpdatedAt(LocalDateTime.now());
 
-			// 2. 기존 첨부파일 삭제 처리
+			// 2. 기존 첨부파일 삭제 처리 (기존 로직 유지)
 			if (dto.getDeletedFileIds() != null && !dto.getDeletedFileIds().isBlank()) {
 				String[] deletedIds = dto.getDeletedFileIds().split(",");
 
@@ -179,56 +222,50 @@ public class CommunityService {
 					try {
 						Long attachmentId = Long.parseLong(idStr);
 
-						// Attachment 조회
 						Attachment attachment = attachmentRepository.findById(attachmentId).orElse(null);
 						if (attachment == null) {
 							log.warn("Attachment not found for deletion: id={}", attachmentId);
 							continue;
 						}
 
-						// CommunityPostAttachment 중간 테이블 제거
 						entity.getAttachments().removeIf(postAttachment ->
 							postAttachment.getAttachment().getId().equals(attachmentId));
 
-						// Attachment Soft Delete (del_flag = true)
 						attachment.setDelFlag(true);
 						attachment.setDeletedAt(LocalDateTime.now());
 						attachmentRepository.save(attachment);
 
-						log.info("✅ Community attachment marked for deletion: postId={}, attachmentId={}, fileName={}",
-							id, attachmentId, attachment.getOriginalFilename());
+						log.info("✅ Community attachment marked for deletion: postId={}, attachmentId={}", id, attachmentId);
 					} catch (NumberFormatException e) {
 						log.error("Invalid attachment ID format: {}", idStr);
 					}
 				}
 			}
 
-			// 3. 새 첨부파일 추가 처리
+			// 3. 새 첨부파일 추가 처리 (기존 로직 유지)
 			if (dto.getAttachmentPaths() != null && !dto.getAttachmentPaths().isBlank()) {
 				String[] filePaths = dto.getAttachmentPaths().split(",");
 
-				for (String filePath : filePaths) {
-					filePath = filePath.trim();
-					if (filePath.isEmpty()) continue;
+				for (String path : filePaths) {
+					path = path.trim();
+					if (path.isEmpty()) continue;
 
 					try {
-						// Attachment 엔티티 생성 및 저장
 						Attachment attachment = new Attachment();
-						attachment.setStoredFilename(filePath);
-						attachment.setOriginalFilename(extractFileName(filePath));
-						attachment.setFileSize(0L); // 임시 업로드 시 크기 정보 없음
+						attachment.setStoredFilename(path);
+						attachment.setOriginalFilename(extractFileName(path));
+						attachment.setFileSize(0L);
 						attachment.setContentType("application/octet-stream");
 						attachmentRepository.save(attachment);
 
-						// CommunityPost와 Attachment 연결
 						CommunityPostAttachment postAttachment = new CommunityPostAttachment();
 						postAttachment.setCommunityPost(entity);
 						postAttachment.setAttachment(attachment);
 						entity.addAttachment(postAttachment);
 
-						log.info("✅ Community attachment added: postId={}, path={}", id, filePath);
+						log.info("✅ Community attachment added: postId={}, path={}", id, path);
 					} catch (Exception e) {
-						log.error("❌ Failed to add Community attachment {}: {}", filePath, e.getMessage());
+						log.error("❌ Failed to add Community attachment {}: {}", path, e.getMessage());
 						throw new RuntimeException("첨부파일 추가 중 오류가 발생했습니다.", e);
 					}
 				}
@@ -239,10 +276,11 @@ public class CommunityService {
 
 			// 5. 저장 및 반환
 			CommunityPost updated = repository.save(entity);
-			log.info("✅ Community post updated successfully: id={}, title={}, attachmentCount={}",
-				id, updated.getTitle(), updated.getAttachments().size());
+			log.info("✅ Community post updated successfully: id={}, Path={}", id, filePath);
 
-			return CommunityPostMapper.toDto(updated);
+			CommunityPostDto resultDto = CommunityPostMapper.toDto(updated);
+			resultDto.setContent(dto.getContent()); // 반환 시 내용 포함
+			return resultDto;
 
 		} catch (Exception e) {
 			log.error("❌ Error updating Community post: postId={}, error={}", id, e.getMessage(), e);
