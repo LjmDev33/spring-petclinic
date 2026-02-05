@@ -127,16 +127,27 @@ public class FileStorageService {
 
 	/**
 	 * 물리 파일 삭제
+	 * @return true: 삭제 성공, false: 파일이 없거나 삭제 실패
 	 */
-	public void deleteFile(String filePath) {
+	public boolean deleteFile(String filePath) {
 		try {
+			if (filePath == null || filePath.isBlank()) {
+				return false;
+			}
+
 			Path fileToDelete = baseDir.resolve(filePath).normalize();
+
+			// 파일이 존재하면 삭제 수행
 			if (Files.exists(fileToDelete)) {
 				Files.delete(fileToDelete);
-				log.info("Deleted physical file: {}", filePath);
+				return true; // 삭제 성공
+			} else {
+				// 파일이 이미 없음 (Task 1 등에 의해 삭제됨)
+				return false;
 			}
 		} catch (IOException e) {
 			log.error("Failed to delete file: {}", filePath, e);
+			return false; // 에러 발생
 		}
 	}
 }
