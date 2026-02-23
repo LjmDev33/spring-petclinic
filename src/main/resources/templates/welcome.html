@@ -1,91 +1,84 @@
-<!DOCTYPE html>
-<html xmlns:th="https://www.thymeleaf.org">
-<body>
-<!--<h2 th:text="#{welcome}">Welcome</h2>-->
-<div class="row g-0" style="background: url(/images/bg2.jpg) center top / cover no-repeat;">
-  <!--      <img class="img-responsive" src="../static/images/pets.png" th:src="@{/images/pets.png}" />-->
-  <!--    패딩 div -->
-  <div class="container-fluid">
-    <div class="row py-2"></div>
-    <div class="row ">
-      <!--    메인 컨텐츠 div-->
-      <div class="container-fluid">
-        <!--      메인컨텐츠 3열 분할-->
-        <div class="row g-0">
-          <div class="col-12 col-md-2"></div>
-          <div class="col-12 col-md-8">
-
-            <div class="row g-0 align-items-stretch">
-              <div class="col-12 col-md-3 d-flex">
-                <img class="w-100 h-100" style="object-fit: fill" th:src="@{/images/cs1.png}">
-              </div>
-              <div class="col-12 col-md-9 d-flex flex-column">
-                <div class="row g-0 flex-fill">
-                  <div class="col-12 col-md-6 d-flex">
-                    <img class="w-100 h-100" style="object-fit: cover" th:src="@{/images/cs2.png}">
-                  </div>
-                  <div class="col-12 col-md-6 d-flex">
-                    <img class="w-100 h-100" style="object-fit: cover" th:src="@{/images/seulgaegoal.png}">
-                  </div>
-                </div>
-                <div class="row g-0 flex-fill">
-                  <div class="col-12 col-md-6 d-flex">
-                    <img class="w-100 h-100" style="object-fit: cover" th:src="@{/images/heart.png}">
-                  </div>
-                  <div class="col-12 col-md-6 d-flex">
-                    <img class="w-100 h-100" style="object-fit: cover" th:src="@{/images/cat.png}">
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div class="row g-0 align-items-stretch">
-              <div class="col-12 col-md-3 d-flex">
-                <img class="w-100 h-100" style="object-fit: fill" th:src="@{/images/dental.png}">
-              </div>
-              <div class="col-12 col-md-9 d-flex">
-                <div class="row g-0 flex-fill">
-                  <div class="col-12 col-md-6 d-flex">
-                    <img class="w-100 h-100" style="object-fit: cover" th:src="@{/images/operate.png}">
-                  </div>
-                  <div class="col-12 col-md-6 d-flex">
-                    <img class="w-100 h-100" style="object-fit: cover" th:src="@{/images/dandoo.png}">
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!--      x-ray,초음파 행-->
-            <div class="row g-0">
-              <img class="img-fluid w-100" th:src="@{/images/xray.png}">
-            </div>
-            <div class="row g-0">
-              <div class="col-12 col-md-2">
-                <div class="row g-0">
-                  <img class="img-fluid w-100" th:src="@{/images/mainblog.png}">
-                </div>
-                <div class="row g-0">
-                  <img class="img-fluid w-100" th:src="@{/images/operatecase.png}">
-                </div>
-              </div>
-              <div class="col-12 col-md-10">
-                <div class="row g-0">
-                  <img class="img-fluid w-100" th:src="@{/images/guide.png}">
-                </div>
-              </div>
-            </div>
-            <!--      메인컨텐츠 3열 분할 마침-->
-          </div>
-          <div class="col-12 col-md-2"></div>
-        </div>
-        <!--      메인컨텐츠 마침-->
-      </div>
-      <!--      padding마침-->
+<!-- 메인 비주얼 (Hero Section - 타임리프 배경 이미지 설정) -->
+<div th:style="'background: url(' + @{/images/main_visual.png} + ') no-repeat center center; background-size: cover; height: 450px; position: relative;'">
+  <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(to right, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.2) 100%);"></div>
+  <div class="container h-100 position-relative z-index-1 d-flex align-items-center">
+    <div class="text-white">
+      <h2 class="display-5 fw-bold text-white-50 mb-3" style="word-break: keep-all;">평생 건강하고 행복하게 살자고 약속하셨죠?</h2>
+      <p class="fs-5 fw-light text-white-50">말 못하는 아이들의 아픔을 모른 체 지나치지 말아주세요.</p>
     </div>
-
   </div>
-  <!--    background 마침-->
 </div>
 
-</body>
+<!-- 특화 진료 클리닉 카드 영역 (WebJar FontAwesome v4 아이콘 적용) -->
+<div class="container my-5 py-4">
+  <div class="text-center mb-5">
+    <h3 class="fw-bold">주요 특화 진료 클리닉</h3>
+    <p class="text-muted">솔 동물의료센터만의 대학병원급 장비와 전문 인력을 바탕으로 한 특화 진료 안내입니다.</p>
+  </div>
 
-</html>
+  <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 justify-content-center">
+    <div class="col">
+      <div class="card clinic-card h-100 shadow-sm border-0 rounded-3 bg-white">
+        <div class="card-body text-center p-4">
+          <div class="icon-wrapper mb-3"><i class="fa fa-medkit fa-2x text-warning"></i></div>
+          <h5 class="card-title fw-bold">십자인대파열</h5>
+          <p class="card-text text-muted small mt-3">슬개골탈구와 함께 증상이 나타난 경우 수술 효과 및 예후가 좋은 TPLO 수술 진행<br><span class="text-primary">[소형견도 적용 가능한 Fixin 제품 사용]</span></p>
+        </div>
+      </div>
+    </div>
+    <div class="col">
+      <div class="card clinic-card h-100 shadow-sm border-0 rounded-3 bg-white">
+        <div class="card-body text-center p-4">
+          <div class="icon-wrapper mb-3" style="background-color: #e0f7fa;"><i class="fa fa-paw fa-2x text-info"></i></div>
+          <h5 class="card-title fw-bold">슬개골 탈구</h5>
+          <p class="card-text text-muted small mt-3">아이의 나이, 임상증상, 상태 등 종합적으로 고려한 뒤, 가장 적합한 수술법 선택<br><span class="text-info">[수술 성공률 100%를 위한 의료장비]</span></p>
+        </div>
+      </div>
+    </div>
+    <div class="col">
+      <div class="card clinic-card h-100 shadow-sm border-0 rounded-3 bg-white">
+        <div class="card-body text-center p-4">
+          <div class="icon-wrapper mb-3" style="background-color: #ffebee;"><i class="fa fa-heartbeat fa-2x text-danger"></i></div>
+          <h5 class="card-title fw-bold">심장 질환</h5>
+          <p class="card-text text-muted small mt-3">심장질환에 대한 깊은 지식과 풍부한 임상 경험으로 치료부터 맞춤 관리 대처 방법 교육 진행</p>
+        </div>
+      </div>
+    </div>
+    <div class="col">
+      <div class="card clinic-card h-100 shadow-sm border-0 rounded-3 bg-white">
+        <div class="card-body text-center p-4">
+          <div class="icon-wrapper mb-3" style="background-color: #f3e5f5;"><i class="fa fa-search-plus fa-2x text-secondary"></i></div>
+          <h5 class="card-title fw-bold">고양이 비뇨기계</h5>
+          <p class="card-text text-muted small mt-3">독립된 고양이 전용 진료 공간에서 초음파 검사를 통한 정확하고 스트레스 없는 진단과 치료</p>
+        </div>
+      </div>
+    </div>
+    <div class="col">
+      <div class="card clinic-card h-100 shadow-sm border-0 rounded-3 bg-white">
+        <div class="card-body text-center p-4">
+          <div class="icon-wrapper mb-3" style="background-color: #fff3e0;"><i class="fa fa-hospital-o fa-2x" style="color: #ff9800;"></i></div>
+          <h5 class="card-title fw-bold">덴탈 클리닉 <span class="badge bg-light text-dark border">노령견/고양이</span></h5>
+          <p class="card-text text-muted small mt-3">구강 X-ray와 CT를 이용한 정밀진단, 구내염부터 신경치료, 스케일링까지 안전하게 진행</p>
+        </div>
+      </div>
+    </div>
+    <div class="col">
+      <div class="card clinic-card h-100 shadow-sm border-0 rounded-3 bg-white">
+        <div class="card-body text-center p-4">
+          <div class="icon-wrapper mb-3" style="background-color: #e8eaf6;"><i class="fa fa-user-md fa-2x" style="color: #3f51b5;"></i></div>
+          <h5 class="card-title fw-bold">복강경 중성화 수술</h5>
+          <p class="card-text text-muted small mt-3">내시경을 이용해 최소 침습 복강 수술로 기존 개복 수술에 비해 통증, 감염률이 현저히 낮음</p>
+        </div>
+      </div>
+    </div>
+    <div class="col">
+      <div class="card clinic-card h-100 shadow-sm border-0 rounded-3 bg-white">
+        <div class="card-body text-center p-4">
+          <div class="icon-wrapper mb-3" style="background-color: #e0f2f1;"><i class="fa fa-stethoscope fa-2x" style="color: #009688;"></i></div>
+          <h5 class="card-title fw-bold">단두종 호흡부전 증후군</h5>
+          <p class="card-text text-muted small mt-3">최신 사양의 의료장비로 비경검사를 진행하여 아이의 상태를 신속, 정확하게 진단 가능</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
