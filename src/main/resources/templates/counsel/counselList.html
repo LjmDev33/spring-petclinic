@@ -91,7 +91,7 @@
       <i class="fa fa-pencil me-1"></i> 글쓰기
     </a>
   </div>
-  <div th:replace="fragments/pagination :: pagination('/counsel/list', ${page})"></div>
+  <div th:replace="~{fragments/pagination :: pagination('/counsel/list', ${page})}"></div>
 </div>
 </body>
 </html>

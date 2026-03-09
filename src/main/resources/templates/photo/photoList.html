@@ -100,7 +100,7 @@
 
   <!-- 페이징 -->
   <div th:if="${!#lists.isEmpty(posts)}" class="mt-4">
-    <div th:replace="fragments/pagination :: pagination('/photo/list', ${page})"></div>
+    <div th:replace="~{fragments/pagination :: pagination('/photo/list', ${page})}"></div>
   </div>
 </div>
 </body>

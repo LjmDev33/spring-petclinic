@@ -70,7 +70,7 @@
     </a>
   </div>
     <!-- 페이징 -->
-  <div th:replace="fragments/pagination :: pagination('/community/list', ${page})"></div>
+  <div th:replace="~{fragments/pagination :: pagination('/community/list', ${page})}"></div>
 </div>
 </body>
 </html>
