@@ -5,6 +5,7 @@ import org.jsoup.Jsoup;
 import org.jsoup.safety.Safelist;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -28,7 +29,8 @@ public class CommonHtmlStorage {
 
 	// [설정] 최상위 루트 경로 (counsel, photo 등의 상위 폴더)
 	// 실제 운영 시에는 application.yml에서 @Value로 주입받는 것이 좋습니다.
-	private static final String ROOT_BASE = "C:/eGovFrameDev-3.9.0-64bit/petclinic/data";
+	@Value("${petclinic.file.base-dir}")
+	private String rootBase;
 
 	private static final Set<String> ALLOWED_MIME = Set.of("text/html", "application/xhtml+xml");
 	private static final Tika TIKA = new Tika();
@@ -61,7 +63,7 @@ public class CommonHtmlStorage {
 
 		// 3. 저장 경로 동적 생성
 		// 예: ROOT_BASE + "/counsel" + "/content"
-		Path domainPath = Paths.get(ROOT_BASE, domain, "content");
+		Path domainPath = Paths.get(rootBase, domain, "content");
 		LocalDate today = LocalDate.now();
 		String yyyy = String.format("%04d", today.getYear());
 		String mm = String.format("%02d", today.getMonthValue());
@@ -101,7 +103,7 @@ public class CommonHtmlStorage {
 		if (path == null || path.isBlank()) return "";
 
 		// 검증용 루트: .../data/{domain}/content
-		Path domainBase = Paths.get(ROOT_BASE, domain, "content").toAbsolutePath().normalize();
+		Path domainBase = Paths.get(rootBase, domain, "content").toAbsolutePath().normalize();
 		Path file = Paths.get(path).toAbsolutePath().normalize();
 
 		// 보안 검사: 요청한 파일이 해당 도메인 폴더 안에 있는가?
@@ -117,7 +119,7 @@ public class CommonHtmlStorage {
 	// deleteHtml도 동일한 방식으로 domain 받아서 처리...
 	public void deleteHtml(String path, String domain) throws IOException {
 		if (path == null || path.isBlank()) return;
-		Path domainBase = Paths.get(ROOT_BASE, domain, "content").toAbsolutePath().normalize();
+		Path domainBase = Paths.get(rootBase, domain, "content").toAbsolutePath().normalize();
 		Path file = Paths.get(path).toAbsolutePath().normalize();
 		if (!file.startsWith(domainBase)) throw new SecurityException("Invalid path traversal attempt");
 		if (Files.exists(file)) Files.delete(file);

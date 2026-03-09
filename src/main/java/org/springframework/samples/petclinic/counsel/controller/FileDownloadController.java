@@ -19,7 +19,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 
+import java.io.IOException;
 import java.net.MalformedURLException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashSet;
@@ -71,12 +73,24 @@ public class FileDownloadController {
 	 * @param counselPostRepository 게시글 저장소
 	 */
 	public FileDownloadController(
-		@Value("${petclinic.counsel.upload-dir:C:/eGovFrameDev-3.9.0-64bit/petclinic/data/counsel/uploads}") String uploadDir,
+		@Value("${petclinic.file.counsel-upload-dir}") String uploadDir,
 		AttachmentRepository attachmentRepository,
 		CounselPostRepository counselPostRepository) {
 		this.baseDir = Paths.get(uploadDir);
 		this.attachmentRepository = attachmentRepository;
 		this.counselPostRepository = counselPostRepository;
+
+		// 디렉토리 자동 생성 방어 로직 추가
+		try {
+			if (!Files.exists(this.baseDir)) {
+				Files.createDirectories(this.baseDir);
+				log.info("업로드 디렉토리가 존재하지 않아 새로 생성했습니다: {}", this.baseDir.toAbsolutePath());
+			}
+		} catch (IOException e) {
+			log.error("업로드 디렉토리 생성 중 권한 또는 I/O 오류가 발생했습니다: {}", this.baseDir.toAbsolutePath(), e);
+			// 서버 기동 시 폴더를 만들 수 없다면 치명적인 장애이므로 앱 기동을 중단시킴
+			throw new RuntimeException("Could not initialize upload directory", e);
+		}
 	}
 
 	/**

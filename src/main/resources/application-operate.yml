@@ -1,28 +1,49 @@
 spring:
-
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/petclinic
-    username: dev33
-    password: ezflow_010
+    # EC2 내부에서 DB와 통신하므로 localhost 유지 (네트워크 레이어 최소화)
+    url: jdbc:mysql://localhost:3306/petclinic?allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=Asia/Seoul
+    username: petclinic
+    password: petclinic
+    hikari:
+      # [풀 크기] DB와 맺어둘 최대 커넥션 수: 15개 (T3.micro 스펙 최적화)
+      maximum-pool-size: 15
+      # [유지 개수] 최소한으로 유지할 유휴 커넥션 수: 15개 (풀 생성 병목 방지를 위해 max와 동일하게 고정)
+      minimum-idle: 15
+      # [대기 타임아웃] 풀이 꽉 찼을 때 대기하는 최대 시간: 10,000ms (10초)
+      # 10초가 넘어도 자리가 안 나면 Fail-Fast 처리하여 톰캣 마비 방지
+      connection-timeout: 10000
+      # [커넥션 생명주기] 하나의 커넥션이 유지되는 최대 시간: 1,800,000ms (30분)
+      # MariaDB의 강제 연결 종료(wait_timeout)를 피하기 위해 30분마다 안전하게 연결을 끊고 새 커넥션을 맺음
+      max-lifetime: 1800000
 
   jpa:
-    database-platform: org.hibernate.dialect.MySQLDialect
+    hibernate:
+      ddl-auto: update
+      use-new-id-generator-mappings: true
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+    show-sql: false # 운영 환경 I/O 최적화를 위해 비활성화
+    open-in-view: false
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.MySQL8Dialect
-    hibernate:
-      ddl-auto: none
-    open-in-view: false
-
-  sql:
-    init:
-      mode: never
-      schema-locations: classpath*:db/mysql/schema.sql
-      data-locations: classpath*:db/mysql/data.sql
+        dialect: org.hibernate.dialect.MariaDBDialect # MariaDB 10.5에 맞춘 정확한 방언 사용
+        format_sql: false # 운영 환경 I/O 최적화를 위해 비활성화 , 실행되는 SQL을 보기 좋게 들여쓰기(포매팅)하여 출력
+        jdbc:
+          batch_size: 50
+        order_inserts: true
+        order_updates: true
+        use_sql_comments: true # 주석을 통해 이 쿼리가 어떤 로직(메서드)에서 발생했는지 힌트 제공
+        default_batch_fetch_size: 100 # [추가] 지연 로딩 발생 시, 100개의 부모 ID를 IN 절로 묶어서 한 번에 가져옴 (첨부파일 N+1 해결)
 
   thymeleaf:
     mode: HTML
+    cache: true # 운영 환경 렌더링 속도 향상을 위해 활성화
+
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
 
   main:
     allow-bean-definition-overriding: true
@@ -31,30 +52,38 @@ spring:
     basename: messages/messages,messages/ErrorMessages
     encoding: UTF-8
     cache-duration: 5m
+
   jackson:
     serialization:
-      INDENT_OUTPUT: true
+      INDENT_OUTPUT: false # 운영 환경 응답 용량(네트워크 트래픽) 절감을 위해 들여쓰기 비활성화
 
-  web:
-    resources:
-      cache:
-        cachecontrol:
-          max-age: 12h
+server:
+  port: 8080
 
-management:
-  endpoints:
-    web:
-      exposure:
-        include: "*"
+petclinic:
+  file:
+    # RHEL 9 환경에 맞춘 Linux 절대 경로 적용
+    base-dir: /home/ec2-user/petclinic/data
+    counsel-upload-dir: /home/ec2-user/petclinic/data/counsel/uploads
 
 logging:
+  file:
+    name: /home/ec2-user/petclinic/server/logs/catalina.log
   level:
-    root: DEBUG
-    com.zaxxer.hikari.HikariConfig: DEBUG
-    org.springframework.context.support.ReloadableResourceBundleMessageSource: DEBUG
+    # Hibernate가 생성한 SQL 쿼리문을 로그에 출력 (DEBUG 레벨)
+    #org.hibernate.SQL: DEBUG
+    # 쿼리의 '?'에 매핑되는 실제 바인딩 파라미터 값을 추적 (TRACE 레벨)
+    #org.hibernate.orm.jdbc.bind: TRACE
+  logback:
+    rollingpolicy:
+      # %i는 프레임워크 필수값이므로 유지 (파일은 .0으로만 생성됨)
+      file-name-pattern: /home/ec2-user/petclinic/server/logs/catalina-%d{yyyy-MM-dd}.%i.log
 
-decorator:
-  datasource:
-    p6spy:
-      enable-logging: true
-      multiline: true
+      # [핵심] 단일 파일의 최대 크기. 이 크기를 넘어야만 .1, .2로 분할됨 (기본값 10MB -> 1GB로 확장)
+      max-file-size: 1GB
+
+      # 최대 보관 일수 (30일이 지나면 자동 삭제)
+      max-history: 30
+
+      # [안전장치] 보관 중인 전체 로그 파일의 총합 용량 제한 (디스크 Full 방지용, 30일치 로그가 10GB를 넘으면 오래된 순으로 강제 삭제)
+      total-size-cap: 10GB
