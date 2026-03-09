@@ -154,13 +154,8 @@ public class CounselService {
 		Page<CounselPost> entityPage = repository.findAll(pageable);
 		List<CounselPostDto> dtoList = entityPage.getContent().stream().map(postMapper::toDto).collect(Collectors.toList());
 		// 최근 댓글 요약 주입
-		for (CounselPostDto d : dtoList) {
-			commentRepository.findTopByPost_IdOrderByCreatedAtDesc(d.getId()).ifPresent(c -> {
-				d.setLastCommentTitle("댓글");
-				d.setLastCommentAuthor(c.getAuthorName());
-				d.setLastCommentCreatedAt(c.getCreatedAt());
-			});
-		}
+		// [튜닝] 공통 메서드를 통한 N+1 방어 및 in-memory 매핑 적용
+		applyLatestCommentsToDto(dtoList);
 		Page<CounselPostDto> dtoPage = new PageImpl<>(dtoList, pageable, entityPage.getTotalElements());
 		return new PageResponse<>(dtoPage);
 	}
@@ -171,15 +166,47 @@ public class CounselService {
 	public PageResponse<CounselPostDto> search(String type, String keyword, Pageable pageable) {
 		PageResponse<CounselPost> entityResponse = repository.search(type,keyword,pageable);
 		List<CounselPostDto> dtoList = entityResponse.getContent().stream().map(postMapper::toDto).collect(Collectors.toList());
-		for (CounselPostDto d : dtoList) {
-			commentRepository.findTopByPost_IdOrderByCreatedAtDesc(d.getId()).ifPresent(c -> {
-				d.setLastCommentTitle("댓글");
-				d.setLastCommentAuthor(c.getAuthorName());
-				d.setLastCommentCreatedAt(c.getCreatedAt());
-			});
-		}
+
+		// [튜닝] 공통 메서드를 통한 N+1 방어 및 in-memory 매핑 적용(for문안에서 db호출 계속하는 문제 해결)
+		applyLatestCommentsToDto(dtoList);
+
 		Page<CounselPostDto> dtoPage = new PageImpl<>(dtoList, pageable, entityResponse.getTotalElements());
 		return new PageResponse<>(dtoPage);
+	}
+
+	/**
+	 * [공통/튜닝] N+1 방어: DTO 리스트의 게시글 ID를 모아 IN 절로 댓글을 한 번에 조회 후 메모리에서 매핑
+	 */
+	private void applyLatestCommentsToDto(List<CounselPostDto> dtoList) {
+		if (dtoList == null || dtoList.isEmpty()) {
+			return;
+		}
+
+		// 1. 현재 페이지의 게시글 ID 목록 추출
+		List<Long> postIds = dtoList.stream()
+			.map(CounselPostDto::getId)
+			.collect(Collectors.toList());
+
+		// 2. N개의 게시글에 달린 모든 댓글을 쿼리 1번(IN 절)으로 가져옴
+		List<CounselComment> allComments = commentRepository.findByPost_IdIn(postIds);
+
+		// 3. 게시글 ID 기준으로 최신 댓글 1개만 남기도록 Map 구성 (in-memory)
+		Map<Long, CounselComment> latestCommentMap = allComments.stream()
+			.collect(Collectors.toMap(
+				c -> c.getPost().getId(),
+				c -> c,
+				(c1, c2) -> c1.getCreatedAt().isAfter(c2.getCreatedAt()) ? c1 : c2
+			));
+
+		// 4. DB 통신 없이 DTO에 최신 댓글 정보 할당
+		for (CounselPostDto d : dtoList) {
+			CounselComment latest = latestCommentMap.get(d.getId());
+			if (latest != null) {
+				d.setLastCommentTitle("댓글");
+				d.setLastCommentAuthor(latest.getAuthorName());
+				d.setLastCommentCreatedAt(latest.getCreatedAt());
+			}
+		}
 	}
 
 	/**
@@ -228,13 +255,8 @@ public class CounselService {
 			.collect(Collectors.toList());
 
 		// 최근 댓글 요약 주입
-		for (CounselPostDto d : dtoList) {
-			commentRepository.findTopByPost_IdOrderByCreatedAtDesc(d.getId()).ifPresent(c -> {
-				d.setLastCommentTitle("댓글");
-				d.setLastCommentAuthor(c.getAuthorName());
-				d.setLastCommentCreatedAt(c.getCreatedAt());
-			});
-		}
+		// [튜닝] 공통 메서드를 통한 N+1 방어 및 in-memory 매핑 적용
+		applyLatestCommentsToDto(dtoList);
 
 		Page<CounselPostDto> dtoPage = new PageImpl<>(dtoList, pageable, entityResponse.getTotalElements());
 		return new PageResponse<>(dtoPage);

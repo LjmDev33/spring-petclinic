@@ -39,7 +39,7 @@ public interface CounselCommentRepository extends JpaRepository<CounselComment,L
 	 * @return 댓글 페이지
 	 */
 	Page<CounselComment> findByAuthorNameOrderByCreatedAtDesc(String authorName, Pageable pageable);
-	
+
 	/**
 	 * 부모 댓글 ID로 자식 댓글 목록 조회
 	 * - 댓글 삭제 시 자식 댓글 존재 여부 확인에 사용
@@ -47,4 +47,6 @@ public interface CounselCommentRepository extends JpaRepository<CounselComment,L
 	 * @return 자식 댓글 목록
 	 */
 	List<CounselComment> findByParent_Id(Long parentId);
+
+	List<CounselComment> findByPost_IdIn(List<Long> postIds);
 }
