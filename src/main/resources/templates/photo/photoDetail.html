@@ -61,14 +61,14 @@
   <!-- 버튼 그룹 -->
   <div class="d-flex justify-content-between mb-3">
     <div class="d-flex" style="gap: 8px;" th:if="${ownerYN == true}">
-      <a th:href="@{/photo/edit/{id}(id=${post.id})}" class="btn btn-outline-dark">
+      <a th:href="@{/photo/edit/{id}(id=${post.id})}" class="btn btn-warning btn-sm">
         <i class="bi bi-pencil me-1"></i> 수정
       </a>
-      <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+      <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteModal">
         <i class="bi bi-trash me-1"></i> 삭제
       </button>
     </div>
-    <a th:href="@{/photo/list}" class="btn btn-light">
+    <a th:href="@{/photo/list}" class="btn btn-dark btn-sm">
       <i class="bi bi-list me-1"></i> 목록
     </a>
   </div>

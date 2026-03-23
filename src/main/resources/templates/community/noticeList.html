@@ -21,7 +21,7 @@
             <div class="col-8">
               <div class="input-group">
                 <input type="text" class="form-control" name="keyword" th:value="${keyword}" placeholder="검색어를 입력하세요" aria-label="Search">
-                <button class="custom-btn custom-btn-primary" type="submit" style="min-width: 80px;">
+                <button class="btn btn-dark btn-sm" type="submit" style="min-width: 80px;">
                   <i class="fa fa-search"></i> 검색
                 </button>
               </div>
@@ -33,7 +33,7 @@
     </div>
   </div>
 
-  <table class="table text-center align-middle mb-md-1">
+  <table class="table text-center align-middle mb-md-1 mt-3">
     <thead >
     <tr style="border-top: 1px solid;">
       <th scope="col">No</th>
@@ -65,9 +65,12 @@
   <!-- 게시판 글쓰기 버튼 (관리자만 표시) -->
   <div class="d-flex justify-content-end mb-3"
        th:if="${#authentication != null && #authentication.principal != null && #authorization.expression('hasRole(''ROLE_ADMIN'')')}">
-    <a th:href="@{/community/write(subject='notice')}" class="custom-btn custom-btn-dark" style="height: 42px; min-width: 110px; display: flex; align-items: center; justify-content: center;">
+    <a th:href="@{/community/write(subject='notice')}" class="btn btn-dark btn-sm" style="height: 42px; min-width: 110px; display: flex; align-items: center; justify-content: center; margin-top: 15px;">
       <i class="fa fa-pencil me-1"></i> 글쓰기
     </a>
+  </div>
+  <div class="d-flex justify-content-end mb-3 mt-4"
+       th:unless="${#authentication != null && #authentication.principal != null && #authorization.expression('hasRole(''ROLE_ADMIN'')')}">
   </div>
     <!-- 페이징 -->
   <div th:replace="~{fragments/pagination :: pagination('/community/list', ${page})}"></div>

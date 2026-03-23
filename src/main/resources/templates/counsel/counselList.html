@@ -31,7 +31,7 @@
                    th:value="${keyword}"
                    placeholder="검색어를 입력하세요"
                    aria-label="Search">
-            <button class="custom-btn custom-btn-primary" type="submit" style="min-width: 80px;">
+            <button class="btn btn-dark btn-sm" type="submit" style="min-width: 80px;">
               <i class="fa fa-search"></i> 검색
             </button>
           </div>
@@ -87,7 +87,7 @@
 
   <!-- 글쓰기 버튼 -->
   <div class="d-flex justify-content-end mb-3">
-    <a th:href="@{/counsel/write}" class="custom-btn custom-btn-dark" style="height: 42px; min-width: 110px; display: flex; align-items: center; justify-content: center;">
+    <a th:href="@{/counsel/write}" class="btn btn-dark btn-sm" style="height: 42px; min-width: 110px; display: flex; align-items: center; justify-content: center; margin-top: 15px;">
       <i class="fa fa-pencil me-1"></i> 글쓰기
     </a>
   </div>

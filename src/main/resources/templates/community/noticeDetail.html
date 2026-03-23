@@ -88,6 +88,19 @@
       </table>
     </div>
 
+    <!-- 첨부파일 표시 -->
+    <div class="row mt-3" th:if="${post.attachmentDtos != null and !post.attachmentDtos.isEmpty()}">
+      <div class="col-12">
+        <h5><i class="bi bi-paperclip"></i> 첨부파일</h5>
+        <ul class="list-group">
+          <li class="list-group-item d-flex justify-content-between align-items-center" th:each="file : ${post.attachmentDtos}">
+            <a th:href="@{/community/download/{fileId}(fileId=${file.id})}" th:text="${file.originalFileName}"></a>
+            <span class="badge bg-secondary rounded-pill" th:text="${#numbers.formatDecimal(file.fileSize / 1024, 1, 2)} + ' KB'"></span>
+          </li>
+        </ul>
+      </div>
+    </div>
+    
     <!-- 좋아요 탭 헤더 + 패널 영역 (공지사항은 답변 없음) -->
     <div class="row mt-5">
       <div class="col-12">

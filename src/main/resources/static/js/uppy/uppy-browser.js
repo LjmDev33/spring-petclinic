@@ -249,7 +249,7 @@
     html += '      <div class="uppy-DashboardContent-bar">';
     html += '        <div class="uppy-DashboardContent-title">';
     html += '          <div style="margin-bottom: 0.5rem;">파일을 드래그하거나 아래 버튼을 클릭하세요</div>';
-    html += '          <button type="button" class="uppy-Dashboard-browse">📎 파일 선택</button>';
+    html += '          <button type="button" class="uppy-Dashboard-browse btn btn-outline-success">📎 파일 선택</button>';
     html += '        </div>';
     html += '      </div>';
     html += '      <div class="uppy-Dashboard-files" role="list"></div>';
@@ -425,20 +425,20 @@
           fileIcon = '📦';
         }
 
-        html += '<div class="uppy-Dashboard-Item" data-file-id="' + file.id + '">';
+        html += '<div class="uppy-Dashboard-Item mt-2 " style="display: flex; align-items: center;" data-file-id="' + file.id + '">';
         html += '  <div class="uppy-Dashboard-Item-preview">';
         html += '    <div class="uppy-Dashboard-Item-previewIcon">' + fileIcon + '</div>';
         html += '  </div>';
-        html += '  <div class="uppy-Dashboard-Item-info">';
-        html += '    <h4 class="uppy-Dashboard-Item-name">' + file.name + '</h4>';
-        html += '    <div class="uppy-Dashboard-Item-status">';
+        html += '  <div class="uppy-Dashboard-Item-info" style="display: flex; align-items: center;">';
+        html += '    <h4 class="uppy-Dashboard-Item-name ms-2">' + file.name + '</h4>';
+        html += '    <div class="uppy-Dashboard-Item-status ms-2">';
         html += '      <span class="uppy-Dashboard-Item-statusSize">' + sizeStr + '</span>';
         html += '    </div>';
         html += '    <div class="uppy-Dashboard-Item-progress">';
         html += '      <div class="uppy-Dashboard-Item-progressBar" style="width: ' + file.progress.percentage + '%"></div>';
         html += '    </div>';
         html += '  </div>';
-        html += '  <button type="button" class="uppy-Dashboard-Item-action uppy-Dashboard-Item-action--remove" data-file-id="' + file.id + '" title="파일 제거">×</button>';
+        html += '  <button type="button" class="uppy-Dashboard-Item-action uppy-Dashboard-Item-action--remove btn btn-outline-danger btn-sm ms-2" data-file-id="' + file.id + '" title="파일 제거">×</button>';
         html += '</div>';
       });
     }
