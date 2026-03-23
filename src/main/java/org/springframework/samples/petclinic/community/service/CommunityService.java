@@ -1,5 +1,8 @@
 package org.springframework.samples.petclinic.community.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -7,6 +10,7 @@ import org.springframework.samples.petclinic.common.repository.AttachmentReposit
 import org.springframework.samples.petclinic.common.service.CommonHtmlStorage;
 import org.springframework.samples.petclinic.community.repository.CommunityPostLikeRepository;
 import org.springframework.samples.petclinic.community.table.CommunityPostLike;
+import org.springframework.samples.petclinic.counsel.service.FileStorageService;
 import org.springframework.security.core.Authentication;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.annotation.Isolation;
@@ -22,6 +26,7 @@ import org.springframework.samples.petclinic.community.mapper.CommunityPostMappe
 import org.springframework.samples.petclinic.community.repository.CommunityPostRepository;
 import org.springframework.samples.petclinic.community.repository.CommunityPostAttachmentRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
@@ -100,6 +105,8 @@ public class CommunityService {
 	private final CommunityPostRepository communityPostRepository;
 	private final CommunityPostLikeRepository likeRepository;
 	private final AttachmentRepository attachmentRepository;
+	private final FileStorageService fileStorageService;
+	private final CommunityPostMapper postMapper;
 	private final CommunityPostAttachmentRepository postAttachmentRepository;
 
 	// [Refactor] 공통 HTML 저장소 주입
@@ -108,13 +115,15 @@ public class CommunityService {
 	public CommunityService(CommunityPostRepository repository,
 							CommunityPostRepository communityPostRepository,
 							CommunityPostLikeRepository likeRepository,
-							AttachmentRepository attachmentRepository,
+							AttachmentRepository attachmentRepository, FileStorageService fileStorageService, CommunityPostMapper postMapper,
 							CommunityPostAttachmentRepository postAttachmentRepository,
 							CommonHtmlStorage commonHtmlStorage) {
 		this.repository = repository;
 		this.communityPostRepository = communityPostRepository;
 		this.likeRepository = likeRepository;
 		this.attachmentRepository = attachmentRepository;
+		this.fileStorageService = fileStorageService;
+		this.postMapper = postMapper;
 		this.postAttachmentRepository = postAttachmentRepository;
 		this.commonHtmlStorage = commonHtmlStorage;
 	}
@@ -125,7 +134,7 @@ public class CommunityService {
 		List<CommunityPostDto> dtoList = entityPage
 			.getContent()
 			.stream()
-			.map(CommunityPostMapper::toDto)
+			.map(postMapper::toDto)
 			.collect(Collectors.toList());
 		Page<CommunityPostDto> dtoPage = new PageImpl<>(dtoList, pageable, entityPage.getTotalElements());
 		return new PageResponse<>(dtoPage);
@@ -135,7 +144,7 @@ public class CommunityService {
 	public List<CommunityPostDto> getAllPosts() {
 		return repository.findAll()
 			.stream()
-			.map(CommunityPostMapper::toDto)
+			.map(postMapper::toDto)
 			.collect(Collectors.toList());
 	}
 
@@ -147,7 +156,7 @@ public class CommunityService {
 		CommunityPost entity = repository.findById(id)
 			.orElseThrow(() -> new IllegalArgumentException("게시글을 찾을 수 없습니다: " + id));
 
-		CommunityPostDto dto = CommunityPostMapper.toDto(entity);
+		CommunityPostDto dto = postMapper.toDto(entity);
 
 		// [Refactor] 본문 로드 ("notice" 도메인)
 		try {
@@ -169,16 +178,61 @@ public class CommunityService {
 		try {
 			// [Refactor] HTML 파일 저장 ("notice" 도메인)
 			// XSS 방어 및 경로 생성은 commonHtmlStorage 내부에서 처리됨
-			String filePath = commonHtmlStorage.saveHtml(dto.getContent(), "notice");
+			String path = commonHtmlStorage.saveHtml(dto.getContent(), "notice");
 
-			CommunityPost entity = CommunityPostMapper.toEntity(dto);
-			entity.setContent(filePath); // DB에는 파일 경로 저장
+			CommunityPost entity = postMapper.toEntity(dto);
+			entity.setContent(path); // DB에는 파일 경로 저장
 			entity.setCreatedAt(LocalDateTime.now());
 
-			CommunityPost saved = repository.save(entity);
-			log.info("공지사항 작성 완료: ID={}, Path={}", saved.getId(), filePath);
+			// 첨부파일 처리 (Uppy 업로드된 파일 경로)
+			if (dto.getAttachmentPaths() != null && !dto.getAttachmentPaths().isBlank()) {
+				try{
+					ObjectMapper objectMapper = new ObjectMapper();
+					List<CommunityPostDto> fileList = objectMapper.readValue(
+						dto.getAttachmentPaths(),
+						new TypeReference<List<CommunityPostDto>>() {}
+					);
 
-			return CommunityPostMapper.toDto(saved);
+					for (CommunityPostDto fileInfo : fileList) {
+						String filePath = fileInfo.getFilepath();
+						filePath = filePath.trim();
+						if (path == null || path.trim().isEmpty()) continue;
+						try {
+							// Attachment 엔티티 생성 및 저장 (common.table.Attachment)
+							Attachment attachment = new Attachment();
+							attachment.setStoredFilename(filePath); // 파일주소
+							attachment.setOriginalFilename(fileInfo.getFilename()); // 파일명
+							attachment.setFileSize(fileInfo.getFilesize()); // 파일사이즈
+							attachment.setContentType(fileInfo.getFiletype()); // MIME 타입
+							attachmentRepository.save(attachment);
+
+							CommunityPostAttachment postAttachment = new CommunityPostAttachment();
+							postAttachment.setCommunityPost(entity);
+							postAttachment.setAttachment(attachment);
+							entity.addAttachment(postAttachment);
+
+							log.info("Attached file to post: path={}", filePath);
+						} catch (Exception e) {
+							log.error("Failed to attach file {}: {}", filePath, e.getMessage());
+							throw new RuntimeException("Error attaching file.", e);
+						}
+					}
+					entity.setAttachFlag(true); // 첨부파일 플래그 설정
+				} catch (JsonProcessingException e) {
+					// JSON 문자열을 List 객체로 변환(파싱)할 때 발생하는 에러
+					log.error("Failed to parse attachment paths JSON. Data: {}", dto.getAttachmentPaths(), e);
+					// 파싱 오류는 클라이언트의 잘못된 요청 데이터일 확률이 높으므로 IllegalArgumentException 사용
+					throw new IllegalArgumentException("Invalid format for attachment paths.", e);
+				} catch (Exception e) {
+					log.error("Unexpected error during attachment processing.", e);
+					throw new RuntimeException("Unexpected error during attachment processing.", e);
+				}
+			}
+
+			CommunityPost saved = repository.save(entity);
+			log.info("공지사항 작성 완료: ID={}, Path={}", saved.getId(), path);
+
+			return postMapper.toDto(saved);
 
 		} catch (Exception e) {
 			log.error("공지사항 작성 중 파일 저장 실패", e);
@@ -278,7 +332,7 @@ public class CommunityService {
 			CommunityPost updated = repository.save(entity);
 			log.info("✅ Community post updated successfully: id={}, Path={}", id, filePath);
 
-			CommunityPostDto resultDto = CommunityPostMapper.toDto(updated);
+			CommunityPostDto resultDto = postMapper.toDto(updated);
 			resultDto.setContent(dto.getContent()); // 반환 시 내용 포함
 			return resultDto;
 
@@ -304,18 +358,18 @@ public class CommunityService {
 		PageResponse<CommunityPost> entityResponse = communityPostRepository.search(type, keyword, pageable);
 		List<CommunityPostDto> dtoList = entityResponse.getContent()
 			.stream()
-			.map(CommunityPostMapper::toDto)
+			.map(postMapper::toDto)
 			.collect(Collectors.toList());
 		Page<CommunityPostDto> dtoPage = new PageImpl<>(dtoList, pageable, entityResponse.getTotalElements());
 		return new PageResponse<>(dtoPage);
 	}
 
 	public Optional<CommunityPostDto> getPrevPost(Long id){
-		return communityPostRepository.getPrevPost(id).map(CommunityPostMapper::toDto);
+		return communityPostRepository.getPrevPost(id).map(postMapper::toDto);
 	}
 
 	public Optional<CommunityPostDto> getNextPost(Long id){
-		return communityPostRepository.getNextPost(id).map(CommunityPostMapper::toDto);
+		return communityPostRepository.getNextPost(id).map(postMapper::toDto);
 	}
 
 	// ==================== 좋아요 기능 (ACID 트랜잭션 고도화) ====================
@@ -512,6 +566,29 @@ public class CommunityService {
 			log.error("❌ [Community] Failed to get liked usernames: postId={}, error={}",
 				postId, e.getMessage(), e);
 			return Collections.emptyList();
+		}
+	}
+
+	/**
+	 * Uppy를 통한 임시 파일 저장 (게시글 작성 전 미리 업로드)
+	 * - 파일을 임시 저장하고 파일 경로를 반환
+	 * - 실제 게시글 저장 시 attachmentIds로 파일 경로를 전달받아 연결
+	 *
+	 * @param file 업로드된 파일
+	 * @return 저장된 파일 경로
+	 */
+	public String storeFileTemp(MultipartFile file) {
+		try {
+			// FileStorageService를 통해 파일 저장
+			String filePath = fileStorageService.storeFile(file , "community");
+
+			log.info("Temp file stored: originalName={}, storedPath={}, size={}",
+				file.getOriginalFilename(), filePath, file.getSize());
+
+			return filePath;
+		} catch (Exception e) {
+			log.error("Failed to store temp file {}: {}", file.getOriginalFilename(), e.getMessage(), e);
+			throw new RuntimeException("임시 파일 저장 중 오류가 발생했습니다.", e);
 		}
 	}
 }

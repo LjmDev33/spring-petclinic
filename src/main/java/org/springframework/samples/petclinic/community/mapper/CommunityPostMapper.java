@@ -1,7 +1,13 @@
 package org.springframework.samples.petclinic.community.mapper;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.samples.petclinic.community.table.CommunityPost;
 import org.springframework.samples.petclinic.community.dto.CommunityPostDto;
+import org.springframework.samples.petclinic.community.table.CommunityPostAttachment;
+import org.springframework.samples.petclinic.counsel.mapper.AttachmentMapper;
+import org.springframework.stereotype.Component;
+
+import java.util.stream.Collectors;
 
 /**
  * Project : spring-petclinic
@@ -52,10 +58,16 @@ import org.springframework.samples.petclinic.community.dto.CommunityPostDto;
  * License :
  *   Copyright (c) 2025 AOF(AllForOne) / All rights reserved.
  */
+@Component
 public class CommunityPostMapper {
 
+	private final AttachmentMapper attachmentMapper;
+
+	@Autowired
+	public CommunityPostMapper(AttachmentMapper attachmentMapper) { this.attachmentMapper = attachmentMapper; }
+
 	// TODO 목적: DB에서 꺼낸 Entity 객체를 화면/응답 전용 DTO 객체로 변환 (DB -> 화면 / 화면출력전용)
-	public static CommunityPostDto toDto(CommunityPost entity) {
+	public CommunityPostDto toDto(CommunityPost entity) {
 		CommunityPostDto dto = new CommunityPostDto();
 		dto.setId(entity.getId());
 		dto.setTitle(entity.getTitle());
@@ -66,24 +78,18 @@ public class CommunityPostMapper {
 		dto.setLikeCount(entity.getLikeCount());
 
 		// Phase 3: 첨부파일 목록 변환
-		if (entity.getAttachments() != null && !entity.getAttachments().isEmpty()) {
-			entity.getAttachments().forEach(postAttachment -> {
-				if (postAttachment.getAttachment() != null && !postAttachment.getAttachment().isDelFlag()) {
-					CommunityPostDto.AttachmentInfo info = new CommunityPostDto.AttachmentInfo(
-						postAttachment.getAttachment().getId(),
-						postAttachment.getAttachment().getOriginalFilename(),
-						postAttachment.getAttachment().getFileSize()
-					);
-					dto.getAttachments().add(info);
-				}
-			});
+		if (entity.getAttachments() != null) {
+			dto.setAttachmentDtos(entity.getAttachments().stream()
+				.map(CommunityPostAttachment::getAttachment) // CounselPostAttachment에서 Attachment를 가져옴
+				.map(attachmentMapper::toDto)
+				.collect(Collectors.toList()));
 		}
 
 		return dto;
 	}
 
 	// TODO 목적: 화면/요청에서 받은 DTO 객체를 DB 저장용 Entity 객체로 변환 (화면 -> DB / 여기서 세팅한 값만 DB에 반영)
-	public static CommunityPost toEntity(CommunityPostDto dto) {
+	public CommunityPost toEntity(CommunityPostDto dto) {
 		CommunityPost entity = new CommunityPost();
 		entity.setId(dto.getId());
 		entity.setTitle(dto.getTitle());

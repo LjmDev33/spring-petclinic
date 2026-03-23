@@ -18,7 +18,7 @@
     <h2 class="mb-0">
       <i class="bi bi-pencil-square"></i> 온라인 상담 글쓰기
     </h2>
-    <a th:href="@{/counsel/list}" class="custom-btn custom-btn-secondary" style="height: 42px; min-width: 110px; display: flex; align-items: center; justify-content: center;">
+    <a th:href="@{/counsel/list}" class="btn btn-dark btn-sm" style="height: 42px; min-width: 110px; display: flex; align-items: center; justify-content: center;">
       <i class="bi bi-list me-1"></i> 목록
     </a>
   </div>
@@ -106,7 +106,7 @@
     </div>
 
     <div class="d-flex justify-content-end mt-4">
-      <button type="submit" class="custom-btn custom-btn-primary" id="submitBtn">
+      <button type="submit" class="btn btn-success" id="submitBtn">
         <i class="bi bi-send me-1"></i> 작성완료
       </button>
     </div>
@@ -244,6 +244,7 @@
     console.log('Uppy.Core:', typeof Uppy.Core);
     console.log('Uppy.Dashboard:', typeof Uppy.Dashboard);
 
+    let uploadFiles = [];
     // Uppy 초기화 (로컬 내장 브라우저 번들 사용)
     const uppy = new Uppy.Core({
       autoProceed: false,
@@ -464,6 +465,31 @@
       console.log(`Progress: ${file.name} ${filePercent}%, Total: ${totalPercent}%, Speed: ${speedText}`);
     });
 
+    uppy.on('upload-success', (file, response) => {
+      const fileData = {
+        filepath: response.files[0].path, // 서버가 응답한 저장 경로
+        filename: file.name,           // 원본 파일명
+        filesize: file.size,           // 파일 크기
+        filetype: file.type            // MIME 타입
+      };
+      uploadFiles.push(fileData);
+      updateHiddenField();
+    });
+
+    function updateHiddenField() {
+      document.getElementById('attachmentPaths').value = JSON.stringify(uploadFiles);
+    }
+    
+    // 제출 시 업로드 중인 파일이 있는지 체크
+    document.getElementById('counselForm').addEventListener('submit', function(e) {
+      const files = uppy.getFiles();
+      const isUploading = files.some(f => f.progress.uploadStarted && !f.progress.uploadComplete);
+      if (isUploading) {
+        e.preventDefault();
+        alert("파일 업로드가 완료된 후 등록해주세요.");
+      }
+    });
+    
     uppy.on('complete', (result) => {
       console.log('Uppy upload complete:', result);
 
@@ -510,26 +536,6 @@
           TOAST.showSuccess(`${successCount}개 파일이 업로드되었습니다.`, 3000);
         }
       }, 2000);
-
-      // 업로드 성공한 파일 경로들을 hidden 필드에 저장
-      if (result.successful && result.successful.length > 0) {
-        const filePaths = [];
-        result.successful.forEach(file => {
-          // 서버 응답에서 파일 정보 추출
-          if (file.response && file.response.body && file.response.body.files) {
-            file.response.body.files.forEach(f => {
-              if (f.path) {
-                filePaths.push(f.path);
-              }
-            });
-          }
-        });
-
-        if (filePaths.length > 0) {
-          document.getElementById('attachmentPaths').value = filePaths.join(',');
-          console.log('Uploaded file paths:', filePaths);
-        }
-      }
     });
 
     // 개별 파일 업로드 에러 처리

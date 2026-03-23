@@ -1,5 +1,7 @@
 package org.springframework.samples.petclinic.community.dto;
 
+import org.springframework.samples.petclinic.counsel.dto.AttachmentDto;
+
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -65,11 +67,18 @@ public class CommunityPostDto {
 	/** 첨부파일 목록 (Phase 3) */
 	private List<AttachmentInfo> attachments = new ArrayList<>();
 
+	private List<AttachmentDto> attachmentDtos;
+
 	/** 삭제할 첨부파일 ID 목록 (쉼표 구분, 수정 시 사용) */
 	private String deletedFileIds;
 
 	/** 새로 업로드된 첨부파일 경로 목록 (쉼표 구분, 수정 시 사용) */
 	private String attachmentPaths;
+
+	private String filepath;
+	private String filename;
+	private String filetype;
+	private Long filesize;
 
 	// Getter & Setter
 	public Long getId() { return id; }
@@ -101,6 +110,22 @@ public class CommunityPostDto {
 
 	public String getAttachmentPaths() { return attachmentPaths; }
 	public void setAttachmentPaths(String attachmentPaths) { this.attachmentPaths = attachmentPaths; }
+
+	public String getFilename() { return filename; }
+	public void setFilename(String filename) { this.filename = filename; }
+
+	public String getFilepath() { return filepath; }
+	public void setFilepath(String filepath) { this.filepath = filepath; }
+
+	public String getFiletype() { return filetype; }
+	public void setFiletype(String filetype) { this.filetype = filetype; }
+
+	public Long getFilesize() { return filesize; }
+	public void setFilesize(Long filesize) { this.filesize = filesize; }
+
+	public List<AttachmentDto> getAttachmentDtos() { return attachmentDtos; }
+	public void setAttachmentDtos(List<AttachmentDto> attachmentDtos) { this.attachmentDtos = attachmentDtos; }
+
 
 	/**
 	 * 첨부파일 정보 DTO (내부 클래스)

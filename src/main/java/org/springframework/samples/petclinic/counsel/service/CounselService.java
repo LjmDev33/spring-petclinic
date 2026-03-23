@@ -1,5 +1,8 @@
 package org.springframework.samples.petclinic.counsel.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.samples.petclinic.common.exception.EntityNotFoundException;
 import org.springframework.samples.petclinic.common.exception.ErrorCode;
@@ -315,34 +318,48 @@ public class CounselService {
 
 		// 4. 첨부파일 처리 (Uppy 업로드된 파일 경로)
 		if (dto.getAttachmentPaths() != null && !dto.getAttachmentPaths().isBlank()) {
-			String[] filePaths = dto.getAttachmentPaths().split(",");
+			try{
+				ObjectMapper objectMapper = new ObjectMapper();
+				List<CounselPostWriteDto> fileList = objectMapper.readValue(
+					dto.getAttachmentPaths(),
+					new TypeReference<List<CounselPostWriteDto>>() {}
+				);
 
-			for (String filePath : filePaths) {
-				filePath = filePath.trim();
-				if (filePath.isEmpty()) continue;
+				for (CounselPostWriteDto fileInfo : fileList) {
+					String filePath = fileInfo.getFilepath();
+					filePath = filePath.trim();
+					if (path == null || path.trim().isEmpty()) continue;
+					try {
+						// Attachment 엔티티 생성 및 저장 (common.table.Attachment)
+						Attachment attachment = new Attachment();
+						attachment.setStoredFilename(filePath); // 파일주소
+						attachment.setOriginalFilename(fileInfo.getFilename()); // 파일명
+						attachment.setFileSize(fileInfo.getFilesize()); // 파일사이즈
+						attachment.setContentType(fileInfo.getFiletype()); // MIME 타입
+						attachmentRepository.save(attachment);
 
-				try {
-					// Attachment 엔티티 생성 및 저장 (common.table.Attachment)
-					Attachment attachment = new Attachment();
-					attachment.setStoredFilename(filePath); // 저장된 파일명
-					attachment.setOriginalFilename(extractFileName(filePath)); // 원본 파일명
-					attachment.setFileSize(0L); // 임시 업로드 시 크기 정보 없음
-					attachment.setContentType("application/octet-stream"); // MIME 타입
-					attachmentRepository.save(attachment);
+						// CounselPost와 Attachment 연결
+						CounselPostAttachment postAttachment = new CounselPostAttachment();
+						postAttachment.setCounselPost(entity);
+						postAttachment.setAttachment(attachment);
+						entity.addAttachment(postAttachment);
 
-					// CounselPost와 Attachment 연결
-					CounselPostAttachment postAttachment = new CounselPostAttachment();
-					postAttachment.setCounselPost(entity);
-					postAttachment.setAttachment(attachment);
-					entity.addAttachment(postAttachment);
-
-					log.info("Attached file to post: path={}", filePath);
-				} catch (Exception e) {
-					log.error("Failed to attach file {}: {}", filePath, e.getMessage());
-					throw new RuntimeException("Error attaching file.", e);
+						log.info("Attached file to post: path={}", filePath);
+					} catch (Exception e) {
+						log.error("Failed to attach file {}: {}", filePath, e.getMessage());
+						throw new RuntimeException("Error attaching file.", e);
+					}
 				}
+				entity.setAttachFlag(true); // 첨부파일 플래그 설정
+			} catch (JsonProcessingException e) {
+				// JSON 문자열을 List 객체로 변환(파싱)할 때 발생하는 에러
+				log.error("Failed to parse attachment paths JSON. Data: {}", dto.getAttachmentPaths(), e);
+				// 파싱 오류는 클라이언트의 잘못된 요청 데이터일 확률이 높으므로 IllegalArgumentException 사용
+				throw new IllegalArgumentException("Invalid format for attachment paths.", e);
+			} catch (Exception e) {
+				log.error("Unexpected error during attachment processing.", e);
+				throw new RuntimeException("Unexpected error during attachment processing.", e);
 			}
-			entity.setAttachFlag(true); // 첨부파일 플래그 설정
 		}
 
 		// 5. 기존 MultipartFile 방식 첨부파일 처리 (하위 호환성 유지)

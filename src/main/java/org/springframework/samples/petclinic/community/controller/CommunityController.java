@@ -263,50 +263,42 @@ public class CommunityController {
 	@PreAuthorize("hasRole('ROLE_ADMIN')")
 	@PostMapping("/upload-temp")
 	@ResponseBody
-	public ResponseEntity<?> uploadTemp(
-		@RequestParam("files") MultipartFile[] files) {
+	public ResponseEntity<?> uploadTemp( @RequestParam("files") MultipartFile[] files) {
+		Map<String, Object> response = new HashMap<>();
+		List<Map<String, Object>> uploadedFiles = new ArrayList<>();
 
 		log.info("### Community temp upload called: fileCount={}", files != null ? files.length : 0);
 
 		try {
-			List<Map<String, String>> uploadedFiles = new ArrayList<>();
+			for (MultipartFile file : files) {
+				if (!file.isEmpty()) {
+					// 파일 저장 및 경로 반환
+					String filePath = communityService.storeFileTemp(file);
 
-			if (files != null) {
-				for (MultipartFile file : files) {
-					if (file.isEmpty()) continue;
-
-					// 파일명 생성 (UUID + 원본 확장자)
-					String originalFilename = file.getOriginalFilename();
-					String extension = "";
-					if (originalFilename != null && originalFilename.contains(".")) {
-						extension = originalFilename.substring(originalFilename.lastIndexOf("."));
-					}
-					String storedFilename = UUID.randomUUID().toString() + extension;
-
-					// 임시 디렉토리에 저장
-					Path uploadPath = Paths.get("uploads/temp");
-					Files.createDirectories(uploadPath);
-
-					Path filePath = uploadPath.resolve(storedFilename);
-					file.transferTo(filePath.toFile());
-
-					// 결과 추가
-					Map<String, String> fileInfo = new HashMap<>();
-					fileInfo.put("originalFilename", originalFilename);
-					fileInfo.put("storedFilename", storedFilename);
-					fileInfo.put("path", "uploads/temp/" + storedFilename);
+					Map<String, Object> fileInfo = new HashMap<>();
+					fileInfo.put("id", filePath); // 파일 경로를 ID로 사용
+					fileInfo.put("name", file.getOriginalFilename());
+					fileInfo.put("size", file.getSize());
+					fileInfo.put("path", filePath);
 					uploadedFiles.add(fileInfo);
 
-					log.info("✅ Community temp file uploaded: original={}, stored={}", originalFilename, storedFilename);
+					log.info("Temp file uploaded: name={}, size={}, path={}",
+						file.getOriginalFilename(), file.getSize(), filePath);
 				}
 			}
 
-			return ResponseEntity.ok(uploadedFiles);
+			response.put("success", true);
+			response.put("files", uploadedFiles);
+			response.put("message", uploadedFiles.size() + "개 파일이 업로드되었습니다.");
 
+			return ResponseEntity.ok(response);
 		} catch (Exception e) {
-			log.error("❌ Community temp upload failed: {}", e.getMessage(), e);
-			return ResponseEntity.badRequest()
-				.body(Map.of("error", "파일 업로드 중 오류가 발생했습니다: " + e.getMessage()));
+			log.error("Temp file upload failed: {}", e.getMessage(), e);
+
+			response.put("success", false);
+			response.put("error", "파일 업로드 중 오류가 발생했습니다: " + e.getMessage());
+
+			return ResponseEntity.badRequest().body(response);
 		}
 	}
 }

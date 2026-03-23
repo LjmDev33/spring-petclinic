@@ -11,10 +11,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.samples.petclinic.common.repository.AttachmentRepository;
 import org.springframework.samples.petclinic.common.table.Attachment;
+import org.springframework.samples.petclinic.community.repository.CommunityPostRepository;
+import org.springframework.samples.petclinic.community.table.CommunityPost;
 import org.springframework.samples.petclinic.counsel.repository.CounselPostRepository;
 import org.springframework.samples.petclinic.counsel.table.CounselPost;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -54,7 +57,6 @@ import java.util.Set;
  *   Copyright (c) 2025 AOF(AllForOne) / All rights reserved.
  */
 @Controller
-@RequestMapping("/counsel")
 public class FileDownloadController {
 
 	private static final Logger log = LoggerFactory.getLogger(FileDownloadController.class);
@@ -65,20 +67,22 @@ public class FileDownloadController {
 	private final Path baseDir;
 	private final AttachmentRepository attachmentRepository;
 	private final CounselPostRepository counselPostRepository;
+	private final CommunityPostRepository communityPostRepository;
 
 	/**
 	 * 생성자
-	 * @param uploadDir 파일 업로드 디렉토리 경로
 	 * @param attachmentRepository 첨부파일 저장소
 	 * @param counselPostRepository 게시글 저장소
 	 */
 	public FileDownloadController(
-		@Value("${petclinic.file.counsel-upload-dir}") String uploadDir,
+		@Value("${petclinic.file.upload-dir}") String uploadDir,
 		AttachmentRepository attachmentRepository,
-		CounselPostRepository counselPostRepository) {
+		CounselPostRepository counselPostRepository,
+		CommunityPostRepository communityPostRepository) {
 		this.baseDir = Paths.get(uploadDir);
 		this.attachmentRepository = attachmentRepository;
 		this.counselPostRepository = counselPostRepository;
+		this.communityPostRepository = communityPostRepository;
 
 		// 디렉토리 자동 생성 방어 로직 추가
 		try {
@@ -110,11 +114,12 @@ public class FileDownloadController {
 	 * @return 다운로드할 파일의 ResponseEntity 또는 403 에러
 	 * @throws MalformedURLException 파일 경로가 잘못된 경우
 	 */
-	@GetMapping("/download/{fileId}")
+	@GetMapping("/{domain}/download/{fileId}")
+	@Transactional(readOnly = true)
 	public ResponseEntity<Resource> downloadFile(
 		@PathVariable Long fileId,
 		HttpSession session,
-		Authentication authentication)
+		Authentication authentication, @PathVariable String domain)
 		throws MalformedURLException {
 
 		// NPE 방지: fileId null 체크
@@ -140,24 +145,35 @@ public class FileDownloadController {
 			});
 
 		// 2. 파일이 속한 게시글 조회 (권한 검증용)
-		CounselPost post = findPostByAttachment(attachment);
-		if (post == null) {
-			log.error("Post not found for attachment: fileId={}", fileId);
+		boolean isSecret = false;
+		Long postId = null;
+
+		if ("counsel".equals(domain)) {
+			CounselPost post = findCounselPostByAttachment(attachment);
+			if (post != null) {
+				isSecret = post.isSecret();
+				postId = post.getId();
+			}
+		} else { // community
+			CommunityPost post = findCommunityPostByAttachment(attachment);
+			if (post != null) {
+				isSecret = true;
+				postId = post.getId();
+			}
+		}
+
+		if (postId == null) {
+			log.error("Post not found for attachment: fileId={}, domain={}", fileId, domain);
 			return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
 		}
 
 		// 3. 권한 검증: 비공개 게시글인 경우
-		if (post.isSecret()) {
-			// 3-1. 관리자인 경우 무조건 허용
+		if (isSecret) {
 			if (isAdmin(authentication)) {
-				log.info("Admin file download granted: fileId={}, postId={}, admin=true", fileId, post.getId());
-			}
-			// 3-2. 일반 사용자는 세션에 unlock된 게시글인지 확인
-			else if (!isPostUnlocked(session, post.getId())) {
-				log.warn("Unauthorized file download attempt: fileId={}, postId={}, secret=true, unlocked=false",
-					fileId, post.getId());
-				return ResponseEntity.status(HttpStatus.FORBIDDEN)
-					.body(null); // 권한 없음
+				log.info("Admin file download granted: fileId={}, postId={}, admin=true", fileId, postId);
+			} else if (!isPostUnlocked(session, postId)) {
+				log.warn("Unauthorized file download attempt: fileId={}, postId={}, secret=true", fileId, postId);
+				return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
 			}
 		}
 
@@ -176,7 +192,7 @@ public class FileDownloadController {
 				.replace("+", "%20");
 
 		log.info("File download success: fileId={}, fileName={}, postId={}", fileId,
-			attachment.getOriginalFilename(), post.getId());
+			attachment.getOriginalFilename(), postId);
 
 		// 6. 파일 다운로드 응답
 		return ResponseEntity.ok()
@@ -187,7 +203,7 @@ public class FileDownloadController {
 	}
 
 	/**
-	 * 첨부파일이 속한 게시글 조회
+	 * 첨부파일이 속한 온라인상담 게시글 조회
 	 *
 	 * <p>게시글-첨부파일 관계는 중간 테이블(counsel_post_attachments)로 연결되어 있으므로,
 	 * 게시글의 attachments 컬렉션을 순회하여 파일 ID가 일치하는 게시글을 찾습니다.</p>
@@ -195,8 +211,27 @@ public class FileDownloadController {
 	 * @param attachment 첨부파일 엔티티
 	 * @return 게시글 엔티티 (없으면 null)
 	 */
-	private CounselPost findPostByAttachment(Attachment attachment) {
+	private CounselPost findCounselPostByAttachment(Attachment attachment) {
 		return counselPostRepository.findAll().stream()
+			.filter(post -> post.getAttachments() != null &&
+				post.getAttachments().stream()
+					.anyMatch(postAttachment ->
+						postAttachment.getAttachment() != null &&
+						postAttachment.getAttachment().getId().equals(attachment.getId())))
+			.findFirst()
+			.orElse(null);
+	}
+	/**
+	 * 첨부파일이 속한 커뮤니티 게시글 조회
+	 *
+	 * <p>게시글-첨부파일 관계는 중간 테이블(community_post_attachments)로 연결되어 있으므로,
+	 * 게시글의 attachments 컬렉션을 순회하여 파일 ID가 일치하는 게시글을 찾습니다.</p>
+	 *
+	 * @param attachment 첨부파일 엔티티
+	 * @return 게시글 엔티티 (없으면 null)
+	 */
+	private CommunityPost findCommunityPostByAttachment(Attachment attachment) {
+		return communityPostRepository.findAll().stream()
 			.filter(post -> post.getAttachments() != null &&
 				post.getAttachments().stream()
 					.anyMatch(postAttachment ->

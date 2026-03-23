@@ -66,6 +66,10 @@ public class CounselPostWriteDto {
     private List<Integer> attachmentIds = new java.util.ArrayList<>();
     private String attachmentPaths; // Uppy 업로드된 파일 경로 (쉼표 구분)
     private String deletedFileIds; // 삭제할 첨부파일 ID 목록 (쉼표 구분, 수정 시만 사용)
+	private String filepath;
+	private String filename;
+	private String filetype;
+	private Long filesize;
 
     // Getters and Setters
 
@@ -109,9 +113,7 @@ public class CounselPostWriteDto {
         this.secret = secret;
     }
 
-    public List<MultipartFile> getAttachments() {
-        return attachments;
-    }
+    public List<MultipartFile> getAttachments() { return attachments; }
 
     public void setAttachments(List<MultipartFile> attachments) {
         this.attachments = attachments;
@@ -140,4 +142,20 @@ public class CounselPostWriteDto {
     public void setDeletedFileIds(String deletedFileIds) {
         this.deletedFileIds = deletedFileIds;
     }
+
+	public String getFilename() { return filename; }
+
+	public void setFilename(String filename) { this.filename = filename; }
+
+	public String getFilepath() { return filepath; }
+
+	public void setFilepath(String filepath) { this.filepath = filepath; }
+
+	public String getFiletype() { return filetype; }
+
+	public void setFiletype(String filetype) { this.filetype = filetype; }
+
+	public Long getFilesize() { return filesize; }
+
+	public void setFilesize(Long filesize) { this.filesize = filesize; }
 }

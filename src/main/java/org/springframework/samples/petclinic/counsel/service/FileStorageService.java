@@ -32,7 +32,9 @@ public class FileStorageService {
 		"application/vnd.ms-excel",
 		"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 		"application/x-hwp", "application/haansofthwp", "text/plain",
-		"application/zip", "application/x-zip-compressed", "application/x-rar-compressed"
+		"application/zip", "application/x-zip-compressed", "application/x-rar-compressed",
+		"application/x-tika-ooxml",
+		"application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 	);
 
 	private static final long MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
